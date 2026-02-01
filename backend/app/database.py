@@ -4,11 +4,13 @@ from sqlalchemy.orm import sessionmaker
 from .config import DATABASE_URL
 
 # Create SQLAlchemy engine
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False},  # Needed for SQLite
-    echo=False  # Set to True for SQL query logging
-)
+_engine_kwargs = {"echo": False}
+if DATABASE_URL.startswith("sqlite"):
+    _engine_kwargs["connect_args"] = {"check_same_thread": False}
+else:
+    _engine_kwargs["pool_pre_ping"] = True  # keeps connections healthy for cloud DBs
+
+engine = create_engine(DATABASE_URL, **_engine_kwargs)
 
 # Create SessionLocal class
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

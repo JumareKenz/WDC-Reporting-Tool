@@ -16,12 +16,40 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from datetime import datetime, timedelta
+import sqlite3
+import json
 from app.database import SessionLocal, engine
-from app.models import Base, LGA, Ward, User, Report, VoiceNote, Notification, Feedback, InvestigationNote
+from app.models import Base, LGA, Ward, User, Report, VoiceNote, Notification, Feedback, InvestigationNote, FormDefinition
 from app.auth import get_password_hash
+
+# ---------------------------------------------------------------------------
+# Migration: add custom_fields column to reports if missing, create form_definitions table
+# ---------------------------------------------------------------------------
+def _run_migrations():
+    from app.config import DATABASE_URL
+    # Extract file path from sqlite:///path
+    db_path = str(DATABASE_URL).replace("sqlite:///", "")
+    if not db_path or db_path == "":
+        return
+    import os
+    if not os.path.exists(db_path):
+        return  # tables will be created by create_all below
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    # custom_fields on reports
+    cursor.execute("PRAGMA table_info(reports)")
+    existing = [col[1] for col in cursor.fetchall()]
+    if "custom_fields" not in existing:
+        cursor.execute("ALTER TABLE reports ADD COLUMN custom_fields TEXT")
+        print("Migration: added custom_fields to reports")
+    conn.commit()
+    conn.close()
 
 # Create all tables
 Base.metadata.create_all(bind=engine)
+
+# Run migrations for columns that create_all won't add to existing tables
+_run_migrations()
 
 db = SessionLocal()
 
@@ -34,6 +62,7 @@ def clear_database():
     db.query(Notification).delete()
     db.query(VoiceNote).delete()
     db.query(Report).delete()
+    db.query(FormDefinition).delete()
     db.query(User).delete()
     db.query(Ward).delete()
     db.query(LGA).delete()
@@ -83,32 +112,58 @@ def seed_lgas():
 
 
 def seed_wards(lgas):
-    """Seed sample wards for each LGA."""
+    """Seed sample wards for each LGA with real Kaduna State ward names."""
     print("Seeding wards...")
 
-    # Sample ward names (generic, will be customized per LGA)
-    ward_templates = [
-        "Central", "North", "South", "East", "West",
-        "Sabon Gari", "Tudun Wada", "Barnawa", "Unguwan Rimi", "Nasarawa",
-        "Kawo", "Malali", "Makera", "Limanchin", "Rigasa"
-    ]
+    # Real ward names for Kaduna LGAs
+    lga_wards_map = {
+        "Chikun": ["Barnawa", "Chikaji", "Chikun", "Gwagwada", "Kakau", "Kuriga", "Kujama", "Narayi", "Nasarawa", "Rido", "Sabon Tasha", "Unguwan Sarki"],
+        "Kaduna North": ["Badiko", "Doka", "Gawuna", "Hayin Banki", "Kamazou", "Kawo", "Kazaure", "Magajin Gari", "Unguwan Dosa", "Unguwan Rimi", "Unguwan Shanu"],
+        "Kaduna South": ["Barnawa", "Badawa", "Kakuri", "Makera", "Tudun Nupawa", "Television", "Tudun Wada", "Sabon Gari North", "Sabon Gari South", "Sabon Gari East", "Sabon Gari West", "Sabon Gari Central", "Gamagira", "Tudun Wazara", "Afaka"],
+        "Igabi": ["Afaka", "Birnin Yero", "Danmagaji", "Gabasawa", "Gadan Gayan", "Rigachikun", "Rigasa", "Romi", "Shika", "Turunku", "Yakawada", "Zabi", "Igabi"],
+        "Zaria": ["Bomo", "Dambo", "Dutsen Abba", "Fudawa", "Garu", "Gyallesu", "Jushi", "Kaura", "Kufena", "Likoro", "Samaru", "Tukur Tukur", "Wucicciri"],
+        "Giwa": ["Galadimawa", "Gangara", "Dantudu", "Danmahawayi", "Galadima", "Giwa", "Kakangi", "Kazage", "Kidandan", "Shika", "Yakawada"],
+        "Sabon Gari": ["Basawa", "Chikaji", "Dogarawa", "Hanwa", "Sabon Gari East", "Sabon Gari West", "Samaru", "Tudun Wada East", "Tudun Wada West", "Unguwan Gabas", "Unguwan Liman", "Zabi", "Gyallesu", "Unguwan Mu'azu"],
+    }
 
     wards = []
-    ward_counter = 1
 
     for lga in lgas:
-        # Create wards for this LGA
-        for i in range(min(lga.num_wards, len(ward_templates))):
-            ward_name = ward_templates[i] if i < len(ward_templates) else f"Ward {i + 1}"
+        # Get real ward names if available, otherwise generate generic ones
+        if lga.name in lga_wards_map:
+            ward_names = lga_wards_map[lga.name]
+        else:
+            # Generic ward names for LGAs without specific data
+            ward_names = [
+                f"{lga.name} Central", f"{lga.name} North", f"{lga.name} South",
+                f"{lga.name} East", f"{lga.name} West", "Sabon Gari", "Tudun Wada",
+                "Nasarawa", "Kawo", "Makera", "Rigasa"
+            ]
+
+        # Create wards up to the LGA's num_wards
+        for i in range(min(lga.num_wards, len(ward_names))):
+            ward_name = ward_names[i]
             ward = Ward(
                 lga_id=lga.id,
                 name=ward_name,
                 code=f"{lga.code}-{ward_name[:3].upper()}",
-                population=15000 + (i * 2000)
+                population=12000 + (i * 3000)  # Realistic population range
             )
             db.add(ward)
             wards.append(ward)
-            ward_counter += 1
+
+        # If LGA has more wards than we have names, generate additional ones
+        if lga.num_wards > len(ward_names):
+            for i in range(len(ward_names), lga.num_wards):
+                ward_name = f"{lga.name} Ward {i + 1}"
+                ward = Ward(
+                    lga_id=lga.id,
+                    name=ward_name,
+                    code=f"{lga.code}-W{i + 1}",
+                    population=12000 + (i * 3000)
+                )
+                db.add(ward)
+                wards.append(ward)
 
     db.commit()
     print(f"Created {len(wards)} wards")
@@ -116,25 +171,31 @@ def seed_wards(lgas):
 
 
 def seed_users(lgas, wards):
-    """Seed demo users."""
+    """Seed demo users with realistic Nigerian names."""
     print("Seeding users...")
 
     users = []
     password = "demo123"
     hashed_password = get_password_hash(password)
 
-    # Create State Officials
+    # Create State Officials with realistic names
     state_officials = [
         {
             "email": "state.admin@kaduna.gov.ng",
-            "full_name": "Dr. Fatima Abdullahi",
-            "phone": "08055555555",
+            "full_name": "Dr. Fatima Abubakar Yusuf",
+            "phone": "08033445566",
             "role": "STATE_OFFICIAL"
         },
         {
             "email": "state.analyst@kaduna.gov.ng",
-            "full_name": "Musa Ibrahim Danjuma",
-            "phone": "08055555556",
+            "full_name": "Engr. Musa Ibrahim Aliyu",
+            "phone": "08044556677",
+            "role": "STATE_OFFICIAL"
+        },
+        {
+            "email": "state.monitor@kaduna.gov.ng",
+            "full_name": "Mrs. Grace Aondona Ikya",
+            "phone": "08055667788",
             "role": "STATE_OFFICIAL"
         }
     ]
@@ -148,12 +209,21 @@ def seed_users(lgas, wards):
         db.add(user)
         users.append(user)
 
-    # Create LGA Coordinators (one per LGA)
-    for lga in lgas[:10]:  # First 10 LGAs for demo
+    # LGA Coordinator names (realistic)
+    lga_coordinator_names = [
+        "Abubakar Sani Mahmud", "Ibrahim Garba Danjuma", "Halima Yusuf Bello",
+        "Samuel Ayuba Gani", "Zainab Mohammed Suleiman", "Patrick Eze Okoro",
+        "Hauwa Aliyu Hassan", "Daniel Audu Danladi", "Amina Ahmad Bello",
+        "Joseph Yohanna Kure", "Maryam Usman Shehu", "Emmanuel Nuhu Adamu",
+        "Fatima Ibrahim Musa", "John Elisha Maigari", "Salamatu Garba Abubakar"
+    ]
+
+    # Create LGA Coordinators
+    for idx, lga in enumerate(lgas[:15]):  # First 15 LGAs
         user = User(
             email=f"coord.{lga.code.lower()}@kaduna.gov.ng",
             password_hash=hashed_password,
-            full_name=f"{lga.name} LGA Coordinator",
+            full_name=lga_coordinator_names[idx] if idx < len(lga_coordinator_names) else f"{lga.name} LGA Coordinator",
             phone=f"0809{lga.id:07d}",
             role="LGA_COORDINATOR",
             lga_id=lga.id,
@@ -162,13 +232,46 @@ def seed_users(lgas, wards):
         db.add(user)
         users.append(user)
 
-    # Create WDC Secretaries (one per ward for first 50 wards)
-    for ward in wards[:50]:
+    # WDC Secretary names (realistic Nigerian names)
+    wdc_secretary_names = [
+        "Amina Yusuf Ibrahim", "Blessing Chukwu Okoro", "Fatima Sani Ahmad",
+        "Mary Joseph Elisha", "Hauwa Aliyu Bello", "Esther Daniel Yakubu",
+        "Zainab Ibrahim Hassan", "Rejoice Peter John", "Aisha Mohammed Usman",
+        "Grace Audu Samuel", "Halima Garba Suleiman", "Deborah Yohanna Ishaku",
+        "Salamatu Usman Musa", "Patience Emmanuel Gideon", "Hadiza Bello Abdullahi",
+        "Faith John Peter", "Safiya Ahmad Ibrahim", "Comfort Eze Chinedu",
+        "Khadija Suleiman Aliyu", "Joy Daniel Moses", "Maryam Hassan Mohammed",
+        "Hope Samuel David", "Rukayya Yusuf Abubakar", "Rachael Ayuba Stephen",
+        "Asmau Danjuma Garba", "Mercy Elisha Sunday", "Rashida Ibrahim Sani",
+        "Victoria Nuhu Paul", "Jamila Mahmud Ahmad", "Comfort Danladi Joseph",
+        "Hassana Bello Ibrahim", "Florence Yohanna Emmanuel", "Zulaihat Usman Bala",
+        "Lydia John Thomas", "Sadiya Garba Mohammed", "Miriam Audu Daniel",
+        "Nana Aliyu Suleiman", "Priscilla Peter James", "Fatima Mohammed Sani",
+        "Elizabeth Yakubu John", "Hadiza Yusuf Usman", "Helen Elisha Joshua",
+        "Jamila Ahmad Bello", "Rose Daniel Isaac", "Maimuna Sani Garba",
+        "Martha Yohanna Peter", "Aisha Ibrahim Aliyu", "Glory Emmanuel Moses",
+        "Ramatu Usman Hassan", "Charity Nuhu David", "Khadija Bello Mohammed"
+    ]
+
+    # Create WDC Secretaries
+    # Track email counts per LGA to ensure unique emails
+    lga_email_counters = {}
+
+    for idx, ward in enumerate(wards[:80]):  # Create for first 80 wards
         lga = next((l for l in lgas if l.id == ward.lga_id), None)
+
+        # Generate unique email using LGA code + sequential number
+        lga_code = lga.code.lower() if lga else 'ward'
+        if lga_code not in lga_email_counters:
+            lga_email_counters[lga_code] = 1
+        else:
+            lga_email_counters[lga_code] += 1
+
+        email_number = lga_email_counters[lga_code]
         user = User(
-            email=f"wdc.{ward.code.lower().replace('-', '.')}@kaduna.gov.ng",
+            email=f"wdc.{lga_code}.{email_number}@kaduna.gov.ng",
             password_hash=hashed_password,
-            full_name=f"{ward.name} WDC Secretary",
+            full_name=wdc_secretary_names[idx % len(wdc_secretary_names)],
             phone=f"0801{ward.id:07d}",
             role="WDC_SECRETARY",
             ward_id=ward.id,
@@ -179,10 +282,12 @@ def seed_users(lgas, wards):
 
     db.commit()
     print(f"Created {len(users)} users")
-    print(f"\nDemo Login Credentials:")
-    print(f"  State Official: state.admin@kaduna.gov.ng / {password}")
-    print(f"  LGA Coordinator: coord.chk@kaduna.gov.ng / {password}")
-    print(f"  WDC Secretary: wdc.chk.cen@kaduna.gov.ng / {password}")
+    print(f"\nDemo Login Credentials (Password: {password}):")
+    print(f"  State Official: state.admin@kaduna.gov.ng")
+    print(f"  LGA Coordinator (Chikun): coord.chk@kaduna.gov.ng")
+    print(f"  WDC Secretary (Chikun Ward 1): wdc.chk.1@kaduna.gov.ng")
+    print(f"  WDC Secretary (Chikun Ward 2): wdc.chk.2@kaduna.gov.ng")
+    print("  (Pattern: wdc.<lga_code>.<number>@kaduna.gov.ng)")
     return users
 
 
@@ -404,6 +509,203 @@ def seed_investigations(users, lgas):
     return investigations
 
 
+def seed_form_definition(users):
+    """Seed the initial Monthly WDC Report form definition."""
+    print("Seeding form definition...")
+
+    state_officials = [u for u in users if u.role == "STATE_OFFICIAL"]
+    created_by = state_officials[0].id if state_officials else None
+
+    sec1, sec2, sec3, sec4 = "sec_agenda", "sec_action_tracker", "sec_health", "sec_community"
+    sec5, sec6, sec7, sec8 = "sec_vdc", "sec_mobilization", "sec_action_plan", "sec_support"
+
+    sections = [
+        {"id": sec1, "title": "Agenda & Governance", "description": "Meeting type, date, and agenda items covered", "order": 1},
+        {"id": sec2, "title": "Action Tracker", "description": "Track progress on previous action points", "order": 2},
+        {"id": sec3, "title": "Health System", "description": "Health data across all indicator categories", "order": 3},
+        {"id": sec4, "title": "Community Involvement", "description": "Town hall and community feedback", "order": 4},
+        {"id": sec5, "title": "VDC Reports", "description": "Village Development Committee reports", "order": 5},
+        {"id": sec6, "title": "Community Mobilization", "description": "Awareness and leader engagement activities", "order": 6},
+        {"id": sec7, "title": "Action Plan", "description": "Planned actions with timelines", "order": 7},
+        {"id": sec8, "title": "Support & Conclusion", "description": "Support needs, attendance, and signatures", "order": 8},
+    ]
+
+    def simple_field(fld_id, section_id, name, label, ftype, order, **kwargs):
+        return {
+            "id": fld_id, "section_id": section_id, "name": name, "label": label,
+            "type": ftype, "order": order,
+            "placeholder": kwargs.get("placeholder", ""),
+            "help_text": kwargs.get("help_text", ""),
+            "required": kwargs.get("required", False),
+            "options": kwargs.get("options"),
+            "table_columns": kwargs.get("table_columns"),
+            "default_rows": kwargs.get("default_rows"),
+            "voice_enabled": kwargs.get("voice_enabled", False),
+            "logic": kwargs.get("logic"),
+        }
+
+    fields = []
+
+    # --- Section 1: Agenda & Governance ---
+    fields.append(simple_field("fld_meeting_type", sec1, "meeting_type", "Meeting Type", "select", 1,
+        placeholder="Select meeting type", required=True,
+        options=[{"value": "Monthly", "label": "Monthly"}, {"value": "Emergency", "label": "Emergency"}, {"value": "Quarterly Town Hall", "label": "Quarterly Town Hall"}]))
+    fields.append(simple_field("fld_report_date", sec1, "report_date", "Report Date", "date", 2,
+        help_text="Date the meeting was held", required=True))
+    fields.append(simple_field("fld_report_time", sec1, "report_time", "Report Time", "time", 3,
+        help_text="Time the meeting started"))
+
+    agenda_items = [
+        ("fld_agenda_prayer", "agenda_opening_prayer", "Opening Prayer"),
+        ("fld_agenda_minutes", "agenda_minutes", "Minutes of Last Meeting"),
+        ("fld_agenda_tracker", "agenda_action_tracker", "Action Tracker Review"),
+        ("fld_agenda_reports", "agenda_reports", "Reports"),
+        ("fld_agenda_plan", "agenda_action_plan", "Action Plan"),
+        ("fld_agenda_aob", "agenda_aob", "Any Other Business"),
+        ("fld_agenda_closing", "agenda_closing", "Closing Prayer"),
+    ]
+    for i, (fld_id, name, label) in enumerate(agenda_items, 4):
+        fields.append(simple_field(fld_id, sec1, name, label, "checkbox", i))
+
+    # --- Section 2: Action Tracker ---
+    fields.append(simple_field("fld_action_tracker", sec2, "action_tracker", "Action Tracker", "table", 1,
+        help_text="Track progress on previous action points",
+        table_columns=[
+            {"name": "action_point", "label": "Action Point", "type": "text", "placeholder": "Describe the action point", "options": None},
+            {"name": "status", "label": "Status", "type": "select", "placeholder": "", "options": [{"value": "Pending", "label": "Pending"}, {"value": "In Progress", "label": "In Progress"}, {"value": "Completed", "label": "Completed"}, {"value": "Cancelled", "label": "Cancelled"}]},
+            {"name": "challenges", "label": "Challenges", "type": "text", "placeholder": "Any challenges faced", "options": None},
+            {"name": "timeline", "label": "Timeline", "type": "text", "placeholder": "Expected completion date", "options": None},
+            {"name": "responsible_person", "label": "Responsible Person", "type": "text", "placeholder": "Name of person responsible", "options": None},
+        ]))
+
+    # --- Section 3: Health System ---
+    health_fields = [
+        ("fld_h_penta1", "health_penta1", "Penta 1 (Immunization)"),
+        ("fld_h_bcg", "health_bcg", "BCG (Immunization)"),
+        ("fld_h_penta3", "health_penta3", "Penta 3 (Immunization)"),
+        ("fld_h_measles", "health_measles", "Measles (Immunization)"),
+        ("fld_h_malaria_u5", "health_malaria_under5", "Malaria (Under 5)"),
+        ("fld_h_diarrhea_u5", "health_diarrhea_under5", "Diarrhea (Under 5)"),
+        ("fld_h_anc1", "health_anc_first_visit", "ANC 1st Visit"),
+        ("fld_h_anc4", "health_anc_fourth_visit", "ANC 4th Visit"),
+        ("fld_h_anc8", "health_anc_eighth_visit", "ANC 8th Visit"),
+        ("fld_h_deliveries", "health_deliveries", "Deliveries"),
+        ("fld_h_postnatal", "health_postnatal", "Postnatal Care"),
+        ("fld_h_fp_counsel", "health_fp_counselling", "FP Counselling"),
+        ("fld_h_fp_new", "health_fp_new_acceptors", "FP New Acceptors"),
+        ("fld_h_hepb_tested", "health_hepb_tested", "Hepatitis B Tested"),
+        ("fld_h_hepb_pos", "health_hepb_positive", "Hepatitis B Positive"),
+        ("fld_h_tb_presump", "health_tb_presumptive", "TB Presumptive"),
+        ("fld_h_tb_treat", "health_tb_on_treatment", "TB On Treatment"),
+        ("fld_h_fac_govt", "facilities_renovated_govt", "Facilities Renovated (Govt)"),
+        ("fld_h_fac_partners", "facilities_renovated_partners", "Facilities Renovated (Partners)"),
+        ("fld_h_fac_wdc", "facilities_renovated_wdc", "Facilities Renovated (WDC)"),
+        ("fld_h_items_donated", "items_donated_count", "Items Donated (Count)"),
+        ("fld_h_items_repaired", "items_repaired_count", "Items Repaired (Count)"),
+        ("fld_h_transport_anc", "women_transported_anc", "Women Transported (ANC)"),
+        ("fld_h_transport_del", "women_transported_delivery", "Women Transported (Delivery)"),
+        ("fld_h_transport_child", "children_transported_danger", "Children Transported (Danger)"),
+        ("fld_h_transport_items", "women_supported_delivery_items", "Women Supported (Delivery Items)"),
+        ("fld_h_maternal_deaths", "maternal_deaths", "Maternal Deaths"),
+        ("fld_h_perinatal_deaths", "perinatal_deaths", "Perinatal Deaths"),
+    ]
+    for i, (fld_id, name, label) in enumerate(health_fields, 1):
+        fields.append(simple_field(fld_id, sec3, name, label, "number", i, placeholder="0"))
+
+    # --- Section 4: Community Involvement ---
+    fields.append(simple_field("fld_town_hall", sec4, "town_hall_conducted", "Town Hall Conducted?", "select", 1,
+        help_text="Was a town hall meeting conducted this month?",
+        options=[{"value": "Yes", "label": "Yes"}, {"value": "No", "label": "No"}, {"value": "Partial", "label": "Partial"}]))
+
+    # community_feedback table — logic: show only when town_hall_conducted equals Yes
+    cf_indicators = [
+        {"value": "Health Services", "label": "Health Services"},
+        {"value": "Education", "label": "Education"},
+        {"value": "Water & Sanitation", "label": "Water & Sanitation"},
+        {"value": "Roads & Infrastructure", "label": "Roads & Infrastructure"},
+        {"value": "Security", "label": "Security"},
+    ]
+    fields.append(simple_field("fld_community_feedback", sec4, "community_feedback", "Community Feedback", "table", 2,
+        help_text="Record feedback from community members at the town hall",
+        table_columns=[
+            {"name": "indicator", "label": "Indicator", "type": "select", "placeholder": "", "options": cf_indicators + [{"value": "Agriculture", "label": "Agriculture"}, {"value": "Other", "label": "Other"}]},
+            {"name": "feedback", "label": "Feedback", "type": "textarea", "placeholder": "Community feedback on this indicator", "options": None},
+            {"name": "action_required", "label": "Action Required", "type": "text", "placeholder": "What action is needed?", "options": None},
+        ],
+        default_rows=[
+            {"indicator": "Health Services", "feedback": "", "action_required": ""},
+            {"indicator": "Education", "feedback": "", "action_required": ""},
+            {"indicator": "Water & Sanitation", "feedback": "", "action_required": ""},
+            {"indicator": "Roads & Infrastructure", "feedback": "", "action_required": ""},
+            {"indicator": "Security", "feedback": "", "action_required": ""},
+        ],
+        logic={
+            "action": "show",
+            "condition_group": {
+                "operator": "AND",
+                "rules": [{"type": "condition", "field_id": "fld_town_hall", "operator": "equals", "value": "Yes"}]
+            }
+        }
+    ))
+
+    # --- Section 5: VDC Reports ---
+    fields.append(simple_field("fld_vdc_reports", sec5, "vdc_reports", "VDC Reports", "table", 1,
+        help_text="Reports from Village Development Committees",
+        table_columns=[
+            {"name": "vdc_name", "label": "VDC Name", "type": "text", "placeholder": "Name of the VDC", "options": None},
+            {"name": "issues", "label": "Issues", "type": "textarea", "placeholder": "Issues raised by the VDC", "options": None},
+            {"name": "action_taken", "label": "Action Taken", "type": "text", "placeholder": "Actions taken in response", "options": None},
+        ]))
+
+    # --- Section 6: Community Mobilization ---
+    fields.append(simple_field("fld_awareness_theme", sec6, "awareness_theme", "Awareness Theme", "textarea", 1,
+        placeholder="Describe the awareness theme", help_text="What awareness campaign was conducted?", voice_enabled=True))
+    fields.append(simple_field("fld_trad_leaders", sec6, "traditional_leaders_support", "Traditional Leaders Support", "textarea", 2,
+        placeholder="Describe support from traditional leaders", help_text="Level of engagement with traditional leaders", voice_enabled=True))
+    fields.append(simple_field("fld_religious_leaders", sec6, "religious_leaders_support", "Religious Leaders Support", "textarea", 3,
+        placeholder="Describe support from religious leaders", help_text="Level of engagement with religious leaders", voice_enabled=True))
+
+    # --- Section 7: Action Plan ---
+    fields.append(simple_field("fld_action_plan", sec7, "action_plan", "Action Plan", "table", 1,
+        help_text="Planned actions for the coming period",
+        table_columns=[
+            {"name": "issue", "label": "Issue", "type": "text", "placeholder": "Issue to be addressed", "options": None},
+            {"name": "action", "label": "Action", "type": "text", "placeholder": "Planned action", "options": None},
+            {"name": "timeline", "label": "Timeline", "type": "text", "placeholder": "Expected completion date", "options": None},
+            {"name": "responsible_person", "label": "Responsible Person", "type": "text", "placeholder": "Person responsible", "options": None},
+        ]))
+
+    # --- Section 8: Support & Conclusion ---
+    fields.append(simple_field("fld_support_required", sec8, "support_required", "Support Required", "textarea", 1,
+        placeholder="Describe support needed from LGA/State", help_text="What support does the ward need?", voice_enabled=True))
+    fields.append(simple_field("fld_aob", sec8, "aob", "Any Other Business", "textarea", 2,
+        placeholder="Any other business discussed", help_text="Additional matters raised during the meeting", voice_enabled=True))
+    fields.append(simple_field("fld_att_total", sec8, "attendance_total", "Total Attendance", "number", 3, placeholder="0"))
+    fields.append(simple_field("fld_att_male", sec8, "attendance_male", "Male Attendance", "number", 4, placeholder="0"))
+    fields.append(simple_field("fld_att_female", sec8, "attendance_female", "Female Attendance", "number", 5, placeholder="0"))
+    fields.append(simple_field("fld_next_meeting", sec8, "next_meeting_date", "Next Meeting Date", "date", 6,
+        help_text="When is the next meeting scheduled?"))
+    fields.append(simple_field("fld_chairman_sig", sec8, "chairman_signature", "Chairman Signature", "text", 7,
+        placeholder="Full name of WDC Chairman"))
+    fields.append(simple_field("fld_secretary_sig", sec8, "secretary_signature", "Secretary Signature", "text", 8,
+        placeholder="Full name of WDC Secretary"))
+
+    definition = json.dumps({"sections": sections, "fields": fields})
+
+    form = FormDefinition(
+        name="Monthly WDC Report",
+        description="Comprehensive monthly report for Ward Development Committees covering health data, community feedback, and action planning",
+        definition=definition,
+        status="DEPLOYED",
+        version=1,
+        created_by=created_by,
+        deployed_at=datetime.now(),
+    )
+    db.add(form)
+    db.commit()
+    print(f"Created Monthly WDC Report form definition (DEPLOYED, {len(fields)} fields across {len(sections)} sections)")
+
+
 def main():
     """Main seeding function."""
     print("\n" + "=" * 60)
@@ -423,6 +725,7 @@ def main():
         notifications = seed_notifications(users, reports)
         feedback_messages = seed_feedback(users, wards)
         investigations = seed_investigations(users, lgas)
+        seed_form_definition(users)
 
         print("\n" + "=" * 60)
         print("SEEDING COMPLETED SUCCESSFULLY!")

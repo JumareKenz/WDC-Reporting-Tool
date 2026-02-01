@@ -80,8 +80,23 @@ class Report(Base):
     ward_id = Column(Integer, ForeignKey("wards.id", ondelete="CASCADE"), nullable=False, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     report_month = Column(String(7), nullable=False)  # Format: YYYY-MM
+    report_date = Column(String(10), nullable=True)  # Format: YYYY-MM-DD
+    report_time = Column(String(5), nullable=True)   # Format: HH:MM
 
-    # Form fields
+    # Meeting Type and Agenda
+    meeting_type = Column(String(50), default="Monthly")  # Monthly, Emergency, Quarterly Town Hall
+    agenda_opening_prayer = Column(Boolean, default=False)
+    agenda_minutes = Column(Boolean, default=False)
+    agenda_action_tracker = Column(Boolean, default=False)
+    agenda_reports = Column(Boolean, default=False)
+    agenda_action_plan = Column(Boolean, default=False)
+    agenda_aob = Column(Boolean, default=False)
+    agenda_closing = Column(Boolean, default=False)
+
+    # Action Tracker (stored as JSON)
+    action_tracker = Column(Text, nullable=True)  # JSON array
+
+    # Legacy Simple Fields (for backward compatibility)
     meetings_held = Column(Integer, default=0)
     attendees_count = Column(Integer, default=0)
     issues_identified = Column(Text, nullable=True)
@@ -89,6 +104,86 @@ class Report(Base):
     challenges = Column(Text, nullable=True)
     recommendations = Column(Text, nullable=True)
     additional_notes = Column(Text, nullable=True)
+
+    # Section 3A: Health Data - OPD
+    health_penta1 = Column(Integer, default=0)
+    health_bcg = Column(Integer, default=0)
+    health_penta3 = Column(Integer, default=0)
+    health_measles = Column(Integer, default=0)
+
+    # Section 3A: Health Data - OPD Under 5
+    health_malaria_under5 = Column(Integer, default=0)
+    health_diarrhea_under5 = Column(Integer, default=0)
+
+    # Section 3A: Health Data - ANC
+    health_anc_first_visit = Column(Integer, default=0)
+    health_anc_fourth_visit = Column(Integer, default=0)
+    health_anc_eighth_visit = Column(Integer, default=0)
+    health_deliveries = Column(Integer, default=0)
+    health_postnatal = Column(Integer, default=0)
+
+    # Section 3A: Health Data - Family Planning
+    health_fp_counselling = Column(Integer, default=0)
+    health_fp_new_acceptors = Column(Integer, default=0)
+
+    # Section 3A: Health Data - Hepatitis B
+    health_hepb_tested = Column(Integer, default=0)
+    health_hepb_positive = Column(Integer, default=0)
+
+    # Section 3A: Health Data - TB
+    health_tb_presumptive = Column(Integer, default=0)
+    health_tb_on_treatment = Column(Integer, default=0)
+
+    # Section 3B: Health Facility Support - Renovations
+    facilities_renovated_govt = Column(Integer, default=0)
+    facilities_renovated_partners = Column(Integer, default=0)
+    facilities_renovated_wdc = Column(Integer, default=0)
+
+    # Section 3B: Items
+    items_donated_count = Column(Integer, default=0)
+    items_donated_types = Column(Text, nullable=True)  # JSON array
+    items_repaired_count = Column(Integer, default=0)
+    items_repaired_types = Column(Text, nullable=True)  # JSON array
+
+    # Section 3C: Transportation & Emergency
+    women_transported_anc = Column(Integer, default=0)
+    women_transported_delivery = Column(Integer, default=0)
+    children_transported_danger = Column(Integer, default=0)
+    women_supported_delivery_items = Column(Integer, default=0)
+
+    # Section 3D: cMPDSR
+    maternal_deaths = Column(Integer, default=0)
+    perinatal_deaths = Column(Integer, default=0)
+    maternal_death_causes = Column(Text, nullable=True)  # JSON array
+    perinatal_death_causes = Column(Text, nullable=True)  # JSON array
+
+    # Section 4: Community Feedback
+    town_hall_conducted = Column(String(10), nullable=True)  # Yes/No/Partial
+    community_feedback = Column(Text, nullable=True)  # JSON array
+
+    # Section 5: VDC Reports
+    vdc_reports = Column(Text, nullable=True)  # JSON array
+
+    # Section 6: Community Mobilization
+    awareness_theme = Column(Text, nullable=True)
+    traditional_leaders_support = Column(String(50), nullable=True)
+    religious_leaders_support = Column(String(50), nullable=True)
+
+    # Section 7: Community Action Plan
+    action_plan = Column(Text, nullable=True)  # JSON array
+
+    # Section 8: Support & Conclusion
+    support_required = Column(Text, nullable=True)
+    aob = Column(Text, nullable=True)  # Any Other Business
+    attendance_total = Column(Integer, default=0)
+    attendance_male = Column(Integer, default=0)
+    attendance_female = Column(Integer, default=0)
+    next_meeting_date = Column(String(10), nullable=True)  # YYYY-MM-DD
+    chairman_signature = Column(String(200), nullable=True)
+    secretary_signature = Column(String(200), nullable=True)
+
+    # Custom fields from dynamic forms (JSON)
+    custom_fields = Column(Text, nullable=True)
 
     # Metadata
     status = Column(String(20), default="SUBMITTED", index=True)
@@ -118,6 +213,10 @@ class VoiceNote(Base):
     file_path = Column(String(500), nullable=False)
     file_size = Column(Integer, nullable=True)
     duration_seconds = Column(Integer, nullable=True)
+    field_name = Column(String(100), nullable=True)  # Which report field this voice note maps to
+    transcription_status = Column(String(20), default="PENDING")  # PENDING, PROCESSING, DONE, FAILED
+    transcription_text = Column(Text, nullable=True)
+    transcribed_at = Column(DateTime(timezone=True), nullable=True)
     uploaded_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
@@ -195,4 +294,23 @@ class InvestigationNote(Base):
         CheckConstraint("investigation_type IN ('GENERAL', 'FINANCIAL', 'COMPLIANCE', 'PERFORMANCE', 'COMPLAINT')", name="investigation_type_check"),
         CheckConstraint("priority IN ('LOW', 'MEDIUM', 'HIGH', 'URGENT')", name="investigation_priority_check"),
         CheckConstraint("status IN ('OPEN', 'IN_PROGRESS', 'PENDING', 'CLOSED')", name="investigation_status_check"),
+    )
+
+
+class FormDefinition(Base):
+    __tablename__ = "form_definitions"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    name = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    version = Column(Integer, default=1)
+    status = Column(String(20), default="DRAFT")
+    definition = Column(Text, nullable=False)  # JSON string: {sections, fields}
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    deployed_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("status IN ('DRAFT', 'DEPLOYED', 'ARCHIVED')", name="form_status_check"),
     )

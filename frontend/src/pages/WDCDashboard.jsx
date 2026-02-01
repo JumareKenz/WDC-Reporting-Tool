@@ -70,16 +70,22 @@ const WDCDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-primary-50/30">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-teal-50 relative">
+      {/* Ambient background blobs */}
+      <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-300 rounded-full opacity-10 pointer-events-none" style={{ filter: 'blur(120px)' }} />
+      <div className="absolute bottom-1/2 left-0 w-80 h-80 bg-teal-200 rounded-full opacity-10 pointer-events-none" style={{ filter: 'blur(100px)' }} />
+
       {/* Header */}
-      <div className="bg-white border-b border-neutral-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="relative overflow-hidden bg-gradient-to-r from-primary-600 via-emerald-600 to-teal-600 shadow-lg">
+        <div className="absolute -top-16 -right-16 w-48 h-48 bg-white rounded-full opacity-5 pointer-events-none" />
+        <div className="absolute -bottom-12 left-1/3 w-40 h-40 bg-white rounded-full opacity-5 pointer-events-none" />
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-neutral-900">
+              <h1 className="text-2xl font-bold text-white">
                 WDC Secretary Dashboard
               </h1>
-              <p className="mt-1 text-sm text-neutral-600">
+              <p className="mt-1 text-sm text-emerald-200">
                 {user?.ward_name || 'Your Ward'} • {user?.lga_name || 'Your LGA'}
               </p>
             </div>
@@ -87,7 +93,7 @@ const WDCDashboard = () => {
               icon={PlusCircle}
               onClick={() => navigate('/wdc/submit')}
               size="lg"
-              className="shadow-lg shadow-primary-500/20 hover:shadow-xl hover:shadow-primary-500/30 transition-all"
+              className="bg-white text-primary-700 hover:bg-emerald-50 shadow-lg shadow-black/20 hover:shadow-xl transition-all font-semibold"
             >
               Submit Monthly Report
             </Button>
@@ -95,7 +101,7 @@ const WDCDashboard = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Current Month Status Alert */}
         {!checkingSubmission && (
           <div className="mb-6">
@@ -123,7 +129,8 @@ const WDCDashboard = () => {
             title="Current Month"
             value={isSubmitted ? 'Submitted' : 'Pending'}
             subtitle={formatMonth(currentMonth)}
-            className="transform hover:scale-105 transition-transform duration-200"
+            variant="glass"
+            className="card-lift"
           />
           <IconCard
             icon={CheckCircle}
@@ -137,7 +144,8 @@ const WDCDashboard = () => {
                 {reviewedCount} reviewed
               </span>
             }
-            className="transform hover:scale-105 transition-transform duration-200"
+            variant="glass"
+            className="card-lift"
           />
           <IconCard
             icon={Users}
@@ -145,7 +153,8 @@ const WDCDashboard = () => {
             title="Meetings Held"
             value={totalMeetings}
             subtitle={`${totalAttendees} total attendees`}
-            className="transform hover:scale-105 transition-transform duration-200"
+            variant="glass"
+            className="card-lift"
           />
           <IconCard
             icon={Bell}
@@ -157,7 +166,8 @@ const WDCDashboard = () => {
                 ? 'Unread notifications'
                 : 'All caught up!'
             }
-            className="transform hover:scale-105 transition-transform duration-200"
+            variant="glass"
+            className="card-lift"
           />
         </div>
 

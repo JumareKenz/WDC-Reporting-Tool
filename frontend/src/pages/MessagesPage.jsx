@@ -22,6 +22,9 @@ const MessagesPage = () => {
   const [newMessage, setNewMessage] = useState('');
   const [alertMessage, setAlertMessage] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [recipientType, setRecipientType] = useState(
+    user?.role === USER_ROLES.WDC_SECRETARY ? 'LGA' : 'WDC'
+  );
 
   const { data: feedbackData, isLoading, refetch } = useFeedback({ limit: 50 });
   const sendFeedbackMutation = useSendFeedback();
@@ -39,7 +42,8 @@ const MessagesPage = () => {
     try {
       await sendFeedbackMutation.mutateAsync({
         message: newMessage,
-        recipient_type: user?.role === USER_ROLES.WDC_SECRETARY ? 'LGA' : 'WDC',
+        recipient_type: recipientType,
+        ward_id: user?.ward_id,
       });
       setNewMessage('');
       setAlertMessage({ type: 'success', text: 'Message sent successfully!' });
@@ -58,12 +62,14 @@ const MessagesPage = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-neutral-900">Messages</h1>
         <p className="text-sm text-neutral-600 mt-1">
-          Communicate with {user?.role === USER_ROLES.WDC_SECRETARY ? 'your LGA Coordinator' : 'ward secretaries'}
+          {user?.role === USER_ROLES.WDC_SECRETARY
+            ? 'Communicate with your LGA Coordinator and State Officials'
+            : `Communicate with ${user?.role === USER_ROLES.LGA_COORDINATOR ? 'ward secretaries' : 'LGA coordinators'}`}
         </p>
       </div>
 
@@ -148,13 +154,22 @@ const MessagesPage = () => {
                 <label className="block text-sm font-medium text-neutral-700 mb-1">
                   To
                 </label>
-                <div className="px-3 py-2 bg-neutral-50 rounded-lg text-sm text-neutral-600">
-                  {user?.role === USER_ROLES.WDC_SECRETARY
-                    ? 'LGA Coordinator'
-                    : user?.role === USER_ROLES.LGA_COORDINATOR
-                    ? 'Ward Secretaries'
-                    : 'LGA Coordinators'}
-                </div>
+                {user?.role === USER_ROLES.WDC_SECRETARY ? (
+                  <select
+                    value={recipientType}
+                    onChange={(e) => setRecipientType(e.target.value)}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 bg-white"
+                  >
+                    <option value="LGA">LGA Coordinator</option>
+                    <option value="STATE">State Official</option>
+                  </select>
+                ) : (
+                  <div className="px-3 py-2 bg-neutral-50 rounded-lg text-sm text-neutral-600">
+                    {user?.role === USER_ROLES.LGA_COORDINATOR
+                      ? 'Ward Secretaries'
+                      : 'LGA Coordinators'}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -186,7 +201,13 @@ const MessagesPage = () => {
           <Card title="Info" className="mt-6">
             <div className="space-y-3 text-sm text-neutral-600">
               <p>
-                Use this channel to communicate with {user?.role === USER_ROLES.WDC_SECRETARY ? 'your LGA Coordinator' : 'ward secretaries'} about:
+                Use this channel to communicate with{' '}
+                {user?.role === USER_ROLES.WDC_SECRETARY
+                  ? 'your LGA Coordinator and State Officials'
+                  : user?.role === USER_ROLES.LGA_COORDINATOR
+                  ? 'ward secretaries'
+                  : 'LGA coordinators'}{' '}
+                about:
               </p>
               <ul className="list-disc list-inside space-y-1">
                 <li>Report clarifications</li>

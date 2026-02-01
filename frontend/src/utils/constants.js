@@ -98,6 +98,8 @@ export const API_ENDPOINTS = {
   REPORT_BY_ID: (id) => `/reports/${id}`,
   CHECK_SUBMITTED: '/reports/check-submitted',
   REVIEW_REPORT: (id) => `/reports/${id}/review`,
+  AI_SUGGESTIONS: (id) => `/reports/${id}/ai-suggestions`,
+  AI_SUGGESTIONS_ACCEPT: (id) => `/reports/${id}/ai-suggestions/accept`,
 
   // Voice Notes
   VOICE_NOTE_DOWNLOAD: (id) => `/voice-notes/${id}/download`,
@@ -123,6 +125,9 @@ export const API_ENDPOINTS = {
   FEEDBACK: '/feedback',
   FEEDBACK_READ: (id) => `/feedback/${id}/read`,
 
+  // State Submissions
+  STATE_SUBMISSIONS: '/reports/state-submissions',
+
   // Analytics (State)
   ANALYTICS_OVERVIEW: '/analytics/overview',
   ANALYTICS_LGA_COMPARISON: '/analytics/lga-comparison',
@@ -132,6 +137,22 @@ export const API_ENDPOINTS = {
   // Investigations
   INVESTIGATIONS: '/investigations',
   INVESTIGATION_BY_ID: (id) => `/investigations/${id}`,
+
+  // Forms
+  FORMS: '/forms',
+  FORMS_ACTIVE: '/forms/active',
+  FORM_BY_ID: (id) => `/forms/${id}`,
+  FORM_DEPLOY: (id) => `/forms/${id}/deploy`,
+
+  // User Management
+  USERS_SUMMARY: '/users/summary',
+  USER_LGA_WARDS: (lgaId) => `/users/lga-wards/${lgaId}`,
+  USER_COORDINATOR: (lgaId) => `/users/coordinator/${lgaId}`,
+  USER_SECRETARY: (wardId) => `/users/secretary/${wardId}`,
+  USER_BY_ID: (id) => `/users/${id}`,
+  USER_PASSWORD: (id) => `/users/${id}/password`,
+  USER_ACCESS: (id) => `/users/${id}/access`,
+  USER_ASSIGN: '/users/assign',
 
   // Health
   HEALTH: '/health',
@@ -208,6 +229,7 @@ export const ROUTES = {
   REPORT_DETAILS: '/reports/:id',
   PROFILE: '/profile',
   NOTIFICATIONS: '/notifications',
+  STATE_FORMS: '/state/forms',
 };
 
 // Navigation Items by Role

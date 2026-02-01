@@ -32,7 +32,7 @@ const Button = ({
     primary: `
       bg-primary-600 hover:bg-primary-700 text-white
       focus:ring-primary-500
-      shadow-sm hover:shadow-md
+      shadow-sm hover:shadow-lg hover:shadow-primary-500/25
     `,
     secondary: `
       bg-neutral-100 hover:bg-neutral-200 text-neutral-900
@@ -50,12 +50,12 @@ const Button = ({
     danger: `
       bg-red-600 hover:bg-red-700 text-white
       focus:ring-red-500
-      shadow-sm hover:shadow-md
+      shadow-sm hover:shadow-lg hover:shadow-red-500/25
     `,
     success: `
       bg-green-600 hover:bg-green-700 text-white
       focus:ring-green-500
-      shadow-sm hover:shadow-md
+      shadow-sm hover:shadow-lg hover:shadow-green-500/25
     `,
   };
 

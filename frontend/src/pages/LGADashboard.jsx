@@ -187,16 +187,22 @@ const LGADashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-blue-50/30">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50 relative">
+      {/* Ambient background blobs */}
+      <div className="absolute top-0 left-0 w-80 h-80 bg-blue-300 rounded-full opacity-10 pointer-events-none" style={{ filter: 'blur(100px)' }} />
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-teal-300 rounded-full opacity-10 pointer-events-none" style={{ filter: 'blur(120px)' }} />
+
       {/* Header */}
-      <div className="bg-white border-b border-neutral-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 via-primary-600 to-teal-600 shadow-lg">
+        <div className="absolute -top-16 -left-16 w-48 h-48 bg-white rounded-full opacity-5 pointer-events-none" />
+        <div className="absolute -bottom-12 right-1/3 w-40 h-40 bg-white rounded-full opacity-5 pointer-events-none" />
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-neutral-900">
+              <h1 className="text-2xl font-bold text-white">
                 LGA Coordinator Dashboard
               </h1>
-              <p className="mt-1 text-sm text-neutral-600">
+              <p className="mt-1 text-sm text-blue-200">
                 {user?.lga_name || 'Your LGA'} • {formatMonth(currentMonth)}
               </p>
             </div>
@@ -205,6 +211,7 @@ const LGADashboard = () => {
                 variant="outline"
                 icon={RefreshCw}
                 onClick={() => { refetchWards(); refetchReports(); }}
+                className="bg-white/90 text-blue-700 border-white/50 hover:bg-white transition-all"
               >
                 Refresh
               </Button>
@@ -212,7 +219,7 @@ const LGADashboard = () => {
                 icon={Bell}
                 onClick={() => setShowNotifyModal(true)}
                 disabled={missingCount === 0}
-                className="shadow-md"
+                className="bg-white text-blue-700 hover:bg-blue-50 shadow-lg shadow-black/20 hover:shadow-xl transition-all font-semibold"
               >
                 Send Reminders ({missingCount})
               </Button>
@@ -221,7 +228,7 @@ const LGADashboard = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Alert */}
         {alertMessage && (
           <div className="mb-6">
@@ -241,7 +248,8 @@ const LGADashboard = () => {
             title="Total Wards"
             value={totalWards}
             subtitle="In your LGA"
-            className="transform hover:scale-105 transition-transform"
+            variant="glass"
+            className="card-lift"
           />
           <IconCard
             icon={CheckCircle}
@@ -260,7 +268,8 @@ const LGADashboard = () => {
                 </span>
               )
             }
-            className="transform hover:scale-105 transition-transform"
+            variant="glass"
+            className="card-lift"
           />
           <IconCard
             icon={AlertTriangle}
@@ -268,7 +277,8 @@ const LGADashboard = () => {
             title="Missing"
             value={missingCount}
             subtitle={missingCount > 0 ? 'Action required' : 'All caught up!'}
-            className="transform hover:scale-105 transition-transform"
+            variant="glass"
+            className="card-lift"
           />
           <IconCard
             icon={Activity}
@@ -276,7 +286,8 @@ const LGADashboard = () => {
             title="Reviewed"
             value={reviewedCount}
             subtitle="Reports reviewed"
-            className="transform hover:scale-105 transition-transform"
+            variant="glass"
+            className="card-lift"
           />
           <IconCard
             icon={FileText}
@@ -284,7 +295,8 @@ const LGADashboard = () => {
             title="Flagged"
             value={flaggedCount}
             subtitle="Need attention"
-            className="transform hover:scale-105 transition-transform"
+            variant="glass"
+            className="card-lift"
           />
         </div>
 
@@ -436,15 +448,15 @@ const LGADashboard = () => {
               title="Submitted Reports"
               subtitle="Review and manage ward submissions"
               action={
-                <div className="flex items-center gap-2">
-                  <div className="relative">
+                <div className="flex flex-wrap gap-2 w-full">
+                  <div className="relative flex-1 min-w-0">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
                     <input
                       type="text"
                       placeholder="Search ward..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-9 pr-3 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 w-40"
+                      className="pl-9 pr-3 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 w-full"
                     />
                   </div>
                   <select

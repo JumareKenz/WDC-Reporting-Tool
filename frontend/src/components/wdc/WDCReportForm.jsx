@@ -93,8 +93,8 @@ const FormSection = ({ title, number, icon: Icon, children, defaultOpen = false 
   );
 };
 
-// Input with voice note
-const InputWithVoice = ({
+// Text input — optionally shows a compact VoiceRecorder if onVoiceNote is provided
+const TextInput = ({
   label,
   name,
   type = 'text',
@@ -113,15 +113,13 @@ const InputWithVoice = ({
 
   return (
     <div className="space-y-1">
-      <div className="flex items-center justify-between gap-2">
+      <div className={onVoiceNote ? 'flex items-center justify-between gap-2' : ''}>
         <label htmlFor={inputId} className="block text-xs sm:text-sm font-medium text-neutral-700">
           {label} {required && <span className="text-red-500">*</span>}
         </label>
-        <VoiceRecorder
-          fieldName={name}
-          onRecordingComplete={onVoiceNote}
-          compact
-        />
+        {onVoiceNote && (
+          <VoiceRecorder fieldName={name} onRecordingComplete={onVoiceNote} compact />
+        )}
       </div>
       {isTextarea ? (
         <textarea
@@ -152,13 +150,10 @@ const InputWithVoice = ({
   );
 };
 
-// Number input with voice note
-const NumberInputWithVoice = ({ label, name, value, onChange, onVoiceNote, min = 0, ...props }) => (
+// Number input (numerical fields are filled manually — AI does not populate these)
+const NumberInput = ({ label, name, value, onChange, min = 0, ...props }) => (
   <div className="space-y-1">
-    <div className="flex items-center justify-between gap-2">
-      <label className="block text-xs sm:text-sm font-medium text-neutral-700 truncate">{label}</label>
-      <VoiceRecorder fieldName={name} onRecordingComplete={onVoiceNote} compact />
-    </div>
+    <label className="block text-xs sm:text-sm font-medium text-neutral-700 truncate">{label}</label>
     <input
       type="number"
       name={name}
@@ -172,7 +167,7 @@ const NumberInputWithVoice = ({ label, name, value, onChange, onVoiceNote, min =
 );
 
 // Mobile-friendly dynamic table with voice recording - card layout on mobile
-const DynamicTable = ({ columns, rows, onRowChange, onAddRow, onRemoveRow, onVoiceNote, tableId, maxRows = 10 }) => (
+const DynamicTable = ({ columns, rows, onRowChange, onAddRow, onRemoveRow, tableId, maxRows = 10 }) => (
   <div>
     {/* Desktop Table */}
     <div className="hidden sm:block overflow-x-auto">
@@ -203,8 +198,7 @@ const DynamicTable = ({ columns, rows, onRowChange, onAddRow, onRemoveRow, onVoi
               </td>
               {columns.map((col, colIdx) => (
                 <td key={colIdx} className="border border-neutral-200 px-1 py-1">
-                  <div className="flex items-start gap-1">
-                    <div className="flex-1">
+                  <div>
                       {col.type === 'select' ? (
                         <select
                           value={row[col.name] || ''}
@@ -233,14 +227,6 @@ const DynamicTable = ({ columns, rows, onRowChange, onAddRow, onRemoveRow, onVoi
                           placeholder={col.placeholder}
                         />
                       )}
-                    </div>
-                    {col.type !== 'select' && onVoiceNote && (
-                      <VoiceRecorder
-                        fieldName={`${tableId}_${rowIdx}_${col.name}`}
-                        onRecordingComplete={(file) => onVoiceNote(`${tableId}_${rowIdx}_${col.name}`, file)}
-                        compact
-                      />
-                    )}
                   </div>
                 </td>
               ))}
@@ -280,18 +266,9 @@ const DynamicTable = ({ columns, rows, onRowChange, onAddRow, onRemoveRow, onVoi
           <div className="space-y-3">
             {columns.map((col, colIdx) => (
               <div key={colIdx}>
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <label className="block text-xs font-medium text-neutral-600">
-                    {col.label}
-                  </label>
-                  {col.type !== 'select' && onVoiceNote && (
-                    <VoiceRecorder
-                      fieldName={`${tableId}_${rowIdx}_${col.name}`}
-                      onRecordingComplete={(file) => onVoiceNote(`${tableId}_${rowIdx}_${col.name}`, file)}
-                      compact
-                    />
-                  )}
-                </div>
+                <label className="block text-xs font-medium text-neutral-600 mb-1">
+                  {col.label}
+                </label>
                 {col.type === 'select' ? (
                   <select
                     value={row[col.name] || ''}
@@ -451,20 +428,20 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA }) => {
     secretary_signature: '',
   });
 
+  // Handle per-field voice note recording
+  const handleVoiceNote = (fieldName, file) => {
+    setVoiceNotes(prev => ({
+      ...prev,
+      [fieldName]: file,
+    }));
+  };
+
   // Handle input changes
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
-    }));
-  };
-
-  // Handle voice note
-  const handleVoiceNote = (fieldName, file) => {
-    setVoiceNotes(prev => ({
-      ...prev,
-      [fieldName]: file,
     }));
   };
 
@@ -647,6 +624,11 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA }) => {
         </div>
         <h3 className="text-xl font-semibold text-neutral-900 mb-2">Report Submitted Successfully!</h3>
         <p className="text-neutral-600">Your WDC monthly report has been recorded.</p>
+        {Object.values(voiceNotes).some(Boolean) && (
+          <p className="text-sm text-blue-600 mt-2">
+            Your voice notes are being transcribed and will fill in the corresponding fields.
+          </p>
+        )}
       </div>
     );
   }
@@ -657,7 +639,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA }) => {
       <Alert
         type="info"
         title="WDC Monthly Report Form"
-        message="Complete all sections. Use the microphone icon next to each field to add voice notes."
+        message="Complete all sections. Use the microphone icon next to text fields to record voice notes — they will be transcribed automatically."
       />
 
       {submitError && (
@@ -797,7 +779,6 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA }) => {
           onRowChange={handleActionTrackerChange}
           onAddRow={addActionTrackerRow}
           onRemoveRow={removeActionTrackerRow}
-          onVoiceNote={handleVoiceNote}
         />
       </FormSection>
 
@@ -812,47 +793,47 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA }) => {
 
             <h5 className="text-xs sm:text-sm font-semibold text-neutral-700 mb-3">OPD</h5>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-              <NumberInputWithVoice label="PENTA1" name="health_penta1" value={formData.health_penta1} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('health_penta1', file)} />
-              <NumberInputWithVoice label="BCG" name="health_bcg" value={formData.health_bcg} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('health_bcg', file)} />
-              <NumberInputWithVoice label="PENTA3" name="health_penta3" value={formData.health_penta3} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('health_penta3', file)} />
-              <NumberInputWithVoice label="MEASLES" name="health_measles" value={formData.health_measles} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('health_measles', file)} />
+              <NumberInput label="PENTA1" name="health_penta1" value={formData.health_penta1} onChange={handleChange} />
+              <NumberInput label="BCG" name="health_bcg" value={formData.health_bcg} onChange={handleChange} />
+              <NumberInput label="PENTA3" name="health_penta3" value={formData.health_penta3} onChange={handleChange} />
+              <NumberInput label="MEASLES" name="health_measles" value={formData.health_measles} onChange={handleChange} />
             </div>
 
             <h5 className="text-xs sm:text-sm font-semibold text-neutral-700 mt-6 mb-3">OPD (Under 5)</h5>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-              <NumberInputWithVoice label="MALARIA UNDER 5" name="health_malaria_under5" value={formData.health_malaria_under5} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('health_malaria_under5', file)} />
-              <NumberInputWithVoice label="DIARRHEA UNDER 5" name="health_diarrhea_under5" value={formData.health_diarrhea_under5} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('health_diarrhea_under5', file)} />
+              <NumberInput label="MALARIA UNDER 5" name="health_malaria_under5" value={formData.health_malaria_under5} onChange={handleChange} />
+              <NumberInput label="DIARRHEA UNDER 5" name="health_diarrhea_under5" value={formData.health_diarrhea_under5} onChange={handleChange} />
             </div>
 
             <h5 className="text-xs sm:text-sm font-semibold text-neutral-700 mt-6 mb-3">ANC</h5>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-              <NumberInputWithVoice label="First Visit" name="health_anc_first_visit" value={formData.health_anc_first_visit} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('health_anc_first_visit', file)} />
-              <NumberInputWithVoice label="Fourth Visit" name="health_anc_fourth_visit" value={formData.health_anc_fourth_visit} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('health_anc_fourth_visit', file)} />
-              <NumberInputWithVoice label="Eight Visit" name="health_anc_eighth_visit" value={formData.health_anc_eighth_visit} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('health_anc_eighth_visit', file)} />
+              <NumberInput label="First Visit" name="health_anc_first_visit" value={formData.health_anc_first_visit} onChange={handleChange} />
+              <NumberInput label="Fourth Visit" name="health_anc_fourth_visit" value={formData.health_anc_fourth_visit} onChange={handleChange} />
+              <NumberInput label="Eight Visit" name="health_anc_eighth_visit" value={formData.health_anc_eighth_visit} onChange={handleChange} />
             </div>
 
             <h5 className="text-xs sm:text-sm font-semibold text-neutral-700 mt-6 mb-3">Labour, Deliveries & Post-Natal</h5>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-              <NumberInputWithVoice label="Deliveries" name="health_deliveries" value={formData.health_deliveries} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('health_deliveries', file)} />
-              <NumberInputWithVoice label="Post-Natal" name="health_postnatal" value={formData.health_postnatal} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('health_postnatal', file)} />
+              <NumberInput label="Deliveries" name="health_deliveries" value={formData.health_deliveries} onChange={handleChange} />
+              <NumberInput label="Post-Natal" name="health_postnatal" value={formData.health_postnatal} onChange={handleChange} />
             </div>
 
             <h5 className="text-xs sm:text-sm font-semibold text-neutral-700 mt-6 mb-3">Family Planning</h5>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-              <NumberInputWithVoice label="Counselling" name="health_fp_counselling" value={formData.health_fp_counselling} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('health_fp_counselling', file)} />
-              <NumberInputWithVoice label="New Acceptors" name="health_fp_new_acceptors" value={formData.health_fp_new_acceptors} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('health_fp_new_acceptors', file)} />
+              <NumberInput label="Counselling" name="health_fp_counselling" value={formData.health_fp_counselling} onChange={handleChange} />
+              <NumberInput label="New Acceptors" name="health_fp_new_acceptors" value={formData.health_fp_new_acceptors} onChange={handleChange} />
             </div>
 
             <h5 className="text-xs sm:text-sm font-semibold text-neutral-700 mt-6 mb-3">HEP B</h5>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-              <NumberInputWithVoice label="Person Tested" name="health_hepb_tested" value={formData.health_hepb_tested} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('health_hepb_tested', file)} />
-              <NumberInputWithVoice label="Person Tested Positive" name="health_hepb_positive" value={formData.health_hepb_positive} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('health_hepb_positive', file)} />
+              <NumberInput label="Person Tested" name="health_hepb_tested" value={formData.health_hepb_tested} onChange={handleChange} />
+              <NumberInput label="Person Tested Positive" name="health_hepb_positive" value={formData.health_hepb_positive} onChange={handleChange} />
             </div>
 
             <h5 className="text-xs sm:text-sm font-semibold text-neutral-700 mt-6 mb-3">TB</h5>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-              <NumberInputWithVoice label="Total Presumptive" name="health_tb_presumptive" value={formData.health_tb_presumptive} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('health_tb_presumptive', file)} />
-              <NumberInputWithVoice label="Total on Treatment" name="health_tb_on_treatment" value={formData.health_tb_on_treatment} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('health_tb_on_treatment', file)} />
+              <NumberInput label="Total Presumptive" name="health_tb_presumptive" value={formData.health_tb_presumptive} onChange={handleChange} />
+              <NumberInput label="Total on Treatment" name="health_tb_on_treatment" value={formData.health_tb_on_treatment} onChange={handleChange} />
             </div>
           </div>
 
@@ -864,14 +845,14 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA }) => {
             <div className="space-y-4">
               <p className="text-xs sm:text-sm text-neutral-600">Facilities renovated (last month):</p>
               <div className="grid grid-cols-3 gap-3 sm:gap-4">
-                <NumberInputWithVoice label="By Govt" name="facilities_renovated_govt" value={formData.facilities_renovated_govt} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('facilities_renovated_govt', file)} />
-                <NumberInputWithVoice label="By Partners" name="facilities_renovated_partners" value={formData.facilities_renovated_partners} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('facilities_renovated_partners', file)} />
-                <NumberInputWithVoice label="By WDC" name="facilities_renovated_wdc" value={formData.facilities_renovated_wdc} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('facilities_renovated_wdc', file)} />
+                <NumberInput label="By Govt" name="facilities_renovated_govt" value={formData.facilities_renovated_govt} onChange={handleChange} />
+                <NumberInput label="By Partners" name="facilities_renovated_partners" value={formData.facilities_renovated_partners} onChange={handleChange} />
+                <NumberInput label="By WDC" name="facilities_renovated_wdc" value={formData.facilities_renovated_wdc} onChange={handleChange} />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <NumberInputWithVoice label="Items donated by WDC" name="items_donated_count" value={formData.items_donated_count} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('items_donated_count', file)} />
+                  <NumberInput label="Items donated by WDC" name="items_donated_count" value={formData.items_donated_count} onChange={handleChange} />
                   <div className="mt-2">
                     <label className="block text-xs text-neutral-600 mb-1">Type of items:</label>
                     <div className="flex flex-wrap gap-1 sm:gap-2">
@@ -892,7 +873,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA }) => {
                   </div>
                 </div>
                 <div>
-                  <NumberInputWithVoice label="Items repaired" name="items_repaired_count" value={formData.items_repaired_count} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('items_repaired_count', file)} />
+                  <NumberInput label="Items repaired" name="items_repaired_count" value={formData.items_repaired_count} onChange={handleChange} />
                 </div>
               </div>
             </div>
@@ -904,10 +885,10 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA }) => {
               3C. Transportation & Emergency
             </h4>
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
-              <NumberInputWithVoice label="Women to ANC" name="women_transported_anc" value={formData.women_transported_anc} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('women_transported_anc', file)} />
-              <NumberInputWithVoice label="Women to Delivery" name="women_transported_delivery" value={formData.women_transported_delivery} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('women_transported_delivery', file)} />
-              <NumberInputWithVoice label="Children U5 (danger)" name="children_transported_danger" value={formData.children_transported_danger} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('children_transported_danger', file)} />
-              <NumberInputWithVoice label="Delivery items support" name="women_supported_delivery_items" value={formData.women_supported_delivery_items} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('women_supported_delivery_items', file)} />
+              <NumberInput label="Women to ANC" name="women_transported_anc" value={formData.women_transported_anc} onChange={handleChange} />
+              <NumberInput label="Women to Delivery" name="women_transported_delivery" value={formData.women_transported_delivery} onChange={handleChange} />
+              <NumberInput label="Children U5 (danger)" name="children_transported_danger" value={formData.children_transported_danger} onChange={handleChange} />
+              <NumberInput label="Delivery items support" name="women_supported_delivery_items" value={formData.women_supported_delivery_items} onChange={handleChange} />
             </div>
           </div>
 
@@ -918,10 +899,10 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA }) => {
             </h4>
             <div className="grid grid-cols-2 gap-4 sm:gap-6 mb-4">
               <div>
-                <NumberInputWithVoice label="Number of Maternal Deaths (last month)" name="maternal_deaths" value={formData.maternal_deaths} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('maternal_deaths', file)} />
+                <NumberInput label="Number of Maternal Deaths (last month)" name="maternal_deaths" value={formData.maternal_deaths} onChange={handleChange} />
               </div>
               <div>
-                <NumberInputWithVoice label="Number of Perinatal Deaths (last month)" name="perinatal_deaths" value={formData.perinatal_deaths} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('perinatal_deaths', file)} />
+                <NumberInput label="Number of Perinatal Deaths (last month)" name="perinatal_deaths" value={formData.perinatal_deaths} onChange={handleChange} />
               </div>
             </div>
 
@@ -929,7 +910,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA }) => {
               <div>
                 <h5 className="text-xs sm:text-sm font-semibold text-neutral-700 mb-3">Causes of maternal deaths identified by community:</h5>
                 <div className="space-y-2">
-                  <InputWithVoice
+                  <TextInput
                     label="Cause 1"
                     name="maternal_death_cause_1"
                     value={formData.maternal_death_causes[0] || ''}
@@ -938,10 +919,9 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA }) => {
                       newCauses[0] = e.target.value;
                       setFormData(prev => ({ ...prev, maternal_death_causes: newCauses }));
                     }}
-                    onVoiceNote={(file) => handleVoiceNote('maternal_death_cause_1', file)}
                     placeholder="Enter cause..."
                   />
-                  <InputWithVoice
+                  <TextInput
                     label="Cause 2"
                     name="maternal_death_cause_2"
                     value={formData.maternal_death_causes[1] || ''}
@@ -950,10 +930,9 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA }) => {
                       newCauses[1] = e.target.value;
                       setFormData(prev => ({ ...prev, maternal_death_causes: newCauses }));
                     }}
-                    onVoiceNote={(file) => handleVoiceNote('maternal_death_cause_2', file)}
                     placeholder="Enter cause..."
                   />
-                  <InputWithVoice
+                  <TextInput
                     label="Cause 3"
                     name="maternal_death_cause_3"
                     value={formData.maternal_death_causes[2] || ''}
@@ -962,7 +941,6 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA }) => {
                       newCauses[2] = e.target.value;
                       setFormData(prev => ({ ...prev, maternal_death_causes: newCauses }));
                     }}
-                    onVoiceNote={(file) => handleVoiceNote('maternal_death_cause_3', file)}
                     placeholder="Enter cause..."
                   />
                 </div>
@@ -971,7 +949,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA }) => {
               <div>
                 <h5 className="text-xs sm:text-sm font-semibold text-neutral-700 mb-3">Causes of perinatal deaths identified by community:</h5>
                 <div className="space-y-2">
-                  <InputWithVoice
+                  <TextInput
                     label="Cause 1"
                     name="perinatal_death_cause_1"
                     value={formData.perinatal_death_causes[0] || ''}
@@ -980,10 +958,9 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA }) => {
                       newCauses[0] = e.target.value;
                       setFormData(prev => ({ ...prev, perinatal_death_causes: newCauses }));
                     }}
-                    onVoiceNote={(file) => handleVoiceNote('perinatal_death_cause_1', file)}
                     placeholder="Enter cause..."
                   />
-                  <InputWithVoice
+                  <TextInput
                     label="Cause 2"
                     name="perinatal_death_cause_2"
                     value={formData.perinatal_death_causes[1] || ''}
@@ -992,10 +969,9 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA }) => {
                       newCauses[1] = e.target.value;
                       setFormData(prev => ({ ...prev, perinatal_death_causes: newCauses }));
                     }}
-                    onVoiceNote={(file) => handleVoiceNote('perinatal_death_cause_2', file)}
                     placeholder="Enter cause..."
                   />
-                  <InputWithVoice
+                  <TextInput
                     label="Cause 3"
                     name="perinatal_death_cause_3"
                     value={formData.perinatal_death_causes[2] || ''}
@@ -1004,7 +980,6 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA }) => {
                       newCauses[2] = e.target.value;
                       setFormData(prev => ({ ...prev, perinatal_death_causes: newCauses }));
                     }}
-                    onVoiceNote={(file) => handleVoiceNote('perinatal_death_cause_3', file)}
                     placeholder="Enter cause..."
                   />
                 </div>
@@ -1044,14 +1019,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA }) => {
                 <p className="text-xs sm:text-sm font-medium text-neutral-700 mb-2">{item.indicator}</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <label className="block text-xs font-medium text-neutral-600">Feedback / Observation</label>
-                      <VoiceRecorder
-                        fieldName={`feedback_${idx}_feedback`}
-                        onRecordingComplete={(file) => handleVoiceNote(`feedback_${idx}_feedback`, file)}
-                        compact
-                      />
-                    </div>
+                    <label className="block text-xs font-medium text-neutral-600 mb-1">Feedback / Observation</label>
                     <textarea
                       value={item.feedback}
                       onChange={(e) => handleFeedbackChange(idx, 'feedback', e.target.value)}
@@ -1061,14 +1029,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA }) => {
                     />
                   </div>
                   <div className="space-y-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <label className="block text-xs font-medium text-neutral-600">Action Required</label>
-                      <VoiceRecorder
-                        fieldName={`feedback_${idx}_action`}
-                        onRecordingComplete={(file) => handleVoiceNote(`feedback_${idx}_action`, file)}
-                        compact
-                      />
-                    </div>
+                    <label className="block text-xs font-medium text-neutral-600 mb-1">Action Required</label>
                     <textarea
                       value={item.action_required}
                       onChange={(e) => handleFeedbackChange(idx, 'action_required', e.target.value)}
@@ -1097,14 +1058,13 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA }) => {
           onRowChange={handleVDCChange}
           onAddRow={addVDCRow}
           onRemoveRow={removeVDCRow}
-          onVoiceNote={handleVoiceNote}
         />
       </FormSection>
 
       {/* Section 6: Community Mobilization Activities */}
       <FormSection title="COMMUNITY MOBILIZATION ACTIVITIES" number="6" icon={Users}>
         <div className="space-y-4">
-          <InputWithVoice
+          <TextInput
             label="Awareness Creation Theme"
             name="awareness_theme"
             value={formData.awareness_theme}
@@ -1112,7 +1072,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA }) => {
             onVoiceNote={(file) => handleVoiceNote('awareness_theme', file)}
             placeholder="Enter theme..."
           />
-          <InputWithVoice
+          <TextInput
             label="Traditional Leaders Support Needed"
             name="traditional_leaders_support"
             type="textarea"
@@ -1122,7 +1082,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA }) => {
             placeholder="Describe support needed..."
             rows={2}
           />
-          <InputWithVoice
+          <TextInput
             label="Religious Leaders Support Needed"
             name="religious_leaders_support"
             type="textarea"
@@ -1149,14 +1109,13 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA }) => {
           onRowChange={handleActionPlanChange}
           onAddRow={addActionPlanRow}
           onRemoveRow={removeActionPlanRow}
-          onVoiceNote={handleVoiceNote}
         />
       </FormSection>
 
       {/* Section 8: Support Required & Conclusion */}
       <FormSection title="SUPPORT REQUIRED & CONCLUSION" number="8" icon={AlertTriangle}>
         <div className="space-y-4">
-          <InputWithVoice
+          <TextInput
             label="Support Required (LEMCHIC / Government / Partners / Others)"
             name="support_required"
             type="textarea"
@@ -1166,7 +1125,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA }) => {
             placeholder="List support required..."
             rows={3}
           />
-          <InputWithVoice
+          <TextInput
             label="Any Other Business (AOB)"
             name="aob"
             type="textarea"
@@ -1180,9 +1139,9 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA }) => {
           <div className="bg-primary-50 p-4 rounded-lg border border-primary-200">
             <h5 className="text-xs sm:text-sm font-semibold text-primary-800 mb-3">Attendance Summary</h5>
             <div className="grid grid-cols-3 gap-3 sm:gap-4">
-              <NumberInputWithVoice label="Total" name="attendance_total" value={formData.attendance_total} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('attendance_total', file)} />
-              <NumberInputWithVoice label="Male" name="attendance_male" value={formData.attendance_male} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('attendance_male', file)} />
-              <NumberInputWithVoice label="Female" name="attendance_female" value={formData.attendance_female} onChange={handleChange} onVoiceNote={(file) => handleVoiceNote('attendance_female', file)} />
+              <NumberInput label="Total" name="attendance_total" value={formData.attendance_total} onChange={handleChange} />
+              <NumberInput label="Male" name="attendance_male" value={formData.attendance_male} onChange={handleChange} />
+              <NumberInput label="Female" name="attendance_female" value={formData.attendance_female} onChange={handleChange} />
             </div>
             <p className="text-xs text-primary-600 mt-2">(Attach attendance list with signatures and phone numbers with pictures)</p>
           </div>
@@ -1247,43 +1206,23 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA }) => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-neutral-200">
-            <InputWithVoice
+            <TextInput
               label="WDC Chairman Signature"
               name="chairman_signature"
               value={formData.chairman_signature}
               onChange={handleChange}
-              onVoiceNote={(file) => handleVoiceNote('chairman_signature', file)}
               placeholder="Chairman's name..."
             />
-            <InputWithVoice
+            <TextInput
               label="WDC Secretary Signature"
               name="secretary_signature"
               value={formData.secretary_signature}
               onChange={handleChange}
-              onVoiceNote={(file) => handleVoiceNote('secretary_signature', file)}
               placeholder="Secretary's name..."
             />
           </div>
         </div>
       </FormSection>
-
-      {/* Voice Notes Summary */}
-      {Object.keys(voiceNotes).filter(k => voiceNotes[k]).length > 0 && (
-        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-          <h5 className="text-xs sm:text-sm font-semibold text-blue-800 mb-2">
-            Voice Notes ({Object.keys(voiceNotes).filter(k => voiceNotes[k]).length})
-          </h5>
-          <div className="flex flex-wrap gap-2">
-            {Object.keys(voiceNotes)
-              .filter(k => voiceNotes[k])
-              .map(fieldName => (
-                <span key={fieldName} className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full">
-                  {fieldName.replace(/_/g, ' ')}
-                </span>
-              ))}
-          </div>
-        </div>
-      )}
 
       {/* Form Actions */}
       <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-6 border-t border-neutral-200 sticky bottom-0 bg-white pb-4">

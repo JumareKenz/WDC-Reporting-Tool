@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   BarChart,
   Bar,
@@ -42,6 +43,7 @@ import {
   Calendar,
   Clipboard,
   X,
+  FormInput,
 } from 'lucide-react';
 import Card, { IconCard, EmptyCard } from '../components/common/Card';
 import Button from '../components/common/Button';
@@ -120,6 +122,7 @@ const DEMO_INVESTIGATIONS = [
 ];
 
 const StateDashboard = () => {
+  const navigate = useNavigate();
   const currentMonth = getCurrentMonth();
   const reportRef = useRef(null);
 
@@ -588,14 +591,14 @@ Kaduna State WDC Digital Reporting System
               title="All LGAs Performance"
               subtitle="Click headers to sort"
               action={
-                <div className="relative">
+                <div className="relative w-full">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400" />
                   <input
                     type="text"
                     placeholder="Search LGA..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9 pr-3 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 w-48"
+                    className="pl-9 pr-3 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 w-full sm:w-48"
                   />
                 </div>
               }
@@ -858,6 +861,14 @@ Kaduna State WDC Digital Reporting System
                   onClick={handleExportCSV}
                 >
                   Export Data (CSV)
+                </Button>
+                <Button
+                  variant="ghost"
+                  fullWidth
+                  icon={FormInput}
+                  onClick={() => navigate('/state/forms')}
+                >
+                  Form Builder
                 </Button>
                 <Button
                   variant="ghost"

@@ -8,6 +8,7 @@ const Card = ({
   action = null,
   footer = null,
   hoverable = false,
+  variant = 'default',
   className = '',
   padding = 'default',
   ...props
@@ -25,16 +26,17 @@ const Card = ({
   return (
     <div
       className={`
-        bg-white rounded-xl border border-neutral-200 shadow-md
-        transition-shadow duration-200
-        ${hoverable ? 'hover:shadow-lg cursor-pointer' : ''}
+        rounded-xl
+        ${variant === 'glass' ? 'glass-card' : variant === 'glass-strong' ? 'glass-card-strong' : 'bg-white border border-neutral-200 shadow-md'}
+        transition-all duration-300
+        ${hoverable ? 'hover:shadow-lg cursor-pointer card-lift' : ''}
         ${className}
       `}
       {...props}
     >
       {/* Header */}
       {(title || action) && (
-        <div className={`flex items-start justify-between border-b border-neutral-200 ${cardPadding}`}>
+        <div className={`flex flex-col sm:flex-row sm:items-start sm:justify-between border-b border-neutral-200 gap-3 ${cardPadding}`}>
           <div className="flex-1">
             {title && (
               <h3 className="text-lg font-semibold text-neutral-900">
@@ -45,7 +47,7 @@ const Card = ({
               <p className="mt-1 text-sm text-neutral-600">{subtitle}</p>
             )}
           </div>
-          {action && <div className="ml-4">{action}</div>}
+          {action && <div className="sm:ml-4">{action}</div>}
         </div>
       )}
 
@@ -74,6 +76,7 @@ export const IconCard = ({
   value,
   subtitle = null,
   trend = null,
+  variant = 'default',
   className = '',
   ...props
 }) => {
@@ -89,7 +92,7 @@ export const IconCard = ({
   const iconColorClass = iconColorClasses[iconColor] || iconColorClasses.primary;
 
   return (
-    <Card className={className} {...props}>
+    <Card variant={variant} className={className} {...props}>
       <div className="flex items-start gap-4">
         {/* Icon */}
         <div className={`p-3 rounded-lg ${iconColorClass}`}>
@@ -98,10 +101,10 @@ export const IconCard = ({
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-neutral-600">{title}</p>
+          <p className="text-sm font-medium text-neutral-700">{title}</p>
           <p className="text-2xl font-bold text-neutral-900 mt-1">{value}</p>
           {subtitle && (
-            <p className="text-sm text-neutral-500 mt-1">{subtitle}</p>
+            <p className="text-sm text-neutral-600 mt-1">{subtitle}</p>
           )}
           {trend && (
             <div className="mt-2 flex items-center gap-1 text-sm">

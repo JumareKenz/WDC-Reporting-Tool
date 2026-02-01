@@ -13,10 +13,20 @@ import MessagesPage from './pages/MessagesPage';
 import SettingsPage from './pages/SettingsPage';
 import MyReportsPage from './pages/MyReportsPage';
 import SubmitReportPage from './pages/SubmitReportPage';
+import LGAWardsPage from './pages/LGAWardsPage';
+import LGAReportsPage from './pages/LGAReportsPage';
+import StateAnalyticsPage from './pages/StateAnalyticsPage';
+import StateLGAsPage from './pages/StateLGAsPage';
+import StateInvestigationsPage from './pages/StateInvestigationsPage';
+import StateFormsPage from './pages/StateFormsPage';
+import StateSubmissionsPage from './pages/StateSubmissionsPage';
+import StateUsersPage from './pages/StateUsersPage';
 
 // Components
 import Layout from './components/common/Layout';
 import LoadingSpinner from './components/common/LoadingSpinner';
+import PWAInstallPrompt from './components/common/PWAInstallPrompt';
+import OfflineBanner from './components/common/OfflineBanner';
 
 // Create a query client
 const queryClient = new QueryClient({
@@ -145,7 +155,7 @@ const AppRoutes = () => {
         path="/lga/wards"
         element={
           <ProtectedRoute allowedRoles={[USER_ROLES.LGA_COORDINATOR]}>
-            <LGADashboard />
+            <LGAWardsPage />
           </ProtectedRoute>
         }
       />
@@ -153,7 +163,7 @@ const AppRoutes = () => {
         path="/lga/reports"
         element={
           <ProtectedRoute allowedRoles={[USER_ROLES.LGA_COORDINATOR]}>
-            <LGADashboard />
+            <LGAReportsPage />
           </ProtectedRoute>
         }
       />
@@ -187,7 +197,15 @@ const AppRoutes = () => {
         path="/state/analytics"
         element={
           <ProtectedRoute allowedRoles={[USER_ROLES.STATE_OFFICIAL]}>
-            <StateDashboard />
+            <StateAnalyticsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/state/submissions"
+        element={
+          <ProtectedRoute allowedRoles={[USER_ROLES.STATE_OFFICIAL]}>
+            <StateSubmissionsPage />
           </ProtectedRoute>
         }
       />
@@ -195,7 +213,7 @@ const AppRoutes = () => {
         path="/state/lgas"
         element={
           <ProtectedRoute allowedRoles={[USER_ROLES.STATE_OFFICIAL]}>
-            <StateDashboard />
+            <StateLGAsPage />
           </ProtectedRoute>
         }
       />
@@ -203,7 +221,23 @@ const AppRoutes = () => {
         path="/state/investigations"
         element={
           <ProtectedRoute allowedRoles={[USER_ROLES.STATE_OFFICIAL]}>
-            <StateDashboard />
+            <StateInvestigationsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/state/forms"
+        element={
+          <ProtectedRoute allowedRoles={[USER_ROLES.STATE_OFFICIAL]}>
+            <StateFormsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/state/users"
+        element={
+          <ProtectedRoute allowedRoles={[USER_ROLES.STATE_OFFICIAL]}>
+            <StateUsersPage />
           </ProtectedRoute>
         }
       />
@@ -310,6 +344,8 @@ function App() {
         <AuthProvider>
           <AppRoutes />
         </AuthProvider>
+        <PWAInstallPrompt />
+        <OfflineBanner />
       </BrowserRouter>
     </QueryClientProvider>
   );

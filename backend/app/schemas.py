@@ -188,21 +188,158 @@ class VoiceNoteSimple(BaseModel):
     file_size: Optional[int] = None
     duration_seconds: Optional[int] = None
     download_url: Optional[str] = None
+    field_name: Optional[str] = None
+    transcription_status: Optional[str] = None
+    transcription_text: Optional[str] = None
 
     class Config:
         from_attributes = True
 
 
+class AISuggestionsResponse(BaseModel):
+    report_id: int
+    voice_note_id: Optional[int] = None
+    transcription_status: str
+    transcription_text: Optional[str] = None
+    suggestions: Optional[dict] = None
+
+
+class AcceptSuggestionsRequest(BaseModel):
+    fields: List[str]
+
+
+# Helper schemas for JSON fields
+class ActionTrackerItem(BaseModel):
+    action_point: str
+    status: str
+    challenges: Optional[str] = None
+    timeline: Optional[str] = None
+    responsible_person: Optional[str] = None
+
+
+class CommunityFeedbackItem(BaseModel):
+    indicator: str
+    feedback: Optional[str] = None
+    action_required: Optional[str] = None
+
+
+class VDCReportItem(BaseModel):
+    vdc_name: str
+    issues: Optional[str] = None
+    action_taken: Optional[str] = None
+
+
+class ActionPlanItem(BaseModel):
+    issue: str
+    action: Optional[str] = None
+    timeline: Optional[str] = None
+    responsible_person: Optional[str] = None
+
+
 # Report Schemas
 class ReportBase(BaseModel):
     report_month: str = Field(..., pattern=r"^\d{4}-\d{2}$")
-    meetings_held: int = Field(ge=0)
-    attendees_count: int = Field(ge=0)
+    report_date: Optional[str] = None
+    report_time: Optional[str] = None
+    
+    # Meeting Type and Agenda
+    meeting_type: Optional[str] = "Monthly"
+    agenda_opening_prayer: Optional[bool] = False
+    agenda_minutes: Optional[bool] = False
+    agenda_action_tracker: Optional[bool] = False
+    agenda_reports: Optional[bool] = False
+    agenda_action_plan: Optional[bool] = False
+    agenda_aob: Optional[bool] = False
+    agenda_closing: Optional[bool] = False
+    
+    # Action Tracker (JSON)
+    action_tracker: Optional[List[ActionTrackerItem]] = None
+    
+    # Legacy simple fields
+    meetings_held: int = Field(ge=0, default=0)
+    attendees_count: int = Field(ge=0, default=0)
     issues_identified: Optional[str] = None
     actions_taken: Optional[str] = None
     challenges: Optional[str] = None
     recommendations: Optional[str] = None
     additional_notes: Optional[str] = None
+    
+    # Section 3A: Health Data - OPD
+    health_penta1: Optional[int] = Field(None, ge=0)
+    health_bcg: Optional[int] = Field(None, ge=0)
+    health_penta3: Optional[int] = Field(None, ge=0)
+    health_measles: Optional[int] = Field(None, ge=0)
+    
+    # Section 3A: Health Data - OPD Under 5
+    health_malaria_under5: Optional[int] = Field(None, ge=0)
+    health_diarrhea_under5: Optional[int] = Field(None, ge=0)
+    
+    # Section 3A: Health Data - ANC
+    health_anc_first_visit: Optional[int] = Field(None, ge=0)
+    health_anc_fourth_visit: Optional[int] = Field(None, ge=0)
+    health_anc_eighth_visit: Optional[int] = Field(None, ge=0)
+    health_deliveries: Optional[int] = Field(None, ge=0)
+    health_postnatal: Optional[int] = Field(None, ge=0)
+    
+    # Section 3A: Health Data - Family Planning
+    health_fp_counselling: Optional[int] = Field(None, ge=0)
+    health_fp_new_acceptors: Optional[int] = Field(None, ge=0)
+    
+    # Section 3A: Health Data - Hepatitis B
+    health_hepb_tested: Optional[int] = Field(None, ge=0)
+    health_hepb_positive: Optional[int] = Field(None, ge=0)
+    
+    # Section 3A: Health Data - TB
+    health_tb_presumptive: Optional[int] = Field(None, ge=0)
+    health_tb_on_treatment: Optional[int] = Field(None, ge=0)
+    
+    # Section 3B: Health Facility Support - Renovations
+    facilities_renovated_govt: Optional[int] = Field(None, ge=0)
+    facilities_renovated_partners: Optional[int] = Field(None, ge=0)
+    facilities_renovated_wdc: Optional[int] = Field(None, ge=0)
+    
+    # Section 3B: Items
+    items_donated_count: Optional[int] = Field(None, ge=0)
+    items_donated_types: Optional[List[str]] = None
+    items_repaired_count: Optional[int] = Field(None, ge=0)
+    items_repaired_types: Optional[List[str]] = None
+    
+    # Section 3C: Transportation & Emergency
+    women_transported_anc: Optional[int] = Field(None, ge=0)
+    women_transported_delivery: Optional[int] = Field(None, ge=0)
+    children_transported_danger: Optional[int] = Field(None, ge=0)
+    women_supported_delivery_items: Optional[int] = Field(None, ge=0)
+    
+    # Section 3D: cMPDSR
+    maternal_deaths: Optional[int] = Field(None, ge=0)
+    perinatal_deaths: Optional[int] = Field(None, ge=0)
+    maternal_death_causes: Optional[List[str]] = None
+    perinatal_death_causes: Optional[List[str]] = None
+    
+    # Section 4: Community Feedback
+    town_hall_conducted: Optional[str] = None
+    community_feedback: Optional[List[CommunityFeedbackItem]] = None
+    
+    # Section 5: VDC Reports
+    vdc_reports: Optional[List[VDCReportItem]] = None
+    
+    # Section 6: Community Mobilization
+    awareness_theme: Optional[str] = None
+    traditional_leaders_support: Optional[str] = None
+    religious_leaders_support: Optional[str] = None
+    
+    # Section 7: Community Action Plan
+    action_plan: Optional[List[ActionPlanItem]] = None
+    
+    # Section 8: Support & Conclusion
+    support_required: Optional[str] = None
+    aob: Optional[str] = None
+    attendance_total: Optional[int] = Field(None, ge=0)
+    attendance_male: Optional[int] = Field(None, ge=0)
+    attendance_female: Optional[int] = Field(None, ge=0)
+    next_meeting_date: Optional[str] = None
+    chairman_signature: Optional[str] = None
+    secretary_signature: Optional[str] = None
 
 
 class ReportCreate(ReportBase):
@@ -299,6 +436,7 @@ class FeedbackBase(BaseModel):
 class FeedbackCreate(FeedbackBase):
     ward_id: int
     recipient_id: Optional[int] = None
+    recipient_type: Optional[str] = None  # 'LGA', 'STATE', or None
     parent_id: Optional[int] = None
 
 
@@ -448,6 +586,78 @@ class AIReportResponse(BaseModel):
     key_findings: List[str]
     recommendations: List[str]
     lga_highlights: List[LGAHighlight]
+
+
+# Form Definition Schemas
+class FormStatus(str, Enum):
+    DRAFT = "DRAFT"
+    DEPLOYED = "DEPLOYED"
+    ARCHIVED = "ARCHIVED"
+
+
+class FormDefinitionCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    definition: dict  # {sections: [...], fields: [...]}
+
+
+class FormDefinitionUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    definition: Optional[dict] = None
+
+
+class FormDefinitionResponse(BaseModel):
+    id: int
+    name: str
+    description: Optional[str] = None
+    version: int
+    status: FormStatus
+    definition: dict
+    created_by: Optional[int] = None
+    created_at: datetime
+    updated_at: datetime
+    deployed_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class FormDefinitionListItem(BaseModel):
+    id: int
+    name: str
+    description: Optional[str] = None
+    version: int
+    status: FormStatus
+    created_at: datetime
+    deployed_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+# User Management (State Admin)
+class UserAssignRequest(BaseModel):
+    full_name: str = Field(..., min_length=2, max_length=200)
+    email: str = Field(..., min_length=5, max_length=255)
+    phone: Optional[str] = None
+    password: str = Field(..., min_length=6, max_length=128)
+    role: str
+    lga_id: Optional[int] = None
+    ward_id: Optional[int] = None
+
+
+class UserUpdateRequest(BaseModel):
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+
+
+class UserPasswordChange(BaseModel):
+    new_password: str = Field(..., min_length=6, max_length=128)
+
+
+class UserAccessChange(BaseModel):
+    is_active: bool
 
 
 # Generic Response Wrappers

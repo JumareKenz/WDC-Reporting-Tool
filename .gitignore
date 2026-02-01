@@ -32,5 +32,12 @@ npm-debug.log*
 coverage/
 .pytest_cache/
 
-# Misc
+# Database files
 *.sqlite3
+*.db
+
+# IDE / tool settings
+.claude/
+
+# PWA build output
+frontend/dev-dist/

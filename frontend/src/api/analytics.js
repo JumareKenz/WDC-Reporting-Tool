@@ -68,3 +68,12 @@ export const updateInvestigation = async (investigationId, data) => {
   const response = await apiClient.patch(API_ENDPOINTS.INVESTIGATION_BY_ID(investigationId), data);
   return response;
 };
+
+/**
+ * Get all submissions across all wards grouped by LGA
+ */
+export const getStateSubmissions = async (params = {}) => {
+  const queryString = buildQueryString(params);
+  const response = await apiClient.get(`${API_ENDPOINTS.STATE_SUBMISSIONS}${queryString}`);
+  return response;
+};

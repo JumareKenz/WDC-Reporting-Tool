@@ -47,6 +47,10 @@ const MyReportsPage = () => {
   const totalMeetings = reports.reduce((sum, r) => sum + (r.meetings_held || 0), 0);
   const totalAttendees = reports.reduce((sum, r) => sum + (r.attendees_count || 0), 0);
 
+  const handleSelectReport = (report) => {
+    setSelectedReport(report);
+  };
+
   const getStatusBadge = (status) => {
     const config = {
       [REPORT_STATUS.SUBMITTED]: { color: 'bg-blue-100 text-blue-800', icon: Clock },
@@ -73,7 +77,7 @@ const MyReportsPage = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -212,7 +216,7 @@ const MyReportsPage = () => {
                         variant="ghost"
                         size="sm"
                         icon={Eye}
-                        onClick={() => setSelectedReport(report)}
+                        onClick={() => handleSelectReport(report)}
                       >
                         View
                       </Button>

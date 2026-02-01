@@ -46,10 +46,17 @@ def get_feedback_messages(
                 )
             query = db.query(Feedback).filter(Feedback.ward_id == ward_id)
 
+    elif current_user.role == "STATE_OFFICIAL":
+        # State Official can view all feedback or filter by ward
+        if ward_id:
+            query = db.query(Feedback).filter(Feedback.ward_id == ward_id)
+        else:
+            query = db.query(Feedback)
+
     else:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only WDC Secretaries and LGA Coordinators can access feedback"
+            detail="Only WDC Secretaries, LGA Coordinators, and State Officials can access feedback"
         )
 
     total = query.count()
@@ -100,10 +107,10 @@ def send_feedback_message(
 ):
     """Send a feedback message."""
 
-    if current_user.role not in ["WDC_SECRETARY", "LGA_COORDINATOR"]:
+    if current_user.role not in ["WDC_SECRETARY", "LGA_COORDINATOR", "STATE_OFFICIAL"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only WDC Secretaries and LGA Coordinators can send feedback"
+            detail="Only WDC Secretaries, LGA Coordinators, and State Officials can send feedback"
         )
 
     # Verify ward access
@@ -126,10 +133,32 @@ def send_feedback_message(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to send feedback for this ward"
             )
+    # STATE_OFFICIAL can send feedback for any ward
+
+    # Determine recipient_id based on recipient_type if provided
+    recipient_id = feedback_data.recipient_id
+
+    if feedback_data.recipient_type and not recipient_id:
+        # Look up recipient based on type
+        if feedback_data.recipient_type == 'LGA':
+            # Find LGA Coordinator for this ward's LGA
+            recipient = db.query(User).filter(
+                User.lga_id == ward.lga_id,
+                User.role == "LGA_COORDINATOR"
+            ).first()
+            if recipient:
+                recipient_id = recipient.id
+        elif feedback_data.recipient_type == 'STATE':
+            # Find any State Official (could be improved to target specific officials)
+            recipient = db.query(User).filter(
+                User.role == "STATE_OFFICIAL"
+            ).first()
+            if recipient:
+                recipient_id = recipient.id
 
     # Verify recipient if provided
-    if feedback_data.recipient_id:
-        recipient = db.query(User).filter(User.id == feedback_data.recipient_id).first()
+    if recipient_id:
+        recipient = db.query(User).filter(User.id == recipient_id).first()
         if not recipient:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -140,7 +169,7 @@ def send_feedback_message(
     feedback = Feedback(
         ward_id=feedback_data.ward_id,
         sender_id=current_user.id,
-        recipient_id=feedback_data.recipient_id,
+        recipient_id=recipient_id,
         message=feedback_data.message,
         parent_id=feedback_data.parent_id
     )

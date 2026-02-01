@@ -78,3 +78,22 @@ export const downloadVoiceNote = async (voiceNoteId, filename = null) => {
 export const deleteVoiceNote = async (voiceNoteId) => {
   return apiClient.delete(API_ENDPOINTS.VOICE_NOTE_DELETE(voiceNoteId));
 };
+
+/**
+ * Get AI suggestions for a report's voice note
+ * @param {number} reportId - Report ID
+ * @returns {Promise} Response with transcription status and suggestions
+ */
+export const getAISuggestions = async (reportId) => {
+  return apiClient.get(API_ENDPOINTS.AI_SUGGESTIONS(reportId));
+};
+
+/**
+ * Accept selected AI suggestions and apply to report
+ * @param {number} reportId - Report ID
+ * @param {string[]} fields - Array of field names to accept
+ * @returns {Promise} Response with update confirmation
+ */
+export const acceptAISuggestions = async (reportId, fields) => {
+  return apiClient.post(API_ENDPOINTS.AI_SUGGESTIONS_ACCEPT(reportId), { fields });
+};

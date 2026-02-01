@@ -58,12 +58,12 @@ const Modal = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in"
       onClick={closeOnOverlayClick ? onClose : undefined}
     >
       <div
         className={`
-          bg-white rounded-xl shadow-2xl w-full ${modalSize}
+          glass-modal rounded-2xl w-full ${modalSize}
           max-h-[90vh] overflow-hidden flex flex-col
           animate-scale-in
         `}

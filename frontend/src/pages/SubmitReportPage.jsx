@@ -1,12 +1,32 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import Button from '../components/common/Button';
 import WDCReportForm from '../components/wdc/WDCReportForm';
+import DynamicForm from '../components/wdc/DynamicForm';
 import { useAuth } from '../hooks/useAuth';
+import apiClient from '../api/client';
+import { API_ENDPOINTS } from '../utils/constants';
 
 const SubmitReportPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [activeForm, setActiveForm] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchActiveForm = async () => {
+      try {
+        const response = await apiClient.get(API_ENDPOINTS.FORMS_ACTIVE);
+        setActiveForm(response?.data || null);
+      } catch {
+        setActiveForm(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchActiveForm();
+  }, []);
 
   const handleSuccess = () => {
     navigate('/wdc');
@@ -44,12 +64,22 @@ const SubmitReportPage = () => {
 
       {/* Form Content */}
       <div className="max-w-4xl mx-auto px-4 py-6">
-        <WDCReportForm
-          onSuccess={handleSuccess}
-          onCancel={handleCancel}
-          userWard={{ id: user?.ward_id, name: user?.ward_name }}
-          userLGA={{ id: user?.lga_id, name: user?.lga_name }}
-        />
+        {loading ? (
+          <div className="text-center py-12 text-neutral-500">Loading form...</div>
+        ) : activeForm ? (
+          <DynamicForm
+            definition={activeForm.definition}
+            onSuccess={handleSuccess}
+            onCancel={handleCancel}
+          />
+        ) : (
+          <WDCReportForm
+            onSuccess={handleSuccess}
+            onCancel={handleCancel}
+            userWard={{ id: user?.ward_id, name: user?.ward_name }}
+            userLGA={{ id: user?.lga_id, name: user?.lga_name }}
+          />
+        )}
       </div>
     </div>
   );
