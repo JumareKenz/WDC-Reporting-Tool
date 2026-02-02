@@ -5,7 +5,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Security
-SECRET_KEY = "kaduna-wdc-secret-key-2026-change-in-production"
+SECRET_KEY = os.getenv("SECRET_KEY", "kaduna-wdc-secret-key-2026-change-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
@@ -25,9 +25,9 @@ ALLOWED_AUDIO_EXTENSIONS = {".mp3", ".m4a", ".wav", ".ogg", ".webm"}
 # Create upload directories if they don't exist
 VOICE_NOTES_DIR.mkdir(parents=True, exist_ok=True)
 
-# CORS - Allow all origins for mobile PWA access
-# In production, restrict to specific domains
-ALLOWED_ORIGINS = [
+# CORS - Allowed origins for API access
+# Can be overridden via ALLOWED_ORIGINS environment variable (comma-separated)
+_default_origins = [
     "http://localhost:5173",
     "http://localhost:3000",
     "http://localhost:8080",
@@ -39,6 +39,9 @@ ALLOWED_ORIGINS = [
     "http://192.168.0.105:5173",
     "http://192.168.0.105:3000",
     "http://192.168.0.105:8000",
-    # Allow all local network IPs for mobile access
-    "*",
+    # Production frontend
+    "https://kadwdc.vercel.app",
 ]
+
+# Allow environment variable override for production
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", ",".join(_default_origins)).split(",")
