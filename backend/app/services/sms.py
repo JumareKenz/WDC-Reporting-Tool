@@ -45,12 +45,19 @@ def send_sms(phone: str, message: str) -> tuple[bool, Optional[str]]:
         tuple: (success: bool, error_message: Optional[str])
     """
 
+    logger.info(f"SMS Send Request - Provider: {SMS_PROVIDER}, Enabled: {SMS_ENABLED}, Phone: {phone}")
+
     if not SMS_ENABLED:
-        logger.info(f"SMS disabled. Would send to {phone}: {message}")
-        return True, None
+        logger.warning(f"SMS disabled. Would send to {phone}: {message[:50]}...")
+        return False, "SMS is disabled. Set SMS_ENABLED=true in environment variables."
 
     # Normalize phone number
-    phone = normalize_phone_number(phone)
+    try:
+        phone = normalize_phone_number(phone)
+        logger.info(f"Normalized phone number: {phone}")
+    except Exception as e:
+        logger.error(f"Phone normalization failed: {str(e)}")
+        return False, f"Invalid phone number format: {str(e)}"
 
     if SMS_PROVIDER == "africastalking":
         return send_sms_africastalking(phone, message)
@@ -184,7 +191,7 @@ def send_sms_termii(phone: str, message: str) -> tuple[bool, Optional[str]]:
 
     if not TERMII_API_KEY:
         logger.error("Termii API key not configured")
-        return False, "SMS service not configured"
+        return False, "SMS service not configured - API key missing"
 
     try:
         url = "https://v3.api.termii.com/api/sms/send"
@@ -202,25 +209,43 @@ def send_sms_termii(phone: str, message: str) -> tuple[bool, Optional[str]]:
             "api_key": TERMII_API_KEY
         }
 
-        response = requests.post(url, headers=headers, json=data, timeout=10)
-        response.raise_for_status()
+        logger.info(f"Sending SMS via Termii to {phone}")
+        logger.debug(f"Termii request data: {data}")
 
-        result = response.json()
+        response = requests.post(url, headers=headers, json=data, timeout=15)
+
+        logger.info(f"Termii response status: {response.status_code}")
+        logger.debug(f"Termii response body: {response.text}")
+
+        # Try to parse JSON response
+        try:
+            result = response.json()
+        except ValueError:
+            logger.error(f"Failed to parse Termii response as JSON: {response.text}")
+            return False, f"Invalid response from SMS provider: {response.text[:100]}"
 
         # Check for success - Termii returns message_id on success
-        if result.get("message_id") or result.get("smsStatus") == "Message Sent":
-            logger.info(f"SMS sent successfully to {phone} via Termii")
-            return True, None
+        if response.status_code == 200:
+            if result.get("message_id") or result.get("smsStatus") == "Message Sent":
+                logger.info(f"✅ SMS sent successfully to {phone} via Termii. Message ID: {result.get('message_id')}")
+                return True, None
+            else:
+                error_msg = result.get("message", result.get("error", str(result)))
+                logger.error(f"❌ Termii returned 200 but no message_id: {error_msg}")
+                return False, f"SMS not sent: {error_msg}"
         else:
-            error_msg = result.get("message", result.get("error", "Unknown error"))
-            logger.error(f"SMS failed to {phone}: {error_msg}")
-            return False, error_msg
+            error_msg = result.get("message", result.get("error", response.text))
+            logger.error(f"❌ Termii API error ({response.status_code}): {error_msg}")
+            return False, f"SMS failed: {error_msg}"
 
+    except requests.Timeout:
+        logger.error(f"Termii request timed out for {phone}")
+        return False, "SMS request timed out. Please try again."
     except requests.RequestException as e:
         logger.error(f"Termii SMS request failed: {str(e)}")
-        return False, f"SMS request failed: {str(e)}"
+        return False, f"Network error: {str(e)}"
     except Exception as e:
-        logger.error(f"Unexpected error sending SMS via Termii: {str(e)}")
+        logger.error(f"Unexpected error sending SMS via Termii: {str(e)}", exc_info=True)
         return False, f"Unexpected error: {str(e)}"
 
 

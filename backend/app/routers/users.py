@@ -11,6 +11,18 @@ from ..services.sms import send_welcome_sms
 router = APIRouter(prefix="/users", tags=["User Management"])
 
 
+@router.get("/sms-status")
+def get_sms_status(current_user: User = Depends(get_state_official)):
+    """Get SMS service status for debugging."""
+    import os
+    return {
+        "sms_enabled": os.getenv("SMS_ENABLED", "not set"),
+        "sms_provider": os.getenv("SMS_PROVIDER", "not set"),
+        "termii_api_key_set": bool(os.getenv("TERMII_API_KEY")),
+        "termii_sender_id": os.getenv("TERMII_SENDER_ID", "not set"),
+    }
+
+
 def _build_user_detail(user, db):
     """Build a complete user detail dict for API responses."""
     data = {
@@ -289,6 +301,10 @@ def assign_user(
     sms_sent = False
     sms_error = None
     if assign_data.phone:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Attempting to send SMS to {assign_data.phone} for user {assign_data.email}")
+
         sms_success, sms_error = send_welcome_sms(
             phone=assign_data.phone,
             full_name=assign_data.full_name,
@@ -297,6 +313,11 @@ def assign_user(
             role=assign_data.role
         )
         sms_sent = sms_success
+
+        if sms_sent:
+            logger.info(f"✅ SMS sent successfully to {assign_data.phone}")
+        else:
+            logger.error(f"❌ SMS failed to {assign_data.phone}: {sms_error}")
 
     role_label = "LGA Coordinator" if assign_data.role == "LGA_COORDINATOR" else "WDC Secretary"
 

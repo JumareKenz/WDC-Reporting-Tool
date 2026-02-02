@@ -154,17 +154,28 @@ def get_lga_comparison(
 
 @router.get("/trends", response_model=dict)
 def get_submission_trends(
-    start_month: str,
-    end_month: str,
+    start_month: Optional[str] = None,
+    end_month: Optional[str] = None,
+    months: Optional[int] = 6,
     lga_id: Optional[int] = None,
     current_user: User = Depends(get_state_official),
     db: Session = Depends(get_db)
 ):
-    """Get submission trends over time (State Official only)."""
+    """Get submission trends over time (State Official only).
+
+    Either provide start_month and end_month, or provide months to get last N months.
+    """
 
     # Generate month list
     from datetime import datetime
     from dateutil.relativedelta import relativedelta
+
+    # If months parameter is provided, calculate start and end
+    if not start_month or not end_month:
+        end = datetime.utcnow()
+        start = end - relativedelta(months=months - 1)
+        start_month = start.strftime("%Y-%m")
+        end_month = end.strftime("%Y-%m")
 
     start = datetime.strptime(start_month, "%Y-%m")
     end = datetime.strptime(end_month, "%Y-%m")
