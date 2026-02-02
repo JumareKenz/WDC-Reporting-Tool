@@ -1,9 +1,15 @@
 /**
  * Get the target report month based on the current date.
  *
- * Rules:
- * - Days 1-7: Report for previous month
- * - Days 8-31: Report for current month
+ * Rules (Submission window: last week of month OR first week of next month):
+ * - Days 1-23: Report for previous month
+ * - Days 24-end of month: Report for current month
+ *
+ * Examples:
+ * - Feb 1-23: Submit January report
+ * - Feb 24-28: Submit February report
+ * - Mar 1-23: Submit February report
+ * - Mar 24-31: Submit March report
  *
  * @returns {string} Target report month in YYYY-MM format
  */
@@ -12,11 +18,11 @@ export const getTargetReportMonth = () => {
   const currentDay = now.getDate();
 
   let targetDate;
-  if (currentDay <= 7) {
-    // First week - report for previous month
+  if (currentDay <= 23) {
+    // Days 1-23 - report for previous month
     targetDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   } else {
-    // After first week - report for current month
+    // Days 24-end - report for current month
     targetDate = now;
   }
 
@@ -32,17 +38,18 @@ export const getTargetReportMonth = () => {
  * @returns {Object} {
  *   target_month: string (YYYY-MM),
  *   month_name: string (e.g., 'January 2024'),
- *   is_first_week: boolean,
+ *   is_submission_window: boolean (true if in last week or first week),
  *   current_day: number
  * }
  */
 export const getSubmissionInfo = () => {
   const now = new Date();
   const currentDay = now.getDate();
-  const isFirstWeek = currentDay <= 7;
+  const isInEarlyDays = currentDay <= 23;
+  const isInSubmissionWindow = currentDay <= 7 || currentDay >= 24;
 
   let targetDate;
-  if (isFirstWeek) {
+  if (isInEarlyDays) {
     targetDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   } else {
     targetDate = now;
@@ -58,7 +65,7 @@ export const getSubmissionInfo = () => {
   return {
     target_month: `${year}-${month}`,
     month_name: monthName,
-    is_first_week: isFirstWeek,
+    is_submission_window: isInSubmissionWindow,
     current_day: currentDay,
   };
 };
@@ -89,10 +96,11 @@ export const formatMonthDisplay = (monthStr) => {
  */
 export const getSubmissionPeriodDescription = () => {
   const info = getSubmissionInfo();
+  const currentDay = info.current_day;
 
-  if (info.is_first_week) {
-    return `Days 1-7: Submit reports for previous month (${info.month_name})`;
+  if (currentDay <= 23) {
+    return `Days 1-23: Submit reports for previous month (${info.month_name})`;
   } else {
-    return `Days 8-31: Submit reports for current month (${info.month_name})`;
+    return `Days 24-end: Submit reports for current month (${info.month_name})`;
   }
 };

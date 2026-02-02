@@ -18,6 +18,7 @@ import Card, { IconCard, EmptyCard } from '../components/common/Card';
 import Button from '../components/common/Button';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Modal from '../components/common/Modal';
+import ReportDetailView from '../components/reports/ReportDetailView';
 import { useStateSubmissions, useLGAs } from '../hooks/useStateData';
 import {
   formatDate,
@@ -40,6 +41,8 @@ const StateSubmissionsPage = () => {
   const [lgaFilter, setLgaFilter] = useState('');
   const [expandedLGAs, setExpandedLGAs] = useState({});
   const [selectedReport, setSelectedReport] = useState(null);
+  const [fullReportData, setFullReportData] = useState(null);
+  const [loadingReport, setLoadingReport] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [playingAudio, setPlayingAudio] = useState(null);
   const audioUrlCache = useRef({});
@@ -138,9 +141,28 @@ const StateSubmissionsPage = () => {
     }
   };
 
+  const fetchFullReportDetails = async (reportId) => {
+    setLoadingReport(true);
+    try {
+      const response = await apiClient.get(`/reports/${reportId}`);
+      setFullReportData(response);
+    } catch (err) {
+      console.error('Failed to fetch report details:', err);
+    } finally {
+      setLoadingReport(false);
+    }
+  };
+
+  const handleViewReport = async (report) => {
+    setSelectedReport(report);
+    setShowModal(true);
+    await fetchFullReportDetails(report.id);
+  };
+
   const closeModal = () => {
     setShowModal(false);
     setSelectedReport(null);
+    setFullReportData(null);
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
@@ -393,10 +415,7 @@ const StateSubmissionsPage = () => {
                             </td>
                             <td className="py-3 px-4 text-right">
                               <button
-                                onClick={() => {
-                                  setSelectedReport(report);
-                                  setShowModal(true);
-                                }}
+                                onClick={() => handleViewReport(report)}
                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary-600 hover:text-primary-800 hover:bg-primary-50 rounded-lg transition-colors"
                               >
                                 <Eye className="w-3.5 h-3.5" />
@@ -428,7 +447,7 @@ const StateSubmissionsPage = () => {
       )}
 
       {/* Submission Detail Modal */}
-      <Modal isOpen={showModal} onClose={closeModal} title="Submission Details" size="xl">
+      <Modal isOpen={showModal} onClose={closeModal} title="Complete Report Details" size="xl">
         {selectedReport && (
           <div className="space-y-5">
             {/* Report Header */}
@@ -451,40 +470,27 @@ const StateSubmissionsPage = () => {
               </span>
             </div>
 
-            {/* Key Metrics */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="p-3 bg-green-50 border border-green-100 rounded-lg text-center">
-                <Activity className="w-4 h-4 text-green-600 mx-auto mb-1" />
-                <p className="text-xl font-bold text-green-700">
-                  {selectedReport.meetings_held}
-                </p>
-                <p className="text-xs text-green-600">Meetings</p>
+            {/* Loading State */}
+            {loadingReport && (
+              <div className="flex items-center justify-center py-12">
+                <LoadingSpinner size="lg" text="Loading full report details..." />
               </div>
-              <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg text-center">
-                <Users className="w-4 h-4 text-blue-600 mx-auto mb-1" />
-                <p className="text-xl font-bold text-blue-700">
-                  {selectedReport.attendees_count}
-                </p>
-                <p className="text-xs text-blue-600">Attendees</p>
-              </div>
-              <div className="p-3 bg-purple-50 border border-purple-100 rounded-lg text-center">
-                <Mic className="w-4 h-4 text-purple-600 mx-auto mb-1" />
-                <p className="text-xl font-bold text-purple-700">
-                  {selectedReport.voice_notes_count}
-                </p>
-                <p className="text-xs text-purple-600">Voice Notes</p>
-              </div>
-            </div>
+            )}
+
+            {/* Full Report Details */}
+            {!loadingReport && fullReportData && (
+              <ReportDetailView report={fullReportData} />
+            )}
 
             {/* Voice Notes / Audio Section */}
-            {selectedReport.voice_notes && selectedReport.voice_notes.length > 0 && (
-              <div>
+            {fullReportData && fullReportData.voice_notes && fullReportData.voice_notes.length > 0 && (
+              <div className="bg-white rounded-lg border border-neutral-200 p-5">
                 <h4 className="font-semibold text-neutral-900 mb-3 flex items-center gap-2">
                   <Volume2 className="w-4 h-4 text-purple-600" />
-                  Recorded Audio ({selectedReport.voice_notes.length})
+                  Recorded Audio ({fullReportData.voice_notes.length})
                 </h4>
                 <div className="space-y-2">
-                  {selectedReport.voice_notes.map((vn) => (
+                  {fullReportData.voice_notes.map((vn) => (
                     <div
                       key={vn.id}
                       className="flex items-start gap-3 p-3 bg-neutral-50 border border-neutral-200 rounded-lg"

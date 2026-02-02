@@ -7,9 +7,15 @@ def get_target_report_month() -> str:
     """
     Determine the target report month based on the current date.
 
-    Rules:
-    - Days 1-7: Report for previous month
-    - Days 8-31: Report for current month
+    Rules (Submission window: last week of month OR first week of next month):
+    - Days 1-23: Report for previous month
+    - Days 24-end of month: Report for current month
+
+    Examples:
+    - Feb 1-23: Submit January report
+    - Feb 24-28: Submit February report
+    - Mar 1-23: Submit February report
+    - Mar 24-31: Submit March report
 
     Returns:
         str: Target report month in YYYY-MM format
@@ -17,11 +23,11 @@ def get_target_report_month() -> str:
     now = datetime.utcnow()
     current_day = now.day
 
-    if current_day <= 7:
-        # First week - report for previous month
+    if current_day <= 23:
+        # Days 1-23 - report for previous month
         target_date = now - relativedelta(months=1)
     else:
-        # After first week - report for current month
+        # Days 24-end - report for current month
         target_date = now
 
     return target_date.strftime('%Y-%m')
@@ -35,15 +41,16 @@ def get_month_display_info() -> Dict[str, any]:
         dict: {
             'target_month': str (YYYY-MM),
             'month_name': str (e.g., 'January 2024'),
-            'is_first_week': bool,
+            'is_submission_window': bool (true if in last week or first week),
             'current_day': int
         }
     """
     now = datetime.utcnow()
     current_day = now.day
-    is_first_week = current_day <= 7
+    is_in_early_days = current_day <= 23
+    is_submission_window = current_day <= 7 or current_day >= 24
 
-    if is_first_week:
+    if is_in_early_days:
         target_date = now - relativedelta(months=1)
     else:
         target_date = now
@@ -51,7 +58,7 @@ def get_month_display_info() -> Dict[str, any]:
     return {
         'target_month': target_date.strftime('%Y-%m'),
         'month_name': target_date.strftime('%B %Y'),
-        'is_first_week': is_first_week,
+        'is_submission_window': is_submission_window,
         'current_day': current_day
     }
 
@@ -70,11 +77,12 @@ def validate_report_month(submitted_month: str) -> Tuple[bool, str]:
 
     if submitted_month != expected_month:
         info = get_month_display_info()
+        current_day = info['current_day']
 
-        if info['is_first_week']:
-            period_desc = f"During days 1-7, you must submit reports for the previous month ({info['month_name']})"
+        if current_day <= 23:
+            period_desc = f"During days 1-23, you must submit reports for the previous month ({info['month_name']})"
         else:
-            period_desc = f"During days 8-31, you must submit reports for the current month ({info['month_name']})"
+            period_desc = f"During days 24-end, you must submit reports for the current month ({info['month_name']})"
 
         error_msg = f"Invalid report month. {period_desc}. You submitted for {submitted_month}."
         return False, error_msg
