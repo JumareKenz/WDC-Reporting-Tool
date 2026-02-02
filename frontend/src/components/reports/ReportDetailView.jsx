@@ -12,7 +12,7 @@ import {
   Map,
   Megaphone,
   Target,
-  HandHelping,
+  HelpCircle,
   ClipboardList,
 } from 'lucide-react';
 import { formatDate, formatMonth, toTitleCase } from '../../utils/formatters';
@@ -573,7 +573,7 @@ const ReportDetailView = ({ report }) => {
       {(report.support_required || report.aob || report.issues_identified ||
         report.challenges || report.recommendations) && (
         <div className="bg-white rounded-lg border border-neutral-200 p-5">
-          {renderSectionHeader('Additional Notes & Support', <HandHelping className="w-5 h-5 text-primary-600" />)}
+          {renderSectionHeader('Additional Notes & Support', <HelpCircle className="w-5 h-5 text-primary-600" />)}
           <dl className="space-y-3">
             {report.support_required && (
               <div>
