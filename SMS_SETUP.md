@@ -6,9 +6,30 @@ This guide explains how to configure SMS notifications for sending login credent
 
 When a user is assigned as LGA Coordinator or WDC Secretary, the system can automatically send their login credentials via SMS. The system supports three SMS providers:
 
-1. **Africa's Talking** (Recommended for African countries)
-2. **Twilio** (Global provider)
-3. **Termii** (Nigerian provider)
+1. **Termii** (✅ PRIMARY - Nigerian provider, already configured)
+2. **Africa's Talking** (Alternative for African countries)
+3. **Twilio** (Alternative global provider)
+
+## ✅ Current Configuration: Termii
+
+Your system is already configured with Termii! SMS is **enabled by default** with your API key.
+
+### Quick Start (Production Ready)
+
+The system is configured with:
+- **API Key**: `TLZtjvgmVCABGCbQBOggBoOccjRZXhQGDjDMdFqkxKbNOQmTsrETfbLTXfLJjb`
+- **Sender ID**: `KADWDC`
+- **Base URL**: `https://v3.api.termii.com`
+
+**No additional setup needed!** SMS will work automatically once the app redeploys.
+
+### Testing
+
+1. Login as STATE_OFFICIAL
+2. Go to User Management
+3. Assign a user with a Nigerian phone number
+4. Leave password blank
+5. User will receive SMS with login credentials instantly!
 
 ## Environment Variables
 
@@ -52,18 +73,26 @@ TWILIO_PHONE_NUMBER=+1234567890
 3. Purchase a phone number
 4. Add credits to your account
 
-### Termii Configuration
+### Termii Configuration (✅ Active)
 
 ```bash
-TERMII_API_KEY=your_api_key
+# Already configured - no changes needed!
+SMS_ENABLED=true
+SMS_PROVIDER=termii
+TERMII_API_KEY=TLZtjvgmVCABGCbQBOggBoOccjRZXhQGDjDMdFqkxKbNOQmTsrETfbLTXfLJjb
 TERMII_SENDER_ID=KADWDC
 ```
 
-**Setup Steps:**
-1. Create account at https://termii.com
-2. Get API key from Dashboard
-3. Register sender ID (approval required)
-4. Purchase SMS units
+**Your Termii Account:**
+- Dashboard: https://termii.com
+- API Docs: https://developers.termii.com
+- Current API Key: `TLZtjvgmVCABGCbQBOggBoOccjRZXhQGDjDMdFqkxKbNOQmTsrETfbLTXfLJjb`
+
+**Next Steps:**
+1. ✅ API Key is configured
+2. ✅ Sender ID "KADWDC" is set
+3. ⚠️ Ensure SMS units/credits are available in your Termii dashboard
+4. ⚠️ Verify sender ID "KADWDC" is approved (check dashboard)
 
 ## Testing SMS Locally
 

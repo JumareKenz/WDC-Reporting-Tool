@@ -15,8 +15,8 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 # SMS Configuration from environment variables
-SMS_PROVIDER = os.getenv("SMS_PROVIDER", "africastalking")  # africastalking, twilio, termii
-SMS_ENABLED = os.getenv("SMS_ENABLED", "false").lower() == "true"
+SMS_PROVIDER = os.getenv("SMS_PROVIDER", "termii")  # africastalking, twilio, termii
+SMS_ENABLED = os.getenv("SMS_ENABLED", "true").lower() == "true"  # Enable by default
 
 # Africa's Talking
 AT_USERNAME = os.getenv("AT_USERNAME", "sandbox")
@@ -28,8 +28,8 @@ TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
 TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER", "")
 
-# Termii
-TERMII_API_KEY = os.getenv("TERMII_API_KEY", "")
+# Termii (Default provider for Nigeria)
+TERMII_API_KEY = os.getenv("TERMII_API_KEY", "TLZtjvgmVCABGCbQBOggBoOccjRZXhQGDjDMdFqkxKbNOQmTsrETfbLTXfLJjb")
 TERMII_SENDER_ID = os.getenv("TERMII_SENDER_ID", "KADWDC")
 
 
@@ -187,7 +187,7 @@ def send_sms_termii(phone: str, message: str) -> tuple[bool, Optional[str]]:
         return False, "SMS service not configured"
 
     try:
-        url = "https://api.ng.termii.com/api/sms/send"
+        url = "https://v3.api.termii.com/api/sms/send"
 
         headers = {
             "Content-Type": "application/json"
@@ -207,19 +207,20 @@ def send_sms_termii(phone: str, message: str) -> tuple[bool, Optional[str]]:
 
         result = response.json()
 
-        if result.get("message_id"):
-            logger.info(f"SMS sent successfully to {phone}")
+        # Check for success - Termii returns message_id on success
+        if result.get("message_id") or result.get("smsStatus") == "Message Sent":
+            logger.info(f"SMS sent successfully to {phone} via Termii")
             return True, None
         else:
-            error_msg = result.get("message", "Unknown error")
+            error_msg = result.get("message", result.get("error", "Unknown error"))
             logger.error(f"SMS failed to {phone}: {error_msg}")
             return False, error_msg
 
     except requests.RequestException as e:
-        logger.error(f"SMS request failed: {str(e)}")
+        logger.error(f"Termii SMS request failed: {str(e)}")
         return False, f"SMS request failed: {str(e)}"
     except Exception as e:
-        logger.error(f"Unexpected error sending SMS: {str(e)}")
+        logger.error(f"Unexpected error sending SMS via Termii: {str(e)}")
         return False, f"Unexpected error: {str(e)}"
 
 
