@@ -144,6 +144,7 @@ const StateDashboard = () => {
   const [expandedLGA, setExpandedLGA] = useState(null);
   const [copiedReport, setCopiedReport] = useState(false);
   const [updatingExecutive, setUpdatingExecutive] = useState(false);
+  const [updatingLGAsWards, setUpdatingLGAsWards] = useState(false);
 
   // Data fetching
   const { data: overviewData, isLoading: loadingOverview, refetch: refetchOverview } = useOverview({ month: currentMonth });
@@ -343,6 +344,32 @@ Kaduna State WDC Digital Reporting System
       });
     } finally {
       setUpdatingExecutive(false);
+    }
+  };
+
+  const handleUpdateLGAsWards = async () => {
+    if (!window.confirm('Update all LGAs and Wards with accurate Kaduna State data? This will replace all existing ward data. Make sure you have a backup!')) {
+      return;
+    }
+
+    try {
+      setUpdatingLGAsWards(true);
+      const response = await apiClient.post('/admin/update-lgas-wards');
+      setAlertMessage({
+        type: 'success',
+        text: `Database updated successfully! ${response.lgas.total} LGAs and ${response.wards.total} wards updated.`,
+      });
+      // Refresh the page to show updated data
+      setTimeout(() => {
+        refetchOverview();
+      }, 1000);
+    } catch (error) {
+      setAlertMessage({
+        type: 'error',
+        text: error.message || 'Failed to update LGAs and Wards',
+      });
+    } finally {
+      setUpdatingLGAsWards(false);
     }
   };
 
@@ -910,7 +937,17 @@ Kaduna State WDC Digital Reporting System
                 >
                   New Investigation
                 </Button>
-                <div className="pt-3 mt-3 border-t border-neutral-200">
+                <div className="pt-3 mt-3 border-t border-neutral-200 space-y-2">
+                  <Button
+                    variant="outline"
+                    fullWidth
+                    icon={RefreshCw}
+                    onClick={handleUpdateLGAsWards}
+                    loading={updatingLGAsWards}
+                    className="border-green-300 text-green-700 hover:bg-green-50 font-semibold"
+                  >
+                    Update LGAs & Wards Database
+                  </Button>
                   <Button
                     variant="outline"
                     fullWidth
