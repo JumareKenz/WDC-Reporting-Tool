@@ -44,6 +44,7 @@ import {
   Clipboard,
   X,
   FormInput,
+  Shield,
 } from 'lucide-react';
 import Card, { IconCard, EmptyCard } from '../components/common/Card';
 import Button from '../components/common/Button';
@@ -74,6 +75,7 @@ import {
   INVESTIGATION_PRIORITY,
   PRIORITY_LABELS,
 } from '../utils/constants';
+import apiClient from '../api/client';
 
 const COLORS = ['#16a34a', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
@@ -141,6 +143,7 @@ const StateDashboard = () => {
   const [alertMessage, setAlertMessage] = useState(null);
   const [expandedLGA, setExpandedLGA] = useState(null);
   const [copiedReport, setCopiedReport] = useState(false);
+  const [updatingExecutive, setUpdatingExecutive] = useState(false);
 
   // Data fetching
   const { data: overviewData, isLoading: loadingOverview, refetch: refetchOverview } = useOverview({ month: currentMonth });
@@ -318,6 +321,28 @@ Kaduna State WDC Digital Reporting System
       setAlertMessage({ type: 'success', text: 'Investigation updated!' });
     } catch (error) {
       setAlertMessage({ type: 'error', text: error.message || 'Failed to update investigation' });
+    }
+  };
+
+  const handleUpdateStateExecutiveName = async () => {
+    if (!window.confirm('Update state executive name to "Abdulrazak Mukhtar"?')) {
+      return;
+    }
+
+    try {
+      setUpdatingExecutive(true);
+      const response = await apiClient.post('/admin/update-state-executive-name');
+      setAlertMessage({
+        type: 'success',
+        text: `Name updated successfully! Changed from "${response.old_name}" to "${response.new_name}"`,
+      });
+    } catch (error) {
+      setAlertMessage({
+        type: 'error',
+        text: error.message || 'Failed to update state executive name',
+      });
+    } finally {
+      setUpdatingExecutive(false);
     }
   };
 
@@ -878,6 +903,18 @@ Kaduna State WDC Digital Reporting System
                 >
                   New Investigation
                 </Button>
+                <div className="pt-3 mt-3 border-t border-neutral-200">
+                  <Button
+                    variant="outline"
+                    fullWidth
+                    icon={Shield}
+                    onClick={handleUpdateStateExecutiveName}
+                    loading={updatingExecutive}
+                    className="border-primary-300 text-primary-700 hover:bg-primary-50"
+                  >
+                    Update State Executive Name
+                  </Button>
+                </div>
               </div>
             </Card>
           </div>
