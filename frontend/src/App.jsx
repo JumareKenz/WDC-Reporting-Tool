@@ -5,6 +5,8 @@ import { USER_ROLES } from './utils/constants';
 
 // Pages
 import Login from './pages/Login';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import WDCDashboard from './pages/WDCDashboard';
 import LGADashboard from './pages/LGADashboard';
 import StateDashboard from './pages/StateDashboard';
@@ -96,6 +98,22 @@ const AppRoutes = () => {
         element={
           <PublicRoute>
             <Login />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/forgot-password"
+        element={
+          <PublicRoute>
+            <ForgotPassword />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/reset-password"
+        element={
+          <PublicRoute>
+            <ResetPassword />
           </PublicRoute>
         }
       />

@@ -151,6 +151,15 @@ const Login = () => {
                     autoComplete="current-password"
                   />
                 </div>
+                <div className="flex justify-end mt-1.5">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/forgot-password')}
+                    className="text-sm text-emerald-300 hover:text-emerald-200 transition-colors"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
               </div>
 
               {/* Submit Button */}

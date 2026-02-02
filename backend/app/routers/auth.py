@@ -1,11 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timedelta
 from ..database import get_db
 from ..models import User, Ward, LGA
 from ..schemas import LoginRequest, LoginResponse, UserResponse, WardSimple, LGASimple
-from ..auth import verify_password, create_access_token
+from ..auth import verify_password, create_access_token, get_password_hash
 from ..dependencies import get_current_user
+from ..services.email import send_password_reset_email
+import secrets
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -113,3 +115,101 @@ def get_current_user_info(current_user: User = Depends(get_current_user), db: Se
             )
 
     return user_data
+
+
+# In-memory store for password reset tokens
+# In production, use Redis or database table
+PASSWORD_RESET_TOKENS = {}
+
+
+@router.post("/forgot-password")
+def request_password_reset(email: str, db: Session = Depends(get_db)):
+    """Request a password reset link via email."""
+
+    # Find user by email
+    user = db.query(User).filter(User.email == email).first()
+
+    # Always return success (don't reveal if email exists)
+    if not user:
+        return {
+            "success": True,
+            "message": "If an account with that email exists, a password reset link has been sent."
+        }
+
+    # Generate reset token
+    reset_token = secrets.token_urlsafe(32)
+    expiry = datetime.utcnow() + timedelta(hours=1)
+
+    # Store token with expiry
+    PASSWORD_RESET_TOKENS[reset_token] = {
+        "user_id": user.id,
+        "email": user.email,
+        "expiry": expiry
+    }
+
+    # Send reset email
+    email_sent, error = send_password_reset_email(
+        email=user.email,
+        reset_token=reset_token,
+        full_name=user.full_name
+    )
+
+    if not email_sent:
+        # Log error but still return success to user
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Failed to send password reset email: {error}")
+
+    return {
+        "success": True,
+        "message": "If an account with that email exists, a password reset link has been sent."
+    }
+
+
+@router.post("/reset-password")
+def reset_password(token: str, new_password: str, db: Session = Depends(get_db)):
+    """Reset password using the token from email."""
+
+    # Validate token
+    if token not in PASSWORD_RESET_TOKENS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token"
+        )
+
+    token_data = PASSWORD_RESET_TOKENS[token]
+
+    # Check if token expired
+    if datetime.utcnow() > token_data["expiry"]:
+        del PASSWORD_RESET_TOKENS[token]
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Reset token has expired. Please request a new one."
+        )
+
+    # Validate password
+    if len(new_password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 6 characters long"
+        )
+
+    # Get user and update password
+    user = db.query(User).filter(User.id == token_data["user_id"]).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    user.password_hash = get_password_hash(new_password)
+    db.commit()
+
+    # Remove used token
+    del PASSWORD_RESET_TOKENS[token]
+
+    return {
+        "success": True,
+        "message": "Password has been reset successfully. You can now login with your new password."
+    }
