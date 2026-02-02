@@ -39,6 +39,7 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import Modal, { ConfirmModal } from '../components/common/Modal';
 import { useAuth } from '../hooks/useAuth';
 import {
+  useLGA,
   useLGAWards,
   useLGAReports,
   useLGAMissingReports,
@@ -77,6 +78,7 @@ const LGADashboard = () => {
   const { data: reportsData, isLoading: loadingReports, refetch: refetchReports } = useLGAReports(lgaId, { limit: 100 });
   const { data: missingData, isLoading: loadingMissing } = useLGAMissingReports(lgaId, { month: targetMonth });
   const { data: feedbackData, isLoading: loadingFeedback } = useFeedback({ limit: 10 });
+  const { data: lgaData } = useLGA(lgaId);
 
   // Mutations
   const sendNotificationMutation = useSendNotification();
@@ -88,8 +90,10 @@ const LGADashboard = () => {
   const reports = reportsData?.data?.reports || reportsData?.reports || [];
   const missingReports = missingData?.data?.missing || missingData?.missing || [];
   const feedback = feedbackData?.data?.messages || feedbackData?.messages || [];
+  const lgaInfo = wardsData?.data?.lga || lgaData?.data || user?.lga || {};
 
   // Calculate stats - using actual data only
+  const officialWardCount = lgaInfo.num_wards || wards.length;
   const totalWards = wards.length;
   const submittedCount = wards.filter(w => w.submitted).length;
   const missingCount = missingReports.length;
@@ -263,8 +267,19 @@ const LGADashboard = () => {
             icon={MapPin}
             iconColor="primary"
             title="Total Wards"
-            value={totalWards}
-            subtitle="In your LGA"
+            value={officialWardCount}
+            subtitle={totalWards === officialWardCount ? `All ${officialWardCount} wards tracked` : `${totalWards} of ${officialWardCount} tracked`}
+            trend={
+              totalWards === officialWardCount ? (
+                <span className="text-green-600 flex items-center gap-1 text-xs">
+                  <CheckCircle className="w-3 h-3" /> Complete
+                </span>
+              ) : totalWards < officialWardCount ? (
+                <span className="text-yellow-600 flex items-center gap-1 text-xs">
+                  <AlertTriangle className="w-3 h-3" /> {officialWardCount - totalWards} missing
+                </span>
+              ) : null
+            }
             variant="glass"
             className="card-lift"
           />

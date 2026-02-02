@@ -131,6 +131,7 @@ def get_lga_comparison(
         comparison_data.append({
             "lga_id": lga.id,
             "lga_name": lga.name,
+            "official_ward_count": lga.num_wards,
             "total_wards": total_wards,
             "reports_submitted": reports_submitted,
             "reports_missing": reports_missing,
