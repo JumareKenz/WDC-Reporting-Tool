@@ -79,49 +79,7 @@ import apiClient from '../api/client';
 
 const COLORS = ['#16a34a', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
-// Demo LGA data for fallback - Accurate ward counts for all 23 Kaduna LGAs (255 total wards)
-const DEMO_LGAS = [
-  { id: 1, name: 'Birnin Gwari', official_ward_count: 11, total_wards: 11, submitted_count: 9, missing_count: 2, reviewed_count: 7, submission_rate: 82 },
-  { id: 2, name: 'Chikun', official_ward_count: 12, total_wards: 12, submitted_count: 11, missing_count: 1, reviewed_count: 9, submission_rate: 92 },
-  { id: 3, name: 'Giwa', official_ward_count: 11, total_wards: 11, submitted_count: 8, missing_count: 3, reviewed_count: 6, submission_rate: 73 },
-  { id: 4, name: 'Igabi', official_ward_count: 12, total_wards: 12, submitted_count: 10, missing_count: 2, reviewed_count: 8, submission_rate: 83 },
-  { id: 5, name: 'Ikara', official_ward_count: 10, total_wards: 10, submitted_count: 7, missing_count: 3, reviewed_count: 5, submission_rate: 70 },
-  { id: 6, name: 'Jaba', official_ward_count: 10, total_wards: 10, submitted_count: 9, missing_count: 1, reviewed_count: 8, submission_rate: 90 },
-  { id: 7, name: "Jema'a", official_ward_count: 12, total_wards: 12, submitted_count: 10, missing_count: 2, reviewed_count: 7, submission_rate: 83 },
-  { id: 8, name: 'Kachia', official_ward_count: 12, total_wards: 12, submitted_count: 10, missing_count: 2, reviewed_count: 8, submission_rate: 83 },
-  { id: 9, name: 'Kaduna North', official_ward_count: 12, total_wards: 12, submitted_count: 11, missing_count: 1, reviewed_count: 9, submission_rate: 92 },
-  { id: 10, name: 'Kaduna South', official_ward_count: 13, total_wards: 13, submitted_count: 12, missing_count: 1, reviewed_count: 10, submission_rate: 92 },
-  { id: 11, name: 'Kagarko', official_ward_count: 10, total_wards: 10, submitted_count: 7, missing_count: 3, reviewed_count: 5, submission_rate: 70 },
-  { id: 12, name: 'Kajuru', official_ward_count: 10, total_wards: 10, submitted_count: 8, missing_count: 2, reviewed_count: 6, submission_rate: 80 },
-  { id: 13, name: 'Kaura', official_ward_count: 10, total_wards: 10, submitted_count: 8, missing_count: 2, reviewed_count: 6, submission_rate: 80 },
-  { id: 14, name: 'Kauru', official_ward_count: 11, total_wards: 11, submitted_count: 8, missing_count: 3, reviewed_count: 6, submission_rate: 73 },
-  { id: 15, name: 'Kubau', official_ward_count: 11, total_wards: 11, submitted_count: 9, missing_count: 2, reviewed_count: 7, submission_rate: 82 },
-  { id: 16, name: 'Kudan', official_ward_count: 10, total_wards: 10, submitted_count: 9, missing_count: 1, reviewed_count: 7, submission_rate: 90 },
-  { id: 17, name: 'Lere', official_ward_count: 11, total_wards: 11, submitted_count: 8, missing_count: 3, reviewed_count: 6, submission_rate: 73 },
-  { id: 18, name: 'Makarfi', official_ward_count: 10, total_wards: 10, submitted_count: 8, missing_count: 2, reviewed_count: 6, submission_rate: 80 },
-  { id: 19, name: 'Sabon Gari', official_ward_count: 11, total_wards: 11, submitted_count: 10, missing_count: 1, reviewed_count: 8, submission_rate: 91 },
-  { id: 20, name: 'Sanga', official_ward_count: 11, total_wards: 11, submitted_count: 8, missing_count: 3, reviewed_count: 6, submission_rate: 73 },
-  { id: 21, name: 'Soba', official_ward_count: 11, total_wards: 11, submitted_count: 9, missing_count: 2, reviewed_count: 7, submission_rate: 82 },
-  { id: 22, name: 'Zangon Kataf', official_ward_count: 11, total_wards: 11, submitted_count: 9, missing_count: 2, reviewed_count: 7, submission_rate: 82 },
-  { id: 23, name: 'Zaria', official_ward_count: 13, total_wards: 13, submitted_count: 12, missing_count: 1, reviewed_count: 10, submission_rate: 92 },
-];
-
-// Demo trends data
-const DEMO_TRENDS = [
-  { month: 'Aug', submission_rate: 65, submitted: 145, total: 223 },
-  { month: 'Sep', submission_rate: 72, submitted: 161, total: 223 },
-  { month: 'Oct', submission_rate: 78, submitted: 174, total: 223 },
-  { month: 'Nov', submission_rate: 82, submitted: 183, total: 223 },
-  { month: 'Dec', submission_rate: 85, submitted: 190, total: 223 },
-  { month: 'Jan', submission_rate: 88, submitted: 196, total: 223 },
-];
-
-// Demo investigations
-const DEMO_INVESTIGATIONS = [
-  { id: 1, title: 'Low submission rate in Sanga LGA', description: 'Investigating consistent low submission rates', priority: 'HIGH', status: 'OPEN', lga_name: 'Sanga', created_at: new Date().toISOString() },
-  { id: 2, title: 'Report quality review - Chikun', description: 'Reviewing quality of reports submitted', priority: 'MEDIUM', status: 'IN_PROGRESS', lga_name: 'Chikun', created_at: new Date(Date.now() - 86400000).toISOString() },
-  { id: 3, title: 'Missing coordinator - Kauru', description: 'LGA coordinator position vacant', priority: 'URGENT', status: 'OPEN', lga_name: 'Kauru', created_at: new Date(Date.now() - 172800000).toISOString() },
-];
+// No demo data - use only live data from API
 
 const StateDashboard = () => {
   const navigate = useNavigate();
@@ -157,20 +115,20 @@ const StateDashboard = () => {
   const createInvestigationMutation = useCreateInvestigation();
   const updateInvestigationMutation = useUpdateInvestigation();
 
-  // Extract data with fallbacks
+  // Extract data - NO FALLBACKS, only real data
   const overview = overviewData?.data || overviewData || {};
-  const lgaComparison = comparisonData?.data?.lgas || comparisonData?.lgas || DEMO_LGAS;
-  const trends = trendsData?.data?.trends || trendsData?.trends || DEMO_TRENDS;
-  const investigations = investigationsData?.data?.investigations || investigationsData?.investigations || DEMO_INVESTIGATIONS;
+  const lgaComparison = comparisonData?.data?.lgas || comparisonData?.lgas || [];
+  const trends = trendsData?.data?.trends || trendsData?.trends || [];
+  const investigations = investigationsData?.data?.investigations || investigationsData?.investigations || [];
 
-  // Calculate overview stats
-  const totalLGAs = overview.total_lgas || 23;
-  const totalWards = overview.total_wards || lgaComparison.reduce((sum, lga) => sum + (lga.total_wards || 0), 0) || 255;
-  const totalSubmitted = overview.total_submitted || lgaComparison.reduce((sum, lga) => sum + (lga.submitted_count || 0), 0) || 196;
-  const totalMissing = overview.total_missing || totalWards - totalSubmitted;
-  const totalReviewed = overview.total_reviewed || lgaComparison.reduce((sum, lga) => sum + (lga.reviewed_count || 0), 0) || 156;
-  const totalFlagged = overview.total_flagged || 12;
-  const submissionRate = overview.submission_rate || Math.round((totalSubmitted / totalWards) * 100);
+  // Calculate overview stats - from real data only
+  const totalLGAs = overview.total_lgas || lgaComparison.length;
+  const totalWards = overview.total_wards || lgaComparison.reduce((sum, lga) => sum + (lga.total_wards || 0), 0);
+  const totalSubmitted = overview.total_submitted || lgaComparison.reduce((sum, lga) => sum + (lga.submitted_count || 0), 0);
+  const totalMissing = overview.total_missing || (totalWards - totalSubmitted);
+  const totalReviewed = overview.total_reviewed || lgaComparison.reduce((sum, lga) => sum + (lga.reviewed_count || 0), 0);
+  const totalFlagged = overview.total_flagged || 0;
+  const submissionRate = totalWards > 0 ? Math.round((totalSubmitted / totalWards) * 100) : 0;
 
   // Sort and filter LGAs
   const sortedLGAs = [...lgaComparison]
