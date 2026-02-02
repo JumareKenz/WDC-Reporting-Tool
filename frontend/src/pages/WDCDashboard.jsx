@@ -13,6 +13,7 @@ import {
   BarChart3,
   Eye,
   ChevronRight,
+  Ban,
 } from 'lucide-react';
 import Card, { IconCard, EmptyCard } from '../components/common/Card';
 import Button from '../components/common/Button';
@@ -26,18 +27,22 @@ import {
 } from '../hooks/useWDCData';
 import { useAuth } from '../hooks/useAuth';
 import { formatDate, formatMonth, getCurrentMonth } from '../utils/formatters';
+import { getTargetReportMonth, getSubmissionInfo, formatMonthDisplay } from '../utils/dateUtils';
 
 const WDCDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const currentMonth = getCurrentMonth();
 
-  // Fetch submission status for current month
+  // Get target report month based on current date
+  const targetMonth = getTargetReportMonth();
+  const submissionInfo = getSubmissionInfo();
+
+  // Fetch submission status for target month
   const {
     data: submissionStatus,
     isLoading: checkingSubmission,
     refetch: refetchSubmission,
-  } = useCheckSubmission(currentMonth);
+  } = useCheckSubmission(targetMonth);
 
   // Fetch reports history
   const {
@@ -59,6 +64,19 @@ const WDCDashboard = () => {
   const totalMeetings = reports.reduce((sum, report) => sum + (report.meetings_held || 0), 0);
   const totalAttendees = reports.reduce((sum, report) => sum + (report.attendees_count || 0), 0);
   const reviewedCount = reports.filter(r => r.status === 'REVIEWED').length;
+
+  // Get ward and LGA names from user object
+  const wardName = user?.ward?.name || 'Your Ward';
+  const lgaName = user?.ward?.lga_name || user?.lga?.name || 'Your LGA';
+
+  // Handle submit report navigation
+  const handleSubmitReport = () => {
+    if (isSubmitted) {
+      alert(`You have already submitted your report for ${submissionInfo.month_name}. You cannot submit another report for this period.`);
+      return;
+    }
+    navigate('/wdc/submit');
+  };
 
 
   if (checkingSubmission && loadingReports) {
@@ -86,16 +104,18 @@ const WDCDashboard = () => {
                 WDC Secretary Dashboard
               </h1>
               <p className="mt-1 text-sm text-emerald-200">
-                {user?.ward_name || 'Your Ward'} • {user?.lga_name || 'Your LGA'}
+                {wardName} • {lgaName}
               </p>
             </div>
             <Button
-              icon={PlusCircle}
-              onClick={() => navigate('/wdc/submit')}
+              icon={isSubmitted ? Ban : PlusCircle}
+              onClick={handleSubmitReport}
               size="lg"
-              className="bg-white text-primary-700 hover:bg-emerald-50 shadow-lg shadow-black/20 hover:shadow-xl transition-all font-semibold"
+              disabled={isSubmitted}
+              variant={isSubmitted ? 'secondary' : 'primary'}
+              className={isSubmitted ? '' : 'bg-white text-primary-700 hover:bg-emerald-50 shadow-lg shadow-black/20 hover:shadow-xl font-semibold'}
             >
-              Submit Monthly Report
+              {isSubmitted ? 'Already Submitted' : 'Submit Monthly Report'}
             </Button>
           </div>
         </div>
@@ -109,13 +129,13 @@ const WDCDashboard = () => {
               <Alert
                 type="success"
                 title="Report Submitted"
-                message={`Your report for ${formatMonth(currentMonth)} has been submitted successfully. You can view it in your submission history below.`}
+                message={`Your report for ${submissionInfo.month_name} has been submitted successfully. You can view it in your submission history below.`}
               />
             ) : (
               <Alert
                 type="warning"
                 title="Action Required"
-                message={`You have not submitted your report for ${formatMonth(currentMonth)} yet. Click "Submit Monthly Report" to complete your submission.`}
+                message={`You have not submitted your report for ${submissionInfo.month_name} yet. Click "Submit Monthly Report" to complete your submission.`}
               />
             )}
           </div>
@@ -126,9 +146,9 @@ const WDCDashboard = () => {
           <IconCard
             icon={FileText}
             iconColor={isSubmitted ? 'success' : 'warning'}
-            title="Current Month"
+            title="Current Report"
             value={isSubmitted ? 'Submitted' : 'Pending'}
-            subtitle={formatMonth(currentMonth)}
+            subtitle={submissionInfo.month_name}
             variant="glass"
             className="card-lift"
           />
@@ -201,12 +221,13 @@ const WDCDashboard = () => {
           <Card title="Quick Actions">
             <div className="space-y-3">
               <Button
-                variant="primary"
+                variant={isSubmitted ? 'outline' : 'primary'}
                 fullWidth
-                icon={FileText}
-                onClick={() => navigate('/wdc/submit')}
+                icon={isSubmitted ? Ban : FileText}
+                onClick={handleSubmitReport}
+                disabled={isSubmitted}
               >
-                Submit Report
+                {isSubmitted ? 'Already Submitted' : 'Submit Report'}
               </Button>
               <Button
                 variant="outline"
@@ -220,6 +241,7 @@ const WDCDashboard = () => {
                 variant="ghost"
                 fullWidth
                 icon={Bell}
+                onClick={() => navigate('/wdc/notifications')}
               >
                 View Notifications ({notifications.length})
               </Button>
@@ -289,14 +311,18 @@ const WDCDashboard = () => {
             {/* Upcoming Deadlines */}
             <Card title="Upcoming" className="mt-6">
               <div className="space-y-3">
-                <div className="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                  <CalendarDays className="w-5 h-5 text-yellow-600" />
+                <div className={`flex items-center gap-3 p-3 rounded-lg border ${
+                  isSubmitted
+                    ? 'bg-green-50 border-green-200'
+                    : 'bg-yellow-50 border-yellow-200'
+                }`}>
+                  <CalendarDays className={`w-5 h-5 ${isSubmitted ? 'text-green-600' : 'text-yellow-600'}`} />
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-yellow-800">
-                      {formatMonth(currentMonth)} Report
+                    <p className={`text-sm font-medium ${isSubmitted ? 'text-green-800' : 'text-yellow-800'}`}>
+                      {submissionInfo.month_name} Report
                     </p>
-                    <p className="text-xs text-yellow-600">
-                      {isSubmitted ? 'Submitted' : 'Due by end of month'}
+                    <p className={`text-xs ${isSubmitted ? 'text-green-600' : 'text-yellow-600'}`}>
+                      {isSubmitted ? '✓ Submitted successfully' : submissionInfo.is_submission_window ? 'Due now (submission window)' : 'Submission window not yet open'}
                     </p>
                   </div>
                   {isSubmitted ? (

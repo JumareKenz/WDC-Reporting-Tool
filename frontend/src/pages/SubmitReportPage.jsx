@@ -70,7 +70,7 @@ const SubmitReportPage = () => {
                 Submit Monthly Report
               </h1>
               <p className="text-xs sm:text-sm text-neutral-600">
-                {user?.ward_name || 'Your Ward'} • {user?.lga_name || 'Your LGA'}
+                {user?.ward?.name || 'Your Ward'} • {user?.ward?.lga_name || user?.lga?.name || 'Your LGA'}
               </p>
             </div>
           </div>
