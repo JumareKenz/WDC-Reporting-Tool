@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import {
   FileText,
@@ -18,11 +18,13 @@ import {
   Upload,
   Image,
   X,
+  Info,
 } from 'lucide-react';
 import Button from '../common/Button';
 import Alert from '../common/Alert';
 import VoiceRecorder from './VoiceRecorder';
 import apiClient from '../../api/client';
+import { getTargetReportMonth, formatMonthDisplay, getSubmissionPeriodDescription } from '../../utils/dateUtils';
 
 // Kaduna LGAs data
 const KADUNA_LGAS = [
@@ -320,11 +322,18 @@ const DynamicTable = ({ columns, rows, onRowChange, onAddRow, onRemoveRow, table
 /**
  * Comprehensive WDC Monthly Report Form
  */
-const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA }) => {
+const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo }) => {
   const [submitError, setSubmitError] = useState(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [voiceNotes, setVoiceNotes] = useState({});
   const [attendancePictures, setAttendancePictures] = useState([]);
+  const [reportMonth, setReportMonth] = useState('');
+
+  // Calculate report month on mount
+  useEffect(() => {
+    const targetMonth = submissionInfo?.target_month || getTargetReportMonth();
+    setReportMonth(targetMonth);
+  }, [submissionInfo]);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -575,6 +584,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA }) => {
   const submitMutation = useMutation({
     mutationFn: async (data) => {
       const formPayload = new FormData();
+      formPayload.append('report_month', reportMonth);
       formPayload.append('report_data', JSON.stringify(data));
 
       Object.entries(voiceNotes).forEach(([fieldName, file]) => {
@@ -641,6 +651,22 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA }) => {
         title="WDC Monthly Report Form"
         message="Complete all sections. Use the microphone icon next to text fields to record voice notes — they will be transcribed automatically."
       />
+
+      {/* Submission Period Banner */}
+      {reportMonth && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <h4 className="font-semibold text-blue-900 mb-1">Submission Period</h4>
+              <p className="text-sm text-blue-700">{getSubmissionPeriodDescription()}</p>
+              <p className="text-sm text-blue-800 font-medium mt-2">
+                Report Month: <span className="font-bold">{formatMonthDisplay(reportMonth)}</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {submitError && (
         <Alert

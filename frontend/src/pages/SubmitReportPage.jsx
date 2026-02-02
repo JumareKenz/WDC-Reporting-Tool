@@ -1,31 +1,46 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Calendar } from 'lucide-react';
 import Button from '../components/common/Button';
+import Card from '../components/common/Card';
 import WDCReportForm from '../components/wdc/WDCReportForm';
 import DynamicForm from '../components/wdc/DynamicForm';
 import { useAuth } from '../hooks/useAuth';
 import apiClient from '../api/client';
 import { API_ENDPOINTS } from '../utils/constants';
+import { getSubmissionInfo as getLocalSubmissionInfo } from '../utils/dateUtils';
+import { getSubmissionInfo } from '../api/reports';
 
 const SubmitReportPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [activeForm, setActiveForm] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [submissionInfo, setSubmissionInfo] = useState(null);
+  const [alreadySubmitted, setAlreadySubmitted] = useState(false);
 
   useEffect(() => {
-    const fetchActiveForm = async () => {
+    const fetchData = async () => {
       try {
-        const response = await apiClient.get(API_ENDPOINTS.FORMS_ACTIVE);
-        setActiveForm(response?.data || null);
-      } catch {
+        // Fetch submission info
+        const infoResponse = await getSubmissionInfo();
+        const info = infoResponse?.data || getLocalSubmissionInfo();
+        setSubmissionInfo(info);
+        setAlreadySubmitted(info.already_submitted || false);
+
+        // Fetch active form
+        const formResponse = await apiClient.get(API_ENDPOINTS.FORMS_ACTIVE);
+        setActiveForm(formResponse?.data || null);
+      } catch (error) {
+        // Use local submission info if API fails
+        const info = getLocalSubmissionInfo();
+        setSubmissionInfo(info);
         setActiveForm(null);
       } finally {
         setLoading(false);
       }
     };
-    fetchActiveForm();
+    fetchData();
   }, []);
 
   const handleSuccess = () => {
@@ -66,6 +81,27 @@ const SubmitReportPage = () => {
       <div className="max-w-4xl mx-auto px-4 py-6">
         {loading ? (
           <div className="text-center py-12 text-neutral-500">Loading form...</div>
+        ) : alreadySubmitted ? (
+          <Card>
+            <div className="text-center py-12">
+              <CheckCircle className="w-16 h-16 text-success-600 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-neutral-900 mb-2">
+                Report Already Submitted
+              </h2>
+              <p className="text-neutral-600 mb-6">
+                You have already submitted a report for{' '}
+                <span className="font-semibold">{submissionInfo?.month_name}</span>.
+              </p>
+              <div className="flex gap-3 justify-center">
+                <Button onClick={() => navigate('/wdc/reports')}>
+                  View Reports
+                </Button>
+                <Button variant="outline" onClick={() => navigate('/wdc')}>
+                  Back to Dashboard
+                </Button>
+              </div>
+            </div>
+          </Card>
         ) : activeForm ? (
           <DynamicForm
             definition={activeForm.definition}
@@ -78,6 +114,7 @@ const SubmitReportPage = () => {
             onCancel={handleCancel}
             userWard={{ id: user?.ward_id, name: user?.ward_name }}
             userLGA={{ id: user?.lga_id, name: user?.lga_name }}
+            submissionInfo={submissionInfo}
           />
         )}
       </div>

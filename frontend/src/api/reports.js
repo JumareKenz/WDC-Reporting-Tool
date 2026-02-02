@@ -51,6 +51,14 @@ export const checkSubmitted = async (month) => {
 };
 
 /**
+ * Get submission info for current period
+ * @returns {Promise} Response with target month, period info, and submission status
+ */
+export const getSubmissionInfo = async () => {
+  return apiClient.get('/reports/submission-info');
+};
+
+/**
  * Review a report (LGA Coordinator/State Official)
  * @param {number} reportId - Report ID
  * @param {string} status - New status (REVIEWED, FLAGGED)
