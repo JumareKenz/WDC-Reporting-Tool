@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, CheckConstraint
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, CheckConstraint, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
@@ -201,6 +201,7 @@ class Report(Base):
         CheckConstraint("status IN ('DRAFT', 'SUBMITTED', 'REVIEWED', 'FLAGGED')", name="report_status_check"),
         CheckConstraint("meetings_held >= 0", name="meetings_positive_check"),
         CheckConstraint("attendees_count >= 0", name="attendees_positive_check"),
+        UniqueConstraint('ward_id', 'report_month', name='unique_ward_month'),
     )
 
 

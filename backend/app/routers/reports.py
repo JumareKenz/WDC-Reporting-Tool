@@ -248,20 +248,34 @@ async def create_report(
         report_kwargs['custom_fields'] = json.dumps(custom)
 
     if existing_report:
-        # Update existing report
-        for key, value in report_kwargs.items():
-            setattr(existing_report, key, value)
-        existing_report.submitted_at = datetime.utcnow()
-        new_report = existing_report
-    else:
-        # Create new report
-        report_kwargs['ward_id'] = current_user.ward_id
-        report_kwargs['user_id'] = current_user.id
-        new_report = Report(**report_kwargs)
-        db.add(new_report)
+        # Reject duplicate submission
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": f"A report for {report_month} has already been submitted for this ward",
+                "existing_report_id": existing_report.id,
+                "submitted_at": existing_report.submitted_at.isoformat() if existing_report.submitted_at else None
+            }
+        )
 
-    db.commit()
-    db.refresh(new_report)
+    # Create new report
+    report_kwargs['ward_id'] = current_user.ward_id
+    report_kwargs['user_id'] = current_user.id
+    new_report = Report(**report_kwargs)
+    db.add(new_report)
+
+    try:
+        db.commit()
+        db.refresh(new_report)
+    except Exception as e:
+        db.rollback()
+        # Handle IntegrityError for unique constraint violation
+        if "unique_ward_month" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"A report for {report_month} has already been submitted for this ward"
+            )
+        raise
 
     # Save per-field voice notes and kick off background transcription
     per_field_voices = {
@@ -346,6 +360,102 @@ async def create_report(
         ) for vn in saved_voice_notes
     ]
 
+    return response
+
+
+@router.put("/{report_id}", response_model=ReportResponse)
+async def update_report(
+    report_id: int,
+    report_month: str = Form(...),
+    meetings_held: int = Form(0),
+    attendees_count: int = Form(0),
+    issues_identified: Optional[str] = Form(None),
+    actions_taken: Optional[str] = Form(None),
+    challenges: Optional[str] = Form(None),
+    recommendations: Optional[str] = Form(None),
+    additional_notes: Optional[str] = Form(None),
+    report_data: Optional[str] = Form(None),
+    voice_note: Optional[UploadFile] = File(None),
+    voice_awareness_theme: Optional[UploadFile] = File(None),
+    voice_traditional_leaders_support: Optional[UploadFile] = File(None),
+    voice_religious_leaders_support: Optional[UploadFile] = File(None),
+    voice_support_required: Optional[UploadFile] = File(None),
+    voice_aob: Optional[UploadFile] = File(None),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update an existing report (WDC Secretary only).
+
+    Note: Cannot change report_month.
+    """
+
+    # Check if user is WDC Secretary
+    if current_user.role != "WDC_SECRETARY":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only WDC Secretaries can update reports"
+        )
+
+    # Get existing report
+    existing_report = db.query(Report).filter(Report.id == report_id).first()
+    if not existing_report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Report not found"
+        )
+
+    # Verify ownership
+    if existing_report.ward_id != current_user.ward_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to update this report"
+        )
+
+    # Cannot change report_month
+    if report_month != existing_report.report_month:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot change report month. Delete and create a new report if needed."
+        )
+
+    # Parse comprehensive report data if provided
+    comprehensive_data = {}
+    if report_data:
+        try:
+            comprehensive_data = json.loads(report_data)
+        except json.JSONDecodeError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid JSON in report_data field"
+            )
+
+    # Extract values from comprehensive data
+    def get_value(key, default=None):
+        return comprehensive_data.get(key, default)
+
+    # Update report fields (same structure as create)
+    existing_report.meetings_held = get_value('meetings_held', meetings_held)
+    existing_report.attendees_count = get_value('attendees_count', attendees_count)
+    existing_report.issues_identified = get_value('issues_identified', issues_identified)
+    existing_report.actions_taken = get_value('actions_taken', actions_taken)
+    existing_report.challenges = get_value('challenges', challenges)
+    existing_report.recommendations = get_value('recommendations', recommendations)
+    existing_report.additional_notes = get_value('additional_notes', additional_notes)
+
+    # Update comprehensive fields
+    for field in ['report_date', 'report_time', 'meeting_type', 'attendance_total',
+                  'attendance_male', 'attendance_female', 'next_meeting_date']:
+        if field in comprehensive_data:
+            setattr(existing_report, field, comprehensive_data[field])
+
+    existing_report.submitted_at = datetime.utcnow()
+
+    db.commit()
+    db.refresh(existing_report)
+
+    # Prepare response
+    response = ReportResponse.from_orm(existing_report)
     return response
 
 
