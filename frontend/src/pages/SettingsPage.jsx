@@ -18,12 +18,14 @@ import Button from '../components/common/Button';
 import Alert from '../components/common/Alert';
 import { useAuth } from '../hooks/useAuth';
 import { ROLE_LABELS } from '../utils/constants';
+import { updateProfile, updateEmail, changePassword } from '../api/profile';
 
 const SettingsPage = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const [alertMessage, setAlertMessage] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const [profileData, setProfileData] = useState({
     full_name: user?.full_name || '',
@@ -44,16 +46,47 @@ const SettingsPage = () => {
     confirm_password: '',
   });
 
-  const handleProfileSave = () => {
-    // In production, this would call an API
-    setAlertMessage({ type: 'success', text: 'Profile updated successfully!' });
+  const handleProfileSave = async () => {
+    try {
+      setIsLoading(true);
+      setAlertMessage(null);
+
+      // Separate email update from profile update
+      const hasEmailChanged = profileData.email !== user?.email;
+      const hasProfileChanged = profileData.full_name !== user?.full_name || profileData.phone !== user?.phone;
+
+      // Update profile (full_name, phone)
+      if (hasProfileChanged) {
+        const profileUpdate = {};
+        if (profileData.full_name !== user?.full_name) profileUpdate.full_name = profileData.full_name;
+        if (profileData.phone !== user?.phone) profileUpdate.phone = profileData.phone;
+
+        await updateProfile(profileUpdate);
+      }
+
+      // Update email separately (might fail for ward/LGA users)
+      if (hasEmailChanged) {
+        await updateEmail(profileData.email);
+      }
+
+      // Update local user state
+      if (updateUser) {
+        updateUser({ ...user, ...profileData });
+      }
+
+      setAlertMessage({ type: 'success', text: 'Profile updated successfully!' });
+    } catch (error) {
+      setAlertMessage({ type: 'error', text: error.message || 'Failed to update profile' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleNotificationSave = () => {
     setAlertMessage({ type: 'success', text: 'Notification preferences updated!' });
   };
 
-  const handlePasswordChange = () => {
+  const handlePasswordChange = async () => {
     if (passwordData.new_password !== passwordData.confirm_password) {
       setAlertMessage({ type: 'error', text: 'Passwords do not match!' });
       return;
@@ -62,8 +95,20 @@ const SettingsPage = () => {
       setAlertMessage({ type: 'error', text: 'Password must be at least 6 characters!' });
       return;
     }
-    setAlertMessage({ type: 'success', text: 'Password changed successfully!' });
-    setPasswordData({ current_password: '', new_password: '', confirm_password: '' });
+
+    try {
+      setIsLoading(true);
+      setAlertMessage(null);
+
+      await changePassword(passwordData.current_password, passwordData.new_password);
+
+      setAlertMessage({ type: 'success', text: 'Password changed successfully!' });
+      setPasswordData({ current_password: '', new_password: '', confirm_password: '' });
+    } catch (error) {
+      setAlertMessage({ type: 'error', text: error.message || 'Failed to change password' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const tabs = [
@@ -177,9 +222,17 @@ const SettingsPage = () => {
                         type="email"
                         value={profileData.email}
                         onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
-                        className="w-full pl-10 pr-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+                        disabled={user?.role === 'WDC_SECRETARY' || user?.role === 'LGA_COORDINATOR'}
+                        className={`w-full pl-10 pr-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 ${
+                          (user?.role === 'WDC_SECRETARY' || user?.role === 'LGA_COORDINATOR') ? 'bg-neutral-50 text-neutral-500' : ''
+                        }`}
                       />
                     </div>
+                    {(user?.role === 'WDC_SECRETARY' || user?.role === 'LGA_COORDINATOR') && (
+                      <p className="text-xs text-neutral-500 mt-1">
+                        Contact state office to change your email address
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -232,8 +285,8 @@ const SettingsPage = () => {
                 )}
 
                 <div className="flex justify-end">
-                  <Button icon={Save} onClick={handleProfileSave}>
-                    Save Changes
+                  <Button icon={Save} onClick={handleProfileSave} disabled={isLoading}>
+                    {isLoading ? 'Saving...' : 'Save Changes'}
                   </Button>
                 </div>
               </div>
@@ -364,9 +417,9 @@ const SettingsPage = () => {
                   <Button
                     icon={Shield}
                     onClick={handlePasswordChange}
-                    disabled={!passwordData.current_password || !passwordData.new_password || !passwordData.confirm_password}
+                    disabled={!passwordData.current_password || !passwordData.new_password || !passwordData.confirm_password || isLoading}
                   >
-                    Update Password
+                    {isLoading ? 'Updating...' : 'Update Password'}
                   </Button>
                 </div>
 
