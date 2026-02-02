@@ -467,29 +467,39 @@ export default function StateUsersPage() {
       errs.full_name = 'Full name is required';
     if (!assignForm.email.trim())
       errs.email = 'Email is required';
-    if (!assignForm.password)
-      errs.password = 'Password is required';
-    else if (assignForm.password.length < 6)
+    if (!assignForm.phone.trim())
+      errs.phone = 'Phone number is required for SMS notifications';
+    // Password is optional - will be auto-generated if not provided
+    if (assignForm.password && assignForm.password.length < 6)
       errs.password = 'At least 6 characters';
-    if (assignForm.password !== assignForm.confirm_password)
+    if (assignForm.password && assignForm.password !== assignForm.confirm_password)
       errs.confirm_password = 'Passwords do not match';
 
     if (Object.keys(errs).length) { setAssignErrors(errs); return; }
 
     try {
-      await assignUserMutation.mutateAsync({
+      const result = await assignUserMutation.mutateAsync({
         full_name: assignForm.full_name,
         email: assignForm.email,
-        phone: assignForm.phone || null,
-        password: assignForm.password,
+        phone: assignForm.phone,
+        password: assignForm.password || undefined,  // Auto-generate if empty
         role: selectedWardId ? 'WDC_SECRETARY' : 'LGA_COORDINATOR',
         lga_id: selectedWardId ? undefined : selectedLGAId,
         ward_id: selectedWardId || undefined,
       });
       setShowAssignModal(false);
-      showToast(
-        `${selectedWardId ? 'WDC Secretary' : 'LGA Coordinator'} assigned successfully.`
-      );
+
+      // Show success message with SMS status
+      const roleLabel = selectedWardId ? 'WDC Secretary' : 'LGA Coordinator';
+      let message = `${roleLabel} assigned successfully.`;
+
+      if (result.sms_sent) {
+        message += ' Login credentials sent via SMS.';
+      } else if (result.credentials) {
+        message += ` Credentials: ${result.credentials.email} / ${result.credentials.password}`;
+      }
+
+      showToast(message);
     } catch (err) {
       showToast(err.message || 'Failed to assign user.', 'error');
     }
@@ -941,21 +951,38 @@ export default function StateUsersPage() {
 
           {/* Phone Number */}
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">Phone Number</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">
+              Phone Number <span className="text-red-500">*</span>
+            </label>
             <input
               type="tel"
               value={assignForm.phone}
-              onChange={(e) => setAssignForm((p) => ({ ...p, phone: e.target.value }))}
-              className="input-base w-full"
+              onChange={(e) => {
+                setAssignForm((p) => ({ ...p, phone: e.target.value }));
+                setAssignErrors((p) => ({ ...p, phone: null }));
+              }}
+              className={`input-base w-full ${assignErrors.phone ? 'border-red-400 focus:ring-red-400' : ''}`}
               placeholder="+234 800 000 0000"
             />
+            {assignErrors.phone && (
+              <p className="text-xs text-red-500 mt-1">{assignErrors.phone}</p>
+            )}
+            <p className="text-xs text-neutral-400 mt-1">
+              Login credentials will be sent via SMS to this number.
+            </p>
           </div>
 
           {/* Password + Confirm side by side */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2">
+            <p className="text-xs text-blue-700">
+              <strong>Optional:</strong> Leave password blank to auto-generate a secure password.
+              It will be sent via SMS to the phone number above.
+            </p>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Password <span className="text-red-500">*</span>
+                Password <span className="text-neutral-400">(optional)</span>
               </label>
               <div className="relative">
                 <input
@@ -966,7 +993,7 @@ export default function StateUsersPage() {
                     setAssignErrors((p) => ({ ...p, password: null }));
                   }}
                   className={`input-base w-full pr-10 ${assignErrors.password ? 'border-red-400 focus:ring-red-400' : ''}`}
-                  placeholder="Min 6 characters"
+                  placeholder="Auto-generated if blank"
                 />
                 <button
                   type="button"
@@ -982,7 +1009,7 @@ export default function StateUsersPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Confirm Password <span className="text-red-500">*</span>
+                Confirm Password <span className="text-neutral-400">(if provided)</span>
               </label>
               <div className="relative">
                 <input
