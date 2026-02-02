@@ -7,10 +7,15 @@ This script updates the database with:
 """
 
 import sys
+import os
 from pathlib import Path
 
 # Add app directory to path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+# Set UTF-8 encoding for Windows console
+if sys.platform == 'win32':
+    sys.stdout.reconfigure(encoding='utf-8')
 
 from app.database import SessionLocal
 from app.models import LGA, Ward
