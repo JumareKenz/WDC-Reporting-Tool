@@ -1,12 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   MessageSquare,
   Send,
-  User,
-  Clock,
-  CheckCircle,
-  Search,
-  Filter,
+  Reply,
+  Users,
+  Building2,
+  Shield,
+  ChevronDown,
+  ChevronRight,
+  Check,
+  CheckCheck,
+  X,
 } from 'lucide-react';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
@@ -16,41 +20,226 @@ import { useFeedback, useSendFeedback } from '../hooks/useLGAData';
 import { useAuth } from '../hooks/useAuth';
 import { formatDate } from '../utils/formatters';
 import { USER_ROLES, ROLE_LABELS } from '../utils/constants';
+import apiClient from '../api/client';
 
 const MessagesPage = () => {
   const { user } = useAuth();
   const [newMessage, setNewMessage] = useState('');
   const [alertMessage, setAlertMessage] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [recipientType, setRecipientType] = useState(
-    user?.role === USER_ROLES.WDC_SECRETARY ? 'LGA' : 'WDC'
-  );
+  const [recipientType, setRecipientType] = useState('');
+  const [replyTo, setReplyTo] = useState(null);
+  const [expandedThreads, setExpandedThreads] = useState({});
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [sending, setSending] = useState(false);
 
-  const { data: feedbackData, isLoading, refetch } = useFeedback({ limit: 50 });
-  const sendFeedbackMutation = useSendFeedback();
+  const { data: feedbackData, isLoading, refetch } = useFeedback({ limit: 100 });
 
   const messages = feedbackData?.data?.messages || feedbackData?.messages || [];
 
-  const filteredMessages = messages.filter(m =>
-    m.message?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    m.sender_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Determine available recipient options based on user role
+  const getRecipientOptions = () => {
+    if (user?.role === 'WDC_SECRETARY') {
+      return [
+        { value: 'LGA', label: 'LGA Chairman', icon: Building2 },
+        { value: 'STATE', label: 'State Leadership', icon: Shield },
+      ];
+    } else if (user?.role === 'LGA_COORDINATOR') {
+      return [
+        { value: 'WDC', label: 'Ward Secretaries', icon: Users },
+        { value: 'STATE', label: 'State Leadership', icon: Shield },
+      ];
+    } else if (user?.role === 'STATE_OFFICIAL') {
+      return [
+        { value: 'LGA', label: 'LGA Chairmen', icon: Building2 },
+        { value: 'WDC', label: 'Ward Secretaries', icon: Users },
+      ];
+    }
+    return [];
+  };
+
+  const recipientOptions = getRecipientOptions();
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || (!recipientType && !replyTo)) {
+      setAlertMessage({ type: 'error', text: 'Please select a recipient and enter a message' });
+      return;
+    }
 
     try {
-      await sendFeedbackMutation.mutateAsync({
+      setSending(true);
+      const payload = {
+        ward_id: user.ward_id || (replyTo?.ward_id),
         message: newMessage,
-        recipient_type: recipientType,
-        ward_id: user?.ward_id,
-      });
+        recipient_type: replyTo ? null : recipientType,
+        parent_id: replyTo?.id || null,
+      };
+
+      if (replyTo) {
+        payload.recipient_id = replyTo.sender?.id;
+      }
+
+      await apiClient.post('/feedback', payload);
       setNewMessage('');
+      setRecipientType('');
+      setReplyTo(null);
       setAlertMessage({ type: 'success', text: 'Message sent successfully!' });
-      refetch();
+      await refetch();
     } catch (error) {
       setAlertMessage({ type: 'error', text: error.message || 'Failed to send message' });
+    } finally {
+      setSending(false);
     }
+  };
+
+  const markAsRead = async (messageId) => {
+    try {
+      await apiClient.patch(`/feedback/${messageId}/read`);
+      await refetch();
+    } catch (error) {
+      console.error('Failed to mark as read:', error);
+    }
+  };
+
+  const toggleThread = (messageId) => {
+    setExpandedThreads(prev => ({
+      ...prev,
+      [messageId]: !prev[messageId],
+    }));
+  };
+
+  // Group messages into threads
+  const groupMessagesIntoThreads = () => {
+    const threads = {};
+    const rootMessages = [];
+
+    messages.forEach(msg => {
+      if (msg.parent_id) {
+        if (!threads[msg.parent_id]) {
+          threads[msg.parent_id] = [];
+        }
+        threads[msg.parent_id].push(msg);
+      } else {
+        rootMessages.push(msg);
+      }
+    });
+
+    return { rootMessages, threads };
+  };
+
+  const { rootMessages, threads } = groupMessagesIntoThreads();
+
+  // Filter messages
+  const filteredMessages = rootMessages.filter(msg => {
+    if (activeFilter === 'all') return true;
+    if (activeFilter === 'sent') return msg.sender?.id === user?.id;
+    if (activeFilter === 'received') return msg.recipient?.id === user?.id || !msg.recipient_id;
+    if (activeFilter === 'unread') return !msg.is_read && msg.recipient?.id === user?.id;
+    return true;
+  });
+
+  const getRoleLabel = (role) => {
+    return ROLE_LABELS[role] || role;
+  };
+
+  const MessageThread = ({ message, level = 0 }) => {
+    const isExpanded = expandedThreads[message.id];
+    const replies = threads[message.id] || [];
+    const isSentByMe = message.sender?.id === user?.id;
+    const isReceivedByMe = message.recipient?.id === user?.id;
+
+    return (
+      <div className={`${level > 0 ? 'ml-8 mt-2' : ''}`}>
+        <div
+          className={`p-4 rounded-lg border-2 transition-all ${
+            isSentByMe
+              ? 'bg-primary-50 border-primary-200'
+              : isReceivedByMe && !message.is_read
+              ? 'bg-yellow-50 border-yellow-300'
+              : 'bg-white border-neutral-200'
+          } ${level > 0 ? 'border-l-4 border-l-blue-400' : ''}`}
+        >
+          <div className="flex items-start justify-between mb-2">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-semibold text-neutral-900">
+                  {message.sender?.full_name || 'Unknown'}
+                </span>
+                <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-neutral-100 text-neutral-600">
+                  {getRoleLabel(message.sender?.role)}
+                </span>
+                {isSentByMe && (
+                  <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-700">
+                    You
+                  </span>
+                )}
+              </div>
+              {message.recipient && (
+                <p className="text-xs text-neutral-500">
+                  To: {message.recipient.full_name} ({getRoleLabel(message.recipient.role)})
+                </p>
+              )}
+              {message.ward_name && (
+                <p className="text-xs text-neutral-500">Ward: {message.ward_name}</p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {isReceivedByMe && (
+                message.is_read ? (
+                  <CheckCheck className="w-4 h-4 text-green-500" title="Read" />
+                ) : (
+                  <Check className="w-4 h-4 text-neutral-400" title="Delivered" />
+                )
+              )}
+              <span className="text-xs text-neutral-500">{formatDate(message.created_at, true)}</span>
+            </div>
+          </div>
+
+          <p className="text-neutral-700 whitespace-pre-wrap">{message.message}</p>
+
+          <div className="flex items-center gap-2 mt-3">
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={Reply}
+              onClick={() => {
+                setReplyTo(message);
+                setRecipientType('');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+            >
+              Reply
+            </Button>
+            {replies.length > 0 && (
+              <Button
+                size="sm"
+                variant="ghost"
+                icon={isExpanded ? ChevronDown : ChevronRight}
+                onClick={() => toggleThread(message.id)}
+              >
+                {replies.length} {replies.length === 1 ? 'Reply' : 'Replies'}
+              </Button>
+            )}
+            {isReceivedByMe && !message.is_read && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => markAsRead(message.id)}
+              >
+                Mark as read
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {isExpanded && replies.length > 0 && (
+          <div className="mt-2 space-y-2">
+            {replies.map(reply => (
+              <MessageThread key={reply.id} message={reply} level={level + 1} />
+            ))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   if (isLoading) {
@@ -62,14 +251,12 @@ const MessagesPage = () => {
   }
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="space-y-6 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-neutral-900">Messages</h1>
+        <h1 className="text-2xl font-bold text-neutral-900">Professional Messaging</h1>
         <p className="text-sm text-neutral-600 mt-1">
-          {user?.role === USER_ROLES.WDC_SECRETARY
-            ? 'Communicate with your LGA Coordinator and State Officials'
-            : `Communicate with ${user?.role === USER_ROLES.LGA_COORDINATOR ? 'ward secretaries' : 'LGA coordinators'}`}
+          Communicate with ward secretaries, LGA chairmen, and state leadership
         </p>
       </div>
 
@@ -81,144 +268,112 @@ const MessagesPage = () => {
         />
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Messages List */}
-        <div className="lg:col-span-2">
-          <Card
-            title="Message History"
-            action={
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-                <input
-                  type="text"
-                  placeholder="Search messages..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 pr-3 py-1.5 text-sm border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 w-48"
-                />
-              </div>
-            }
+      {/* Compose Message Card */}
+      <Card>
+        <h3 className="text-lg font-semibold text-neutral-900 mb-4">
+          {replyTo ? `Replying to ${replyTo.sender.full_name}` : 'Compose New Message'}
+        </h3>
+
+        {replyTo && (
+          <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded relative">
+            <button
+              onClick={() => setReplyTo(null)}
+              className="absolute top-2 right-2 text-neutral-400 hover:text-neutral-600"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <p className="text-sm text-neutral-600 mb-1">
+              <span className="font-medium">{replyTo.sender.full_name}:</span>
+            </p>
+            <p className="text-sm text-neutral-700 italic line-clamp-2">"{replyTo.message}"</p>
+          </div>
+        )}
+
+        {!replyTo && recipientOptions.length > 0 && (
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-neutral-700 mb-2">
+              Send To:
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              {recipientOptions.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => setRecipientType(option.value)}
+                  className={`flex items-center gap-2 p-3 border-2 rounded-lg transition-all ${
+                    recipientType === option.value
+                      ? 'border-primary-500 bg-primary-50'
+                      : 'border-neutral-200 hover:border-neutral-300'
+                  }`}
+                >
+                  <option.icon className="w-5 h-5 text-primary-600" />
+                  <span className="font-medium text-neutral-900">{option.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <textarea
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          placeholder="Type your message here..."
+          className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 resize-none"
+          rows={4}
+        />
+
+        <div className="flex justify-end mt-3">
+          <Button
+            icon={Send}
+            onClick={handleSendMessage}
+            disabled={!newMessage.trim() || sending || (!recipientType && !replyTo)}
+            loading={sending}
           >
-            {filteredMessages.length > 0 ? (
-              <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-                {filteredMessages.map((message) => {
-                  const isFromMe = message.sender_id === user?.id;
-
-                  return (
-                    <div
-                      key={message.id}
-                      className={`flex ${isFromMe ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div
-                        className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                          isFromMe
-                            ? 'bg-primary-600 text-white rounded-br-md'
-                            : 'bg-neutral-100 text-neutral-900 rounded-bl-md'
-                        }`}
-                      >
-                        {!isFromMe && (
-                          <p className={`text-xs font-medium mb-1 ${isFromMe ? 'text-primary-200' : 'text-primary-600'}`}>
-                            {message.sender_name || 'Unknown'}
-                          </p>
-                        )}
-                        <p className="text-sm">{message.message}</p>
-                        <div className={`flex items-center gap-2 mt-2 text-xs ${isFromMe ? 'text-primary-200' : 'text-neutral-500'}`}>
-                          <Clock className="w-3 h-3" />
-                          {formatDate(message.created_at, true)}
-                          {isFromMe && message.read_at && (
-                            <CheckCircle className="w-3 h-3 ml-1" />
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <MessageSquare className="w-12 h-12 text-neutral-300 mx-auto mb-4" />
-                <p className="text-neutral-500 font-medium">No messages yet</p>
-                <p className="text-sm text-neutral-400 mt-1">
-                  Start a conversation by sending a message
-                </p>
-              </div>
-            )}
-          </Card>
+            Send Message
+          </Button>
         </div>
+      </Card>
 
-        {/* Compose Message */}
-        <div className="lg:col-span-1">
-          <Card title="Send Message">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  To
-                </label>
-                {user?.role === USER_ROLES.WDC_SECRETARY ? (
-                  <select
-                    value={recipientType}
-                    onChange={(e) => setRecipientType(e.target.value)}
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 bg-white"
-                  >
-                    <option value="LGA">LGA Coordinator</option>
-                    <option value="STATE">State Official</option>
-                  </select>
-                ) : (
-                  <div className="px-3 py-2 bg-neutral-50 rounded-lg text-sm text-neutral-600">
-                    {user?.role === USER_ROLES.LGA_COORDINATOR
-                      ? 'Ward Secretaries'
-                      : 'LGA Coordinators'}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  Message
-                </label>
-                <textarea
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Type your message here..."
-                  rows={6}
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 resize-none"
-                />
-              </div>
-
-              <Button
-                fullWidth
-                icon={Send}
-                onClick={handleSendMessage}
-                disabled={!newMessage.trim()}
-                loading={sendFeedbackMutation.isPending}
-              >
-                Send Message
-              </Button>
-            </div>
-          </Card>
-
-          {/* Quick Info */}
-          <Card title="Info" className="mt-6">
-            <div className="space-y-3 text-sm text-neutral-600">
-              <p>
-                Use this channel to communicate with{' '}
-                {user?.role === USER_ROLES.WDC_SECRETARY
-                  ? 'your LGA Coordinator and State Officials'
-                  : user?.role === USER_ROLES.LGA_COORDINATOR
-                  ? 'ward secretaries'
-                  : 'LGA coordinators'}{' '}
-                about:
-              </p>
-              <ul className="list-disc list-inside space-y-1">
-                <li>Report clarifications</li>
-                <li>Support requests</li>
-                <li>General inquiries</li>
-                <li>Feedback and suggestions</li>
-              </ul>
-            </div>
-          </Card>
-        </div>
+      {/* Filter Buttons */}
+      <div className="flex gap-2 overflow-x-auto pb-2">
+        {[
+          { value: 'all', label: 'All Messages' },
+          { value: 'received', label: 'Received' },
+          { value: 'sent', label: 'Sent' },
+          { value: 'unread', label: 'Unread' },
+        ].map((filter) => (
+          <button
+            key={filter.value}
+            onClick={() => setActiveFilter(filter.value)}
+            className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-all ${
+              activeFilter === filter.value
+                ? 'bg-primary-600 text-white'
+                : 'bg-white text-neutral-700 border border-neutral-300 hover:bg-neutral-50'
+            }`}
+          >
+            {filter.label}
+          </button>
+        ))}
       </div>
+
+      {/* Messages List */}
+      <Card>
+        {filteredMessages.length > 0 ? (
+          <div className="space-y-4">
+            {filteredMessages.map((message) => (
+              <MessageThread key={message.id} message={message} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <MessageSquare className="w-16 h-16 text-neutral-300 mx-auto mb-4" />
+            <p className="text-neutral-600 font-medium">
+              {activeFilter === 'all'
+                ? 'No messages yet. Start a conversation!'
+                : `No ${activeFilter} messages`}
+            </p>
+          </div>
+        )}
+      </Card>
     </div>
   );
 };
