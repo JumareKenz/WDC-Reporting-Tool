@@ -112,6 +112,7 @@ const TextInput = ({
 }) => {
   const inputId = `field-${name}`;
   const isTextarea = type === 'textarea';
+  const hasError = !!error;
 
   return (
     <div className="space-y-1">
@@ -131,7 +132,10 @@ const TextInput = ({
           onChange={onChange}
           placeholder={placeholder}
           rows={rows || 3}
-          className={`w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none ${error ? 'border-red-500' : ''}`}
+          required={required}
+          className={`w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none ${
+            hasError ? 'border-red-500 bg-red-50' : 'border-neutral-300'
+          }`}
           {...props}
         />
       ) : (
@@ -142,12 +146,20 @@ const TextInput = ({
           value={value}
           onChange={onChange}
           placeholder={placeholder}
-          className={`w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${error ? 'border-red-500' : ''}`}
+          required={required}
+          className={`w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+            hasError ? 'border-red-500 bg-red-50' : 'border-neutral-300'
+          }`}
           {...props}
         />
       )}
       {helpText && <p className="text-xs text-neutral-500">{helpText}</p>}
-      {error && <p className="text-xs text-red-500">{error}</p>}
+      {error && (
+        <div className="flex items-center gap-1 text-red-600">
+          <AlertTriangle className="w-3 h-3" />
+          <p className="text-xs font-medium">{error}</p>
+        </div>
+      )}
     </div>
   );
 };
@@ -614,12 +626,91 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
     },
   });
 
+  const validateForm = () => {
+    const errors = [];
+
+    // Meeting type required
+    if (!formData.meeting_type) {
+      errors.push('Meeting type is required');
+    }
+
+    // Attendance validation
+    const attendanceTotal = formData.attendance_total || 0;
+    const attendanceMale = formData.attendance_male || 0;
+    const attendanceFemale = formData.attendance_female || 0;
+
+    if (attendanceTotal < (attendanceMale + attendanceFemale)) {
+      errors.push(`Attendance total (${attendanceTotal}) must be >= sum of male (${attendanceMale}) and female (${attendanceFemale})`);
+    }
+
+    // Health data validation - Hepatitis B
+    const hepbTested = formData.health_hepb_tested || 0;
+    const hepbPositive = formData.health_hepb_positive || 0;
+
+    if (hepbPositive > hepbTested) {
+      errors.push(`Hepatitis B positive cases (${hepbPositive}) cannot exceed tested cases (${hepbTested})`);
+    }
+
+    // Array size validation
+    if (formData.action_tracker && formData.action_tracker.length > 10) {
+      errors.push('Action tracker cannot have more than 10 items');
+    }
+
+    if (formData.vdc_reports && formData.vdc_reports.length > 10) {
+      errors.push('VDC reports cannot have more than 10 items');
+    }
+
+    if (formData.action_plan && formData.action_plan.length > 10) {
+      errors.push('Action plan cannot have more than 10 items');
+    }
+
+    if (formData.community_feedback && formData.community_feedback.length !== 5) {
+      errors.push('Community feedback must have exactly 5 items');
+    }
+
+    // Date validation - next meeting date
+    if (formData.next_meeting_date) {
+      const nextMeeting = new Date(formData.next_meeting_date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (nextMeeting < today) {
+        errors.push('Next meeting date must be in the future');
+      }
+    }
+
+    // Numeric constraints (>= 0)
+    const numericFields = [
+      'meetings_held', 'attendees_count', 'health_penta1', 'health_bcg',
+      'health_penta3', 'health_measles', 'health_malaria_under5',
+      'health_diarrhea_under5', 'health_anc_first_visit', 'health_anc_fourth_visit',
+      'health_anc_eighth_visit', 'health_deliveries', 'health_postnatal',
+      'health_fp_counselling', 'health_fp_new_acceptors', 'health_hepb_tested',
+      'health_hepb_positive', 'health_tb_presumptive', 'health_tb_on_treatment',
+      'facilities_renovated_govt', 'facilities_renovated_partners',
+      'facilities_renovated_wdc', 'items_donated_count', 'items_repaired_count',
+      'women_transported_anc', 'women_transported_delivery',
+      'children_transported_danger', 'women_supported_delivery_items',
+      'maternal_deaths', 'perinatal_deaths'
+    ];
+
+    numericFields.forEach(field => {
+      if (formData[field] !== undefined && formData[field] !== null && formData[field] < 0) {
+        errors.push(`${field.replace(/_/g, ' ')} must be >= 0`);
+      }
+    });
+
+    return errors;
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     setSubmitError(null);
 
-    if (!formData.meeting_type) {
-      setSubmitError('Please select a meeting type');
+    // Validate form
+    const validationErrors = validateForm();
+    if (validationErrors.length > 0) {
+      setSubmitError(validationErrors.join('; '));
       return;
     }
 

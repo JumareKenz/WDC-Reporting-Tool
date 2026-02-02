@@ -342,6 +342,68 @@ class ReportBase(BaseModel):
     chairman_signature: Optional[str] = None
     secretary_signature: Optional[str] = None
 
+    @validator('attendance_total')
+    def validate_attendance_total(cls, v, values):
+        """Validate that attendance_total >= attendance_male + attendance_female"""
+        if v is not None:
+            male = values.get('attendance_male', 0) or 0
+            female = values.get('attendance_female', 0) or 0
+            if v < (male + female):
+                raise ValueError(f'Attendance total ({v}) must be >= sum of male ({male}) and female ({female})')
+        return v
+
+    @validator('health_hepb_positive')
+    def validate_hepb_positive(cls, v, values):
+        """Validate that health_hepb_positive <= health_hepb_tested"""
+        if v is not None and v > 0:
+            tested = values.get('health_hepb_tested', 0) or 0
+            if v > tested:
+                raise ValueError(f'Hepatitis B positive cases ({v}) cannot exceed tested cases ({tested})')
+        return v
+
+    @validator('next_meeting_date')
+    def validate_next_meeting_date(cls, v):
+        """Validate that next_meeting_date is in the future"""
+        if v:
+            from datetime import datetime
+            try:
+                meeting_date = datetime.strptime(v, '%Y-%m-%d')
+                if meeting_date.date() < datetime.utcnow().date():
+                    raise ValueError('Next meeting date must be in the future')
+            except ValueError as e:
+                if 'does not match format' in str(e):
+                    raise ValueError('Next meeting date must be in YYYY-MM-DD format')
+                raise
+        return v
+
+    @validator('action_tracker')
+    def validate_action_tracker_size(cls, v):
+        """Validate action_tracker max size"""
+        if v and len(v) > 10:
+            raise ValueError('Action tracker cannot have more than 10 items')
+        return v
+
+    @validator('vdc_reports')
+    def validate_vdc_reports_size(cls, v):
+        """Validate vdc_reports max size"""
+        if v and len(v) > 10:
+            raise ValueError('VDC reports cannot have more than 10 items')
+        return v
+
+    @validator('action_plan')
+    def validate_action_plan_size(cls, v):
+        """Validate action_plan max size"""
+        if v and len(v) > 10:
+            raise ValueError('Action plan cannot have more than 10 items')
+        return v
+
+    @validator('community_feedback')
+    def validate_community_feedback_size(cls, v):
+        """Validate community_feedback has exactly 5 items"""
+        if v and len(v) != 5:
+            raise ValueError('Community feedback must have exactly 5 items')
+        return v
+
 
 class ReportCreate(ReportBase):
     pass

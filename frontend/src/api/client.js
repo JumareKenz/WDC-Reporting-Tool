@@ -56,16 +56,31 @@ apiClient.interceptors.response.use(
       }
 
       // Extract error message from standardized error response
-      const errorMessage =
+      let errorMessage =
         data?.error?.message ||
         data?.message ||
+        data?.detail ||
         getDefaultErrorMessage(status);
+
+      // Handle Pydantic validation errors (422)
+      if (status === 422 && data?.detail && Array.isArray(data.detail)) {
+        const validationErrors = data.detail.map(err => {
+          const field = err.loc?.slice(1).join('.') || 'field';
+          return `${field}: ${err.msg}`;
+        }).join(', ');
+        errorMessage = `Validation errors: ${validationErrors}`;
+      }
+
+      // Handle conflict errors (409) with specific message
+      if (status === 409 && typeof data?.detail === 'object' && data.detail.message) {
+        errorMessage = data.detail.message;
+      }
 
       // Create enhanced error object
       const enhancedError = new Error(errorMessage);
       enhancedError.status = status;
       enhancedError.code = data?.error?.code;
-      enhancedError.details = data?.error?.details;
+      enhancedError.details = data?.error?.details || data?.detail;
 
       return Promise.reject(enhancedError);
     } else if (error.request) {
