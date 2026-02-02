@@ -2,6 +2,7 @@ from pydantic import BaseModel, EmailStr, Field, validator
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
+import json
 
 
 # Enums
@@ -368,6 +369,16 @@ class ReportResponse(ReportBase):
     submitted_by: Optional[UserSimple] = None
     voice_notes: List[VoiceNoteSimple] = []
     has_voice_note: bool = False
+
+    @validator('action_tracker', 'community_feedback', 'vdc_reports', 'action_plan', pre=True)
+    def parse_json_fields(cls, v):
+        """Parse JSON string fields from database into lists."""
+        if isinstance(v, str):
+            try:
+                return json.loads(v) if v else None
+            except json.JSONDecodeError:
+                return None
+        return v
 
     class Config:
         from_attributes = True
