@@ -16,6 +16,7 @@ from ..schemas import (
 from ..dependencies import get_current_user
 from ..config import VOICE_NOTES_DIR, MAX_VOICE_NOTE_SIZE, ALLOWED_AUDIO_EXTENSIONS
 from ..tasks import process_voice_note
+from ..utils.date_utils import validate_report_month, get_month_display_info
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
 
@@ -102,6 +103,14 @@ async def create_report(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User is not assigned to a ward"
+        )
+
+    # Validate report month matches expected submission period
+    is_valid, error_msg = validate_report_month(report_month)
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_msg
         )
 
     # Parse comprehensive report data if provided
@@ -648,6 +657,44 @@ def review_report(
             "reviewed_at": report.reviewed_at
         },
         "message": "Report marked as reviewed"
+    }
+
+
+@router.get("/submission-info")
+def get_submission_info(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get information about the current submission period and whether user has already submitted.
+
+    Returns target month, month name, whether it's first week, and submission status.
+    """
+    # Get month display information
+    info = get_month_display_info()
+
+    # Check if user has already submitted for this month (if WDC Secretary)
+    already_submitted = False
+    if current_user.role == "WDC_SECRETARY" and current_user.ward_id:
+        existing_report = db.query(Report).filter(
+            Report.ward_id == current_user.ward_id,
+            Report.report_month == info['target_month']
+        ).first()
+        already_submitted = existing_report is not None
+
+    return {
+        "success": True,
+        "data": {
+            "target_month": info['target_month'],
+            "month_name": info['month_name'],
+            "is_first_week": info['is_first_week'],
+            "current_day": info['current_day'],
+            "already_submitted": already_submitted,
+            "submission_period_description": (
+                f"Days 1-7: Submit reports for previous month" if info['is_first_week']
+                else f"Days 8-31: Submit reports for current month"
+            )
+        }
     }
 
 
