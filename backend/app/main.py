@@ -23,6 +23,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,  # Cache preflight requests for 1 hour
 )
 
 # Include routers
@@ -61,8 +63,21 @@ def health_check():
             "status": "healthy",
             "timestamp": datetime.utcnow(),
             "version": "1.0.0",
-            "database": "connected"
+            "database": "connected",
+            "cors_enabled": True,
+            "allowed_origins_count": len(ALLOWED_ORIGINS)
         }
+    }
+
+
+@app.get("/api/cors-test")
+def cors_test():
+    """Test CORS configuration - returns allowed origins for debugging."""
+    return {
+        "success": True,
+        "message": "CORS is configured correctly if you can see this message",
+        "allowed_origins": ALLOWED_ORIGINS,
+        "cors_enabled": True
     }
 
 

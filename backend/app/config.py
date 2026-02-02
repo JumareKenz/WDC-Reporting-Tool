@@ -39,9 +39,24 @@ _default_origins = [
     "http://192.168.0.105:5173",
     "http://192.168.0.105:3000",
     "http://192.168.0.105:8000",
-    # Production frontend
+    # Production frontend - Vercel
     "https://kadwdc.vercel.app",
+    "https://www.kadwdc.vercel.app",
+    # Allow all Vercel preview deployments
+    "https://*.vercel.app",
 ]
 
 # Allow environment variable override for production
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", ",".join(_default_origins)).split(",")
+_env_origins = os.getenv("ALLOWED_ORIGINS", "")
+if _env_origins:
+    # If environment variable is set, use it and merge with production URLs
+    ALLOWED_ORIGINS = _env_origins.split(",") + [
+        "https://kadwdc.vercel.app",
+        "http://localhost:5173",
+    ]
+else:
+    # Use defaults
+    ALLOWED_ORIGINS = _default_origins
+
+# Clean up origins list (remove empty strings and whitespace)
+ALLOWED_ORIGINS = [origin.strip() for origin in ALLOWED_ORIGINS if origin.strip()]
