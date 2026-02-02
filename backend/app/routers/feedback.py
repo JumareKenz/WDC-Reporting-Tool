@@ -113,34 +113,46 @@ def send_feedback_message(
             detail="Only WDC Secretaries, LGA Coordinators, and State Officials can send feedback"
         )
 
-    # Verify ward access
-    ward = db.query(Ward).filter(Ward.id == feedback_data.ward_id).first()
-    if not ward:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ward not found"
-        )
-
+    # Auto-set ward_id for WDC Secretaries
+    ward_id = feedback_data.ward_id
     if current_user.role == "WDC_SECRETARY":
-        if current_user.ward_id != feedback_data.ward_id:
+        if not current_user.ward_id:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not authorized to send feedback for this ward"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User is not assigned to a ward"
             )
-    elif current_user.role == "LGA_COORDINATOR":
-        if ward.lga_id != current_user.lga_id:
+        ward_id = current_user.ward_id
+
+    # Verify ward access if ward_id provided
+    ward = None
+    if ward_id:
+        ward = db.query(Ward).filter(Ward.id == ward_id).first()
+        if not ward:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not authorized to send feedback for this ward"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Ward not found"
             )
-    # STATE_OFFICIAL can send feedback for any ward
+
+        if current_user.role == "LGA_COORDINATOR":
+            if ward.lga_id != current_user.lga_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Not authorized to send feedback for this ward"
+                )
+    elif current_user.role in ["LGA_COORDINATOR", "WDC_SECRETARY"]:
+        # Ward ID is required for these roles
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ward ID is required"
+        )
+    # STATE_OFFICIAL can send feedback without ward_id
 
     # Determine recipient_id based on recipient_type if provided
     recipient_id = feedback_data.recipient_id
 
     if feedback_data.recipient_type and not recipient_id:
         # Look up recipient based on type
-        if feedback_data.recipient_type == 'LGA':
+        if feedback_data.recipient_type == 'LGA' and ward:
             # Find LGA Coordinator for this ward's LGA
             recipient = db.query(User).filter(
                 User.lga_id == ward.lga_id,
@@ -149,9 +161,17 @@ def send_feedback_message(
             if recipient:
                 recipient_id = recipient.id
         elif feedback_data.recipient_type == 'STATE':
-            # Find any State Official (could be improved to target specific officials)
+            # Find any State Official
             recipient = db.query(User).filter(
                 User.role == "STATE_OFFICIAL"
+            ).first()
+            if recipient:
+                recipient_id = recipient.id
+        elif feedback_data.recipient_type == 'WDC' and ward_id:
+            # Find WDC Secretary for this ward
+            recipient = db.query(User).filter(
+                User.ward_id == ward_id,
+                User.role == "WDC_SECRETARY"
             ).first()
             if recipient:
                 recipient_id = recipient.id
@@ -167,7 +187,7 @@ def send_feedback_message(
 
     # Create feedback message
     feedback = Feedback(
-        ward_id=feedback_data.ward_id,
+        ward_id=ward_id,
         sender_id=current_user.id,
         recipient_id=recipient_id,
         message=feedback_data.message,

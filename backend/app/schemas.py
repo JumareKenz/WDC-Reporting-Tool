@@ -507,9 +507,9 @@ class FeedbackBase(BaseModel):
 
 
 class FeedbackCreate(FeedbackBase):
-    ward_id: int
+    ward_id: Optional[int] = None  # Optional - auto-set for WDC users
     recipient_id: Optional[int] = None
-    recipient_type: Optional[str] = None  # 'LGA', 'STATE', or None
+    recipient_type: Optional[str] = None  # 'LGA', 'STATE', 'WDC', or None
     parent_id: Optional[int] = None
 
 
