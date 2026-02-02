@@ -713,8 +713,8 @@ class FormDefinitionListItem(BaseModel):
 class UserAssignRequest(BaseModel):
     full_name: str = Field(..., min_length=2, max_length=200)
     email: str = Field(..., min_length=5, max_length=255)
-    phone: Optional[str] = None
-    password: str = Field(..., min_length=6, max_length=128)
+    phone: str = Field(..., min_length=10, max_length=20)  # Phone required for SMS
+    password: Optional[str] = Field(None, min_length=6, max_length=128)  # Auto-generated if not provided
     role: str
     lga_id: Optional[int] = None
     ward_id: Optional[int] = None

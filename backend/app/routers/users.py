@@ -5,6 +5,8 @@ from ..models import User, LGA, Ward
 from ..dependencies import get_state_official
 from ..auth import get_password_hash
 from ..schemas import UserAssignRequest, UserUpdateRequest, UserPasswordChange, UserAccessChange
+from ..utils.password_generator import generate_memorable_password
+from ..services.sms import send_welcome_sms
 
 router = APIRouter(prefix="/users", tags=["User Management"])
 
@@ -264,11 +266,16 @@ def assign_user(
             detail="This email address is already in use.",
         )
 
+    # Auto-generate password if not provided
+    password = assign_data.password
+    if not password:
+        password = generate_memorable_password()
+
     new_user = User(
         email=assign_data.email,
-        password_hash=get_password_hash(assign_data.password),
+        password_hash=get_password_hash(password),
         full_name=assign_data.full_name.strip(),
-        phone=assign_data.phone.strip() if assign_data.phone else None,
+        phone=assign_data.phone.strip(),
         role=assign_data.role,
         lga_id=assign_data.lga_id if assign_data.role == "LGA_COORDINATOR" else (ward.lga_id if ward else None),
         ward_id=assign_data.ward_id if assign_data.role == "WDC_SECRETARY" else None,
@@ -278,9 +285,36 @@ def assign_user(
     db.commit()
     db.refresh(new_user)
 
+    # Send welcome SMS with credentials
+    sms_sent = False
+    sms_error = None
+    if assign_data.phone:
+        sms_success, sms_error = send_welcome_sms(
+            phone=assign_data.phone,
+            full_name=assign_data.full_name,
+            email=assign_data.email,
+            password=password,
+            role=assign_data.role
+        )
+        sms_sent = sms_success
+
     role_label = "LGA Coordinator" if assign_data.role == "LGA_COORDINATOR" else "WDC Secretary"
+
+    response_message = f"{role_label} assigned successfully."
+    if sms_sent:
+        response_message += " Login credentials sent via SMS."
+    elif sms_error:
+        response_message += f" Note: SMS failed - {sms_error}. Please share credentials manually."
+    else:
+        response_message += " Note: SMS not configured. Please share credentials manually."
+
     return {
         "success": True,
-        "message": f"{role_label} assigned successfully.",
+        "message": response_message,
         "user": _build_user_detail(new_user, db),
+        "credentials": {
+            "email": assign_data.email,
+            "password": password if not assign_data.password else None  # Only return auto-generated passwords
+        },
+        "sms_sent": sms_sent
     }
