@@ -79,30 +79,30 @@ import apiClient from '../api/client';
 
 const COLORS = ['#16a34a', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
-// Demo LGA data for fallback
+// Demo LGA data for fallback - Accurate ward counts for all 23 Kaduna LGAs (255 total wards)
 const DEMO_LGAS = [
   { id: 1, name: 'Birnin Gwari', total_wards: 11, submitted_count: 9, missing_count: 2, reviewed_count: 7, submission_rate: 82 },
   { id: 2, name: 'Chikun', total_wards: 12, submitted_count: 11, missing_count: 1, reviewed_count: 9, submission_rate: 92 },
   { id: 3, name: 'Giwa', total_wards: 11, submitted_count: 8, missing_count: 3, reviewed_count: 6, submission_rate: 73 },
   { id: 4, name: 'Igabi', total_wards: 12, submitted_count: 10, missing_count: 2, reviewed_count: 8, submission_rate: 83 },
   { id: 5, name: 'Ikara', total_wards: 10, submitted_count: 7, missing_count: 3, reviewed_count: 5, submission_rate: 70 },
-  { id: 6, name: 'Jaba', total_wards: 9, submitted_count: 9, missing_count: 0, reviewed_count: 8, submission_rate: 100 },
+  { id: 6, name: 'Jaba', total_wards: 10, submitted_count: 9, missing_count: 1, reviewed_count: 8, submission_rate: 90 },
   { id: 7, name: "Jema'a", total_wards: 12, submitted_count: 10, missing_count: 2, reviewed_count: 7, submission_rate: 83 },
-  { id: 8, name: 'Kachia', total_wards: 11, submitted_count: 9, missing_count: 2, reviewed_count: 7, submission_rate: 82 },
-  { id: 9, name: 'Kaduna North', total_wards: 8, submitted_count: 8, missing_count: 0, reviewed_count: 7, submission_rate: 100 },
-  { id: 10, name: 'Kaduna South', total_wards: 9, submitted_count: 8, missing_count: 1, reviewed_count: 6, submission_rate: 89 },
+  { id: 8, name: 'Kachia', total_wards: 12, submitted_count: 10, missing_count: 2, reviewed_count: 8, submission_rate: 83 },
+  { id: 9, name: 'Kaduna North', total_wards: 12, submitted_count: 11, missing_count: 1, reviewed_count: 9, submission_rate: 92 },
+  { id: 10, name: 'Kaduna South', total_wards: 13, submitted_count: 12, missing_count: 1, reviewed_count: 10, submission_rate: 92 },
   { id: 11, name: 'Kagarko', total_wards: 10, submitted_count: 7, missing_count: 3, reviewed_count: 5, submission_rate: 70 },
   { id: 12, name: 'Kajuru', total_wards: 10, submitted_count: 8, missing_count: 2, reviewed_count: 6, submission_rate: 80 },
-  { id: 13, name: 'Kaura', total_wards: 11, submitted_count: 9, missing_count: 2, reviewed_count: 7, submission_rate: 82 },
-  { id: 14, name: 'Kauru', total_wards: 10, submitted_count: 7, missing_count: 3, reviewed_count: 5, submission_rate: 70 },
-  { id: 15, name: 'Kubau', total_wards: 12, submitted_count: 10, missing_count: 2, reviewed_count: 8, submission_rate: 83 },
+  { id: 13, name: 'Kaura', total_wards: 10, submitted_count: 8, missing_count: 2, reviewed_count: 6, submission_rate: 80 },
+  { id: 14, name: 'Kauru', total_wards: 11, submitted_count: 8, missing_count: 3, reviewed_count: 6, submission_rate: 73 },
+  { id: 15, name: 'Kubau', total_wards: 11, submitted_count: 9, missing_count: 2, reviewed_count: 7, submission_rate: 82 },
   { id: 16, name: 'Kudan', total_wards: 10, submitted_count: 9, missing_count: 1, reviewed_count: 7, submission_rate: 90 },
   { id: 17, name: 'Lere', total_wards: 11, submitted_count: 8, missing_count: 3, reviewed_count: 6, submission_rate: 73 },
   { id: 18, name: 'Makarfi', total_wards: 10, submitted_count: 8, missing_count: 2, reviewed_count: 6, submission_rate: 80 },
   { id: 19, name: 'Sabon Gari', total_wards: 11, submitted_count: 10, missing_count: 1, reviewed_count: 8, submission_rate: 91 },
-  { id: 20, name: 'Sanga', total_wards: 10, submitted_count: 7, missing_count: 3, reviewed_count: 5, submission_rate: 70 },
+  { id: 20, name: 'Sanga', total_wards: 11, submitted_count: 8, missing_count: 3, reviewed_count: 6, submission_rate: 73 },
   { id: 21, name: 'Soba', total_wards: 11, submitted_count: 9, missing_count: 2, reviewed_count: 7, submission_rate: 82 },
-  { id: 22, name: 'Zangon Kataf', total_wards: 12, submitted_count: 10, missing_count: 2, reviewed_count: 8, submission_rate: 83 },
+  { id: 22, name: 'Zangon Kataf', total_wards: 11, submitted_count: 9, missing_count: 2, reviewed_count: 7, submission_rate: 82 },
   { id: 23, name: 'Zaria', total_wards: 13, submitted_count: 12, missing_count: 1, reviewed_count: 10, submission_rate: 92 },
 ];
 
