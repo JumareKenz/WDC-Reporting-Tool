@@ -671,6 +671,44 @@ class UserAccessChange(BaseModel):
     is_active: bool
 
 
+# Profile Update Schemas
+class ProfileUpdateRequest(BaseModel):
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+
+    @validator('phone')
+    def validate_phone(cls, v):
+        if v is not None:
+            import re
+            pattern = r'^(\+234|0)[789]\d{9}$'
+            if not re.match(pattern, v):
+                raise ValueError('Phone number must be in format +234XXXXXXXXXX or 0XXXXXXXXXX')
+        return v
+
+
+class EmailUpdateRequest(BaseModel):
+    email: str
+
+    @validator('email')
+    def validate_email(cls, v):
+        import re
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(pattern, v):
+            raise ValueError('Invalid email format')
+        return v
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+    @validator('new_password')
+    def validate_password(cls, v):
+        if len(v) < 6:
+            raise ValueError('Password must be at least 6 characters long')
+        return v
+
+
 # Generic Response Wrappers
 class SuccessResponse(BaseModel):
     success: bool = True

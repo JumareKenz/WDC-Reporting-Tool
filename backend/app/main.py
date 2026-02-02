@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .database import engine, Base
 from .config import ALLOWED_ORIGINS
-from .routers import auth, reports, lgas, notifications, feedback, investigations, analytics, forms, users
+from .routers import auth, reports, lgas, notifications, feedback, investigations, analytics, forms, users, profile
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -27,6 +27,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(auth.router, prefix="/api")
+app.include_router(profile.router, prefix="/api")
 app.include_router(reports.router, prefix="/api")
 app.include_router(lgas.router, prefix="/api")
 app.include_router(notifications.router, prefix="/api")
