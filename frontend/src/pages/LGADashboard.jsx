@@ -48,6 +48,7 @@ import {
   useSendFeedback,
 } from '../hooks/useLGAData';
 import { formatDate, getStatusColor, formatMonth, getCurrentMonth, formatPercentage } from '../utils/formatters';
+import { getTargetReportMonth, getSubmissionInfo } from '../utils/dateUtils';
 import { REPORT_STATUS, STATUS_LABELS } from '../utils/constants';
 
 const COLORS = ['#16a34a', '#3b82f6', '#f59e0b', '#ef4444'];
@@ -55,7 +56,11 @@ const COLORS = ['#16a34a', '#3b82f6', '#f59e0b', '#ef4444'];
 const LGADashboard = () => {
   const { user } = useAuth();
   const lgaId = user?.lga_id;
-  const currentMonth = getCurrentMonth();
+  const targetMonth = getTargetReportMonth();
+  const submissionInfo = getSubmissionInfo();
+
+  // Get LGA name from user object
+  const lgaName = user?.lga?.name || 'Your LGA';
 
   const [selectedReport, setSelectedReport] = useState(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -68,9 +73,9 @@ const LGADashboard = () => {
   const [expandedWard, setExpandedWard] = useState(null);
 
   // Data fetching
-  const { data: wardsData, isLoading: loadingWards, refetch: refetchWards } = useLGAWards(lgaId, { month: currentMonth });
+  const { data: wardsData, isLoading: loadingWards, refetch: refetchWards } = useLGAWards(lgaId, { month: targetMonth });
   const { data: reportsData, isLoading: loadingReports, refetch: refetchReports } = useLGAReports(lgaId, { limit: 100 });
-  const { data: missingData, isLoading: loadingMissing } = useLGAMissingReports(lgaId, { month: currentMonth });
+  const { data: missingData, isLoading: loadingMissing } = useLGAMissingReports(lgaId, { month: targetMonth });
   const { data: feedbackData, isLoading: loadingFeedback } = useFeedback({ limit: 10 });
 
   // Mutations
@@ -84,10 +89,10 @@ const LGADashboard = () => {
   const missingReports = missingData?.data?.missing || missingData?.missing || [];
   const feedback = feedbackData?.data?.messages || feedbackData?.messages || [];
 
-  // Calculate stats
-  const totalWards = wards.length || 12; // Fallback for demo
-  const submittedCount = wards.filter(w => w.submitted).length || Math.floor(totalWards * 0.75);
-  const missingCount = missingReports.length || totalWards - submittedCount;
+  // Calculate stats - using actual data only
+  const totalWards = wards.length;
+  const submittedCount = wards.filter(w => w.submitted).length;
+  const missingCount = missingReports.length;
   const submissionRate = totalWards > 0 ? Math.round((submittedCount / totalWards) * 100) : 0;
   const reviewedCount = reports.filter(r => r.status === 'REVIEWED').length;
   const flaggedCount = reports.filter(r => r.status === 'FLAGGED').length;
@@ -109,10 +114,20 @@ const LGADashboard = () => {
   ].filter(item => item.value > 0);
 
   const wardPerformance = wards.slice(0, 10).map(ward => ({
-    name: ward.name?.substring(0, 8) || 'Ward',
-    meetings: ward.total_meetings || Math.floor(Math.random() * 5) + 1,
-    attendees: ward.total_attendees || Math.floor(Math.random() * 150) + 50,
+    name: ward.name?.substring(0, 10) || 'Ward',
+    meetings: ward.total_meetings || 0,
+    attendees: ward.total_attendees || 0,
   }));
+
+  // Group reports by ward to show submission history
+  const reportsByWard = reports.reduce((acc, report) => {
+    const wardId = report.ward_id;
+    if (!acc[wardId]) {
+      acc[wardId] = [];
+    }
+    acc[wardId].push(report);
+    return acc;
+  }, {});
 
   const handleSendReminder = async () => {
     const targetWards = selectedWards.length > 0 ? selectedWards : missingReports.map(m => m.ward_id);
@@ -123,7 +138,7 @@ const LGADashboard = () => {
         ward_ids: targetWards,
         notification_type: 'REMINDER',
         title: 'Report Submission Reminder',
-        message: `Please submit your monthly report for ${formatMonth(currentMonth)}. The deadline is approaching.`,
+        message: `Please submit your monthly report for ${submissionInfo.month_name}. The deadline is approaching.`,
       });
       setAlertMessage({ type: 'success', text: `Reminders sent to ${targetWards.length} ward(s) successfully!` });
       setShowNotifyModal(false);
@@ -200,10 +215,10 @@ const LGADashboard = () => {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-white">
-                LGA Coordinator Dashboard
+                LGA Alliance Chairman Dashboard
               </h1>
               <p className="mt-1 text-sm text-blue-200">
-                {user?.lga_name || 'Your LGA'} • {formatMonth(currentMonth)}
+                {lgaName} • {submissionInfo.month_name}
               </p>
             </div>
             <div className="flex gap-3">
@@ -219,7 +234,9 @@ const LGADashboard = () => {
                 icon={Bell}
                 onClick={() => setShowNotifyModal(true)}
                 disabled={missingCount === 0}
-                className="bg-white text-blue-700 hover:bg-blue-50 shadow-lg shadow-black/20 hover:shadow-xl transition-all font-semibold"
+                variant="primary"
+                size="lg"
+                className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 transition-all font-bold border-2 border-yellow-400"
               >
                 Send Reminders ({missingCount})
               </Button>
@@ -387,7 +404,7 @@ const LGADashboard = () => {
             {missingCount > 0 && (
               <Card
                 title="Missing Reports"
-                subtitle={`${missingCount} wards have not submitted for ${formatMonth(currentMonth)}`}
+                subtitle={`${missingCount} wards have not submitted for ${submissionInfo.month_name}`}
                 action={
                   <Button size="sm" variant="outline" onClick={selectAllMissing}>
                     Select All
@@ -489,47 +506,89 @@ const LGADashboard = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredReports.map((report) => (
-                        <tr key={report.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
-                          <td className="py-3 px-4">
-                            <p className="font-medium text-neutral-900">{report.ward_name || 'Unknown Ward'}</p>
-                          </td>
-                          <td className="py-3 px-4 text-sm text-neutral-600">
-                            {formatMonth(report.report_month)}
-                          </td>
-                          <td className="py-3 px-4 text-sm text-neutral-600 text-center">
-                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-100 text-green-700 font-medium">
-                              {report.meetings_held || 0}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-sm text-neutral-600 text-center">
-                            <span className="inline-flex items-center justify-center w-10 h-8 rounded-full bg-blue-100 text-blue-700 font-medium">
-                              {report.attendees_count || 0}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className={`px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(report.status)}`}>
-                              {STATUS_LABELS[report.status]}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 text-sm text-neutral-600">
-                            {formatDate(report.submitted_at || report.created_at)}
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              icon={Eye}
-                              onClick={() => {
-                                setSelectedReport(report);
-                                setShowReviewModal(true);
-                              }}
-                            >
-                              Review
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
+                      {filteredReports.map((report) => {
+                        const wardReports = reportsByWard[report.ward_id] || [];
+                        const isExpanded = expandedWard === report.ward_id;
+                        return (
+                          <>
+                            <tr key={report.id} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors">
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => setExpandedWard(isExpanded ? null : report.ward_id)}
+                                    className="text-neutral-400 hover:text-neutral-600"
+                                  >
+                                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                  </button>
+                                  <div>
+                                    <p className="font-medium text-neutral-900">{report.ward_name || 'Unknown Ward'}</p>
+                                    {wardReports.length > 1 && (
+                                      <p className="text-xs text-neutral-500">{wardReports.length} submissions</p>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 text-sm text-neutral-600">
+                                {formatMonth(report.report_month)}
+                              </td>
+                              <td className="py-3 px-4 text-sm text-neutral-600 text-center">
+                                <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-100 text-green-700 font-medium">
+                                  {report.meetings_held || 0}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-sm text-neutral-600 text-center">
+                                <span className="inline-flex items-center justify-center w-10 h-8 rounded-full bg-blue-100 text-blue-700 font-medium">
+                                  {report.attendees_count || 0}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className={`px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(report.status)}`}>
+                                  {STATUS_LABELS[report.status]}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-sm text-neutral-600">
+                                {formatDate(report.submitted_at || report.created_at)}
+                              </td>
+                              <td className="py-3 px-4 text-right">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  icon={Eye}
+                                  onClick={() => {
+                                    setSelectedReport(report);
+                                    setShowReviewModal(true);
+                                  }}
+                                >
+                                  Review
+                                </Button>
+                              </td>
+                            </tr>
+                            {isExpanded && wardReports.length > 1 && (
+                              <tr className="bg-blue-50 border-b border-blue-100">
+                                <td colSpan="7" className="py-3 px-4">
+                                  <div className="pl-8">
+                                    <p className="text-sm font-semibold text-neutral-700 mb-2">Submission History:</p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {wardReports.map((wr) => (
+                                        <div
+                                          key={wr.id}
+                                          className="inline-flex items-center gap-2 px-3 py-1.5 bg-white rounded-lg border border-blue-200 text-sm"
+                                        >
+                                          <Calendar className="w-3 h-3 text-blue-600" />
+                                          <span className="font-medium text-neutral-900">{formatMonth(wr.report_month)}</span>
+                                          <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(wr.status)}`}>
+                                            {STATUS_LABELS[wr.status]}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -725,7 +784,7 @@ const LGADashboard = () => {
         onClose={() => setShowNotifyModal(false)}
         onConfirm={handleSendReminder}
         title="Send Reminder Notifications"
-        message={`Are you sure you want to send reminder notifications to ${selectedWards.length || missingCount} ward(s) that have not submitted their reports for ${formatMonth(currentMonth)}?`}
+        message={`Are you sure you want to send reminder notifications to ${selectedWards.length || missingCount} ward(s) that have not submitted their reports for ${submissionInfo.month_name}?`}
         confirmText="Send Reminders"
         variant="primary"
         loading={sendNotificationMutation.isPending}
