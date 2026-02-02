@@ -182,7 +182,7 @@ def seed_users(lgas, wards):
     state_officials = [
         {
             "email": "state.admin@kaduna.gov.ng",
-            "full_name": "Dr. Fatima Abubakar Yusuf",
+            "full_name": "Abdulrazak Mukhtar",
             "phone": "08033445566",
             "role": "STATE_OFFICIAL"
         },
