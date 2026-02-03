@@ -167,7 +167,7 @@ const TextInput = ({
 // Number input (numerical fields are filled manually — AI does not populate these)
 const NumberInput = ({ label, name, value, onChange, min = 0, ...props }) => (
   <div className="space-y-1">
-    <label className="block text-xs sm:text-sm font-medium text-neutral-700 truncate">{label}</label>
+    <label className="block text-xs sm:text-sm font-medium text-neutral-700 whitespace-normal">{label}</label>
     <input
       type="number"
       name={name}
@@ -339,6 +339,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [voiceNotes, setVoiceNotes] = useState({});
   const [attendancePictures, setAttendancePictures] = useState([]);
+  const [groupPhotos, setGroupPhotos] = useState([]);
   const [reportMonth, setReportMonth] = useState('');
   const [draftId, setDraftId] = useState(null);
   const [draftSavedAt, setDraftSavedAt] = useState(null);
@@ -466,14 +467,14 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
   useEffect(() => {
     const loadDraft = async () => {
       if (!reportMonth) return;
-      
+
       try {
         setIsLoadingDraft(true);
         const response = await getExistingDraft(reportMonth);
-        
+
         if (response.has_draft && response.report_data) {
           const draftData = response.report_data;
-          
+
           // Merge draft data into form state
           setFormData(prev => ({
             ...prev,
@@ -489,7 +490,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
             items_donated_govt_types: draftData.items_donated_govt_types || prev.items_donated_govt_types,
             items_repaired_types: draftData.items_repaired_types || prev.items_repaired_types,
           }));
-          
+
           setDraftId(response.draft_id);
           setDraftSavedAt(response.saved_at);
         }
@@ -499,7 +500,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
         setIsLoadingDraft(false);
       }
     };
-    
+
     loadDraft();
   }, [reportMonth]);
 
@@ -646,6 +647,27 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
     });
   };
 
+  // Handle group photo upload
+  const handleGroupPhotoUpload = (e) => {
+    const files = Array.from(e.target.files);
+    const newPhotos = files.map(file => ({
+      file,
+      preview: URL.createObjectURL(file),
+      name: file.name,
+    }));
+    setGroupPhotos(prev => [...prev, ...newPhotos]);
+  };
+
+  // Handle group photo removal
+  const handleRemoveGroupPhoto = (index) => {
+    setGroupPhotos(prev => {
+      const updated = [...prev];
+      URL.revokeObjectURL(updated[index].preview);
+      updated.splice(index, 1);
+      return updated;
+    });
+  };
+
   // Submit mutation
   const submitMutation = useMutation({
     mutationFn: async (data) => {
@@ -662,6 +684,11 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
       // Add attendance pictures
       attendancePictures.forEach((pic, index) => {
         formPayload.append(`attendance_picture_${index}`, pic.file);
+      });
+
+      // Add group photos
+      groupPhotos.forEach((pic, index) => {
+        formPayload.append(`group_photo_${index}`, pic.file);
       });
 
       const response = await apiClient.post('/reports', formPayload, {
@@ -1458,6 +1485,51 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
             </div>
           </div>
 
+          {/* Group Photo Upload */}
+          <div className="bg-neutral-50 p-4 rounded-lg border border-neutral-200 mt-4">
+            <h5 className="text-xs sm:text-sm font-semibold text-neutral-800 mb-3 flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              Upload Group Photo
+            </h5>
+            <div className="space-y-3">
+              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-neutral-300 rounded-lg cursor-pointer hover:bg-neutral-100 transition-colors">
+                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                  <Upload className="w-8 h-8 text-neutral-400 mb-2" />
+                  <p className="text-sm text-neutral-600">Click to upload group photo</p>
+                  <p className="text-xs text-neutral-500">PNG, JPG up to 10MB</p>
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleGroupPhotoUpload}
+                  className="hidden"
+                />
+              </label>
+
+              {groupPhotos.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {groupPhotos.map((pic, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={pic.preview}
+                        alt={`Group Photo ${index + 1}`}
+                        className="w-full h-24 object-cover rounded-lg border border-neutral-200"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveGroupPhoto(index)}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                      <p className="text-xs text-neutral-500 mt-1 truncate">{pic.name}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-1">
               Adjournment - Date of Next Meeting
@@ -1523,7 +1595,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
           Submit Report
         </Button>
       </div>
-      
+
       {/* Draft Status */}
       {draftSavedAt && (
         <div className="text-center">
