@@ -237,6 +237,24 @@ class TestErrorMessageContent:
         assert "ADMIN" in exc_info.value.detail
         assert "MANAGER" in exc_info.value.detail
 
+    def test_require_role_error_exact_format(self):
+        """
+        Kill mutant 12: exact message format check.
+        Mutant 12 adds XX prefix/suffix to the entire message.
+        """
+        mock_user = MagicMock()
+        mock_user.role = "WRONG"
+        
+        checker = require_role(["WDC_SECRETARY"])
+        
+        with pytest.raises(HTTPException) as exc_info:
+            checker(current_user=mock_user)
+        
+        expected = "Access forbidden. Required roles: WDC_SECRETARY"
+        assert exc_info.value.detail == expected
+        assert not exc_info.value.detail.startswith("XX")
+        assert not exc_info.value.detail.endswith("XX")
+
     def test_wdc_secretary_error_mentions_role(self):
         """WDC error should mention 'WDC Secretary'."""
         mock_user = MagicMock()
@@ -272,3 +290,60 @@ class TestErrorMessageContent:
         # Kills mutant 21 which adds XX prefix/suffix
         assert "State Official" in exc_info.value.detail
         assert "XX" not in exc_info.value.detail
+
+
+class TestGetCurrentUserErrorMessages:
+    """
+    Tests for get_current_user error message content.
+    Kills mutants 7 and 9 (string mutations on error messages).
+    These require mocking at the integration level.
+    """
+
+    def test_user_not_found_error_message(self, client, seeded_db):
+        """
+        Kill mutant 7: Verify exact 'User not found' message.
+        Mutant 7 changes it to 'XXUser not foundXX'.
+        """
+        # Create a valid token for a non-existent user
+        from app.auth import create_access_token
+        
+        # Create token for user_id that doesn't exist
+        token = create_access_token({
+            "user_id": 99999,
+            "email": "nonexistent@test.com",
+            "role": "WDC_SECRETARY"
+        })
+        
+        response = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+        
+        assert response.status_code == 401
+        data = response.json()
+        assert data["detail"] == "User not found"
+        assert "XX" not in data["detail"]
+
+    def test_inactive_user_error_message(self, client, seeded_db):
+        """
+        Kill mutant 9: Verify exact 'Inactive user' message.
+        Mutant 9 changes it to 'XXInactive userXX'.
+        """
+        from app.models import User
+        from app.auth import create_access_token
+        
+        # Get a user and deactivate them
+        user = seeded_db.query(User).filter(User.email == "wdc@test.com").first()
+        user.is_active = False
+        seeded_db.commit()
+        
+        # Create token for the inactive user
+        token = create_access_token({
+            "user_id": user.id,
+            "email": user.email,
+            "role": user.role
+        })
+        
+        response = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+        
+        assert response.status_code == 403
+        data = response.json()
+        assert data["detail"] == "Inactive user"
+        assert "XX" not in data["detail"]

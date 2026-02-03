@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Body, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Body, BackgroundTasks, Request
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import Optional, List
@@ -14,7 +14,7 @@ from ..schemas import (
     CheckSubmittedResponse, VoiceNoteSimple, WardSimple, UserSimple,
 )
 from ..dependencies import get_current_user
-from ..config import VOICE_NOTES_DIR, MAX_VOICE_NOTE_SIZE, ALLOWED_AUDIO_EXTENSIONS
+from ..config import VOICE_NOTES_DIR, MAX_VOICE_NOTE_SIZE, ALLOWED_AUDIO_EXTENSIONS, UPLOAD_DIR
 from ..tasks import process_voice_note
 from ..utils.date_utils import validate_report_month, get_month_display_info
 
@@ -64,8 +64,49 @@ def save_voice_note(file: UploadFile, ward_id: int, report_id: int) -> dict:
     }
 
 
+
+def save_photo_file(file: UploadFile, ward_id: int, report_id: int) -> str:
+    """Save uploaded photo file and return uploaded path."""
+    # Check file size (10MB limit)
+    file.file.seek(0, 2)
+    file_size = file.file.tell()
+    file.file.seek(0)
+    
+    if file_size > 10 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="File too large. Maximum size is 10MB"
+        )
+        
+    # Check extensions
+    allowed = {'.jpg', '.jpeg', '.png'}
+    file_ext = Path(file.filename).suffix.lower()
+    if file_ext not in allowed:
+         raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid file type. Allowed: {', '.join(allowed)}"
+        )
+        
+    # Dir structure: uploads/photos/year/month/
+    now = datetime.now()
+    upload_dir = UPLOAD_DIR / "photos" / str(now.year) / f"{now.month:02d}"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    
+    unique_id = uuid.uuid4().hex[:8]
+    timestamp = int(datetime.now().timestamp())
+    filename = f"ward_{ward_id}_{report_id}_{timestamp}_{unique_id}{file_ext}"
+    file_path = upload_dir / filename
+    
+    with open(file_path, "wb") as buffer:
+        buffer.write(file.file.read())
+        
+    # Return relative path string for DB storage
+    return str(file_path.relative_to(UPLOAD_DIR))
+
+
 @router.post("", response_model=ReportResponse, status_code=status.HTTP_201_CREATED)
 async def create_report(
+    request: Request,
     report_month: str = Form(...),
     meetings_held: int = Form(0),
     attendees_count: int = Form(0),
@@ -336,6 +377,23 @@ async def create_report(
         db.refresh(voice_note_record)
         voice_note_data = voice_note_record
         saved_voice_notes.append(voice_note_record)
+
+
+    # Handle group photos
+    form_data = await request.form()
+    saved_group_photos = []
+    
+    for key, value in form_data.items():
+        if key.startswith("group_photo_") and isinstance(value, UploadFile):
+            if value.filename:
+                # Save file
+                file_rel_path = save_photo_file(value, current_user.ward_id, new_report.id)
+                saved_group_photos.append(file_rel_path)
+
+    if saved_group_photos:
+        new_report.group_photo_path = json.dumps(saved_group_photos)
+        db.add(new_report)
+        db.commit()
 
     # Create notification for LGA Coordinator
     ward = db.query(Ward).filter(Ward.id == current_user.ward_id).first()

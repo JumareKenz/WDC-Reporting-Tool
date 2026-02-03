@@ -190,6 +190,7 @@ class Report(Base):
     next_meeting_date = Column(String(10), nullable=True)  # YYYY-MM-DD
     chairman_signature = Column(String(200), nullable=True)
     secretary_signature = Column(String(200), nullable=True)
+    group_photo_path = Column(Text, nullable=True)  # JSON array of file paths
 
     # Custom fields from dynamic forms (JSON)
     custom_fields = Column(Text, nullable=True)

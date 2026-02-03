@@ -350,6 +350,7 @@ class ReportBase(BaseModel):
     next_meeting_date: Optional[str] = None
     chairman_signature: Optional[str] = None
     secretary_signature: Optional[str] = None
+    group_photo_path: Optional[str] = None  # JSON array of file paths
 
     @validator('attendance_total')
     def validate_attendance_total(cls, v, values):
