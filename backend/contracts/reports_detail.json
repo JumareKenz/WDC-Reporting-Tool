@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GET /api/reports/{id} — 200 response",
+  "description": "Full ReportResponse including the nested ward object populated from the Ward table. Additional health-data and agenda fields are present but not enumerated here; this contract covers the structural skeleton.",
+  "type": "object",
+  "required": ["id", "ward_id", "report_month", "status"],
+  "properties": {
+    "id": {
+      "type": "integer"
+    },
+    "ward_id": {
+      "type": "integer"
+    },
+    "report_month": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "ward": {
+      "type": ["object", "null"],
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "lga_id": {
+          "type": "integer"
+        },
+        "lga_name": {
+          "type": ["string", "null"]
+        }
+      }
+    }
+  }
+}

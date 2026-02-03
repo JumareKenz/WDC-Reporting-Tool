@@ -105,17 +105,20 @@ class Report(Base):
     recommendations = Column(Text, nullable=True)
     additional_notes = Column(Text, nullable=True)
 
-    # Section 3A: Health Data - OPD
+    # Section 3A: Health Data - OPD Immunization
+    health_opd_total = Column(Integer, default=0)
     health_penta1 = Column(Integer, default=0)
     health_bcg = Column(Integer, default=0)
     health_penta3 = Column(Integer, default=0)
     health_measles = Column(Integer, default=0)
 
     # Section 3A: Health Data - OPD Under 5
+    health_opd_under5_total = Column(Integer, default=0)
     health_malaria_under5 = Column(Integer, default=0)
     health_diarrhea_under5 = Column(Integer, default=0)
 
     # Section 3A: Health Data - ANC
+    health_anc_total = Column(Integer, default=0)
     health_anc_first_visit = Column(Integer, default=0)
     health_anc_fourth_visit = Column(Integer, default=0)
     health_anc_eighth_visit = Column(Integer, default=0)
@@ -139,9 +142,15 @@ class Report(Base):
     facilities_renovated_partners = Column(Integer, default=0)
     facilities_renovated_wdc = Column(Integer, default=0)
 
-    # Section 3B: Items
+    # Section 3B: Items donated by WDC
     items_donated_count = Column(Integer, default=0)
     items_donated_types = Column(Text, nullable=True)  # JSON array
+
+    # Section 3B: Items donated by Government
+    items_donated_govt_count = Column(Integer, default=0)
+    items_donated_govt_types = Column(Text, nullable=True)  # JSON array
+
+    # Section 3B: Items repaired
     items_repaired_count = Column(Integer, default=0)
     items_repaired_types = Column(Text, nullable=True)  # JSON array
 

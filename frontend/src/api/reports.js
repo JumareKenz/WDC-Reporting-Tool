@@ -105,3 +105,31 @@ export const getAISuggestions = async (reportId) => {
 export const acceptAISuggestions = async (reportId, fields) => {
   return apiClient.post(API_ENDPOINTS.AI_SUGGESTIONS_ACCEPT(reportId), { fields });
 };
+
+/**
+ * Save a draft report
+ * @param {Object} data - Draft report data including report_month and report_data
+ * @returns {Promise} Response with saved draft data
+ */
+export const saveDraft = async (data) => {
+  return uploadFile('/reports/draft', data);
+};
+
+/**
+ * Get existing draft for a specific month
+ * @param {string} reportMonth - Month in YYYY-MM format (optional, defaults to current month)
+ * @returns {Promise} Response with draft data if exists
+ */
+export const getExistingDraft = async (reportMonth = null) => {
+  const queryString = buildQueryString(reportMonth ? { report_month: reportMonth } : {});
+  return apiClient.get(`/reports/draft/existing${queryString}`);
+};
+
+/**
+ * Delete a draft report
+ * @param {number} draftId - Draft report ID
+ * @returns {Promise} Response with deletion confirmation
+ */
+export const deleteDraft = async (draftId) => {
+  return apiClient.delete(`/reports/draft/${draftId}`);
+};

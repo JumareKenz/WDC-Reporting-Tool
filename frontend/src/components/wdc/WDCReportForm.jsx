@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   FileText,
   CheckCircle,
@@ -19,12 +19,14 @@ import {
   Image,
   X,
   Info,
+  Save,
 } from 'lucide-react';
 import Button from '../common/Button';
 import Alert from '../common/Alert';
 import VoiceRecorder from './VoiceRecorder';
 import apiClient from '../../api/client';
 import { getTargetReportMonth, formatMonthDisplay, getSubmissionPeriodDescription } from '../../utils/dateUtils';
+import { saveDraft, getExistingDraft } from '../../api/reports';
 
 // Kaduna LGAs data
 const KADUNA_LGAS = [
@@ -133,9 +135,8 @@ const TextInput = ({
           placeholder={placeholder}
           rows={rows || 3}
           required={required}
-          className={`w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none ${
-            hasError ? 'border-red-500 bg-red-50' : 'border-neutral-300'
-          }`}
+          className={`w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none ${hasError ? 'border-red-500 bg-red-50' : 'border-neutral-300'
+            }`}
           {...props}
         />
       ) : (
@@ -147,9 +148,8 @@ const TextInput = ({
           onChange={onChange}
           placeholder={placeholder}
           required={required}
-          className={`w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-            hasError ? 'border-red-500 bg-red-50' : 'border-neutral-300'
-          }`}
+          className={`w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${hasError ? 'border-red-500 bg-red-50' : 'border-neutral-300'
+            }`}
           {...props}
         />
       )}
@@ -213,34 +213,34 @@ const DynamicTable = ({ columns, rows, onRowChange, onAddRow, onRemoveRow, table
               {columns.map((col, colIdx) => (
                 <td key={colIdx} className="border border-neutral-200 px-1 py-1">
                   <div>
-                      {col.type === 'select' ? (
-                        <select
-                          value={row[col.name] || ''}
-                          onChange={(e) => onRowChange(rowIdx, col.name, e.target.value)}
-                          className="w-full px-2 py-1 text-xs border-0 focus:ring-1 focus:ring-primary-500 rounded"
-                        >
-                          <option value="">Select...</option>
-                          {col.options.map((opt, i) => (
-                            <option key={i} value={opt}>{opt}</option>
-                          ))}
-                        </select>
-                      ) : col.type === 'textarea' ? (
-                        <textarea
-                          value={row[col.name] || ''}
-                          onChange={(e) => onRowChange(rowIdx, col.name, e.target.value)}
-                          className="w-full px-2 py-1 text-xs border-0 focus:ring-1 focus:ring-primary-500 rounded resize-none"
-                          rows={2}
-                          placeholder={col.placeholder}
-                        />
-                      ) : (
-                        <input
-                          type={col.type || 'text'}
-                          value={row[col.name] || ''}
-                          onChange={(e) => onRowChange(rowIdx, col.name, e.target.value)}
-                          className="w-full px-2 py-1 text-xs border-0 focus:ring-1 focus:ring-primary-500 rounded"
-                          placeholder={col.placeholder}
-                        />
-                      )}
+                    {col.type === 'select' ? (
+                      <select
+                        value={row[col.name] || ''}
+                        onChange={(e) => onRowChange(rowIdx, col.name, e.target.value)}
+                        className="w-full px-2 py-1 text-xs border-0 focus:ring-1 focus:ring-primary-500 rounded"
+                      >
+                        <option value="">Select...</option>
+                        {col.options.map((opt, i) => (
+                          <option key={i} value={opt}>{opt}</option>
+                        ))}
+                      </select>
+                    ) : col.type === 'textarea' ? (
+                      <textarea
+                        value={row[col.name] || ''}
+                        onChange={(e) => onRowChange(rowIdx, col.name, e.target.value)}
+                        className="w-full px-2 py-1 text-xs border-0 focus:ring-1 focus:ring-primary-500 rounded resize-none"
+                        rows={2}
+                        placeholder={col.placeholder}
+                      />
+                    ) : (
+                      <input
+                        type={col.type || 'text'}
+                        value={row[col.name] || ''}
+                        onChange={(e) => onRowChange(rowIdx, col.name, e.target.value)}
+                        className="w-full px-2 py-1 text-xs border-0 focus:ring-1 focus:ring-primary-500 rounded"
+                        placeholder={col.placeholder}
+                      />
+                    )}
                   </div>
                 </td>
               ))}
@@ -340,6 +340,9 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
   const [voiceNotes, setVoiceNotes] = useState({});
   const [attendancePictures, setAttendancePictures] = useState([]);
   const [reportMonth, setReportMonth] = useState('');
+  const [draftId, setDraftId] = useState(null);
+  const [draftSavedAt, setDraftSavedAt] = useState(null);
+  const [isLoadingDraft, setIsLoadingDraft] = useState(true);
 
   // Calculate report month on mount
   useEffect(() => {
@@ -372,23 +375,31 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
     ],
 
     // Section 3A: General Attendance (Health Data)
-    health_opd_number: '',
+    // OPD Immunization
+    health_opd_total: '',
     health_penta1: '',
     health_bcg: '',
     health_penta3: '',
     health_measles: '',
+    // OPD Under 5
+    health_opd_under5_total: '',
     health_malaria_under5: '',
     health_diarrhea_under5: '',
-    health_anc_number: '',
+    // ANC
+    health_anc_total: '',
     health_anc_first_visit: '',
     health_anc_fourth_visit: '',
     health_anc_eighth_visit: '',
+    // Labour and Deliveries
     health_deliveries: '',
     health_postnatal: '',
+    // Family Planning
     health_fp_counselling: '',
     health_fp_new_acceptors: '',
+    // Hep B
     health_hepb_tested: '',
     health_hepb_positive: '',
+    // TB
     health_tb_presumptive: '',
     health_tb_on_treatment: '',
 
@@ -398,6 +409,8 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
     facilities_renovated_wdc: '',
     items_donated_count: '',
     items_donated_types: [],
+    items_donated_govt_count: '',
+    items_donated_govt_types: [],
     items_repaired_count: '',
     items_repaired_types: [],
 
@@ -448,6 +461,47 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
     chairman_signature: '',
     secretary_signature: '',
   });
+
+  // Load existing draft on mount
+  useEffect(() => {
+    const loadDraft = async () => {
+      if (!reportMonth) return;
+      
+      try {
+        setIsLoadingDraft(true);
+        const response = await getExistingDraft(reportMonth);
+        
+        if (response.has_draft && response.report_data) {
+          const draftData = response.report_data;
+          
+          // Merge draft data into form state
+          setFormData(prev => ({
+            ...prev,
+            ...draftData,
+            // Ensure arrays are properly set
+            action_tracker: draftData.action_tracker || prev.action_tracker,
+            community_feedback: draftData.community_feedback || prev.community_feedback,
+            vdc_reports: draftData.vdc_reports || prev.vdc_reports,
+            action_plan: draftData.action_plan || prev.action_plan,
+            maternal_death_causes: draftData.maternal_death_causes || prev.maternal_death_causes,
+            perinatal_death_causes: draftData.perinatal_death_causes || prev.perinatal_death_causes,
+            items_donated_types: draftData.items_donated_types || prev.items_donated_types,
+            items_donated_govt_types: draftData.items_donated_govt_types || prev.items_donated_govt_types,
+            items_repaired_types: draftData.items_repaired_types || prev.items_repaired_types,
+          }));
+          
+          setDraftId(response.draft_id);
+          setDraftSavedAt(response.saved_at);
+        }
+      } catch (error) {
+        console.error('Error loading draft:', error);
+      } finally {
+        setIsLoadingDraft(false);
+      }
+    };
+    
+    loadDraft();
+  }, [reportMonth]);
 
   // Handle per-field voice note recording
   const handleVoiceNote = (fieldName, file) => {
@@ -626,6 +680,31 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
     },
   });
 
+  // Draft save mutation
+  const draftMutation = useMutation({
+    mutationFn: async (data) => {
+      const formPayload = new FormData();
+      formPayload.append('report_month', reportMonth);
+      formPayload.append('report_data', JSON.stringify(data));
+
+      // Add first voice note if exists
+      const firstVoiceNote = Object.values(voiceNotes)[0];
+      if (firstVoiceNote) {
+        formPayload.append('voice_note', firstVoiceNote);
+      }
+
+      return saveDraft(formPayload);
+    },
+    onSuccess: (response) => {
+      setDraftId(response.id);
+      setDraftSavedAt(new Date().toISOString());
+      setSubmitError(null);
+    },
+    onError: (error) => {
+      setSubmitError(error.message || 'Failed to save draft');
+    },
+  });
+
   const validateForm = () => {
     const errors = [];
 
@@ -717,6 +796,11 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
     submitMutation.mutate(formData);
   };
 
+  const handleSaveDraft = async () => {
+    setSubmitError(null);
+    draftMutation.mutate(formData);
+  };
+
   if (submitSuccess) {
     return (
       <div className="text-center py-12">
@@ -730,6 +814,16 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
             Your voice notes are being transcribed and will fill in the corresponding fields.
           </p>
         )}
+      </div>
+    );
+  }
+
+  // Show loading state while loading draft
+  if (isLoadingDraft) {
+    return (
+      <div className="text-center py-12">
+        <div className="w-12 h-12 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-neutral-600">Loading your saved draft...</p>
       </div>
     );
   }
@@ -764,6 +858,16 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
           type="error"
           message={submitError}
           onClose={() => setSubmitError(null)}
+        />
+      )}
+
+      {/* Draft Saved Success Alert */}
+      {draftMutation.isSuccess && (
+        <Alert
+          type="success"
+          title="Draft Saved"
+          message="Your progress has been saved. You can continue editing and submit when ready."
+          onClose={() => draftMutation.reset()}
         />
       )}
 
@@ -908,25 +1012,28 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
               3A. GENERAL ATTENDANCE
             </h4>
 
-            <h5 className="text-xs sm:text-sm font-semibold text-neutral-700 mb-3">OPD</h5>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+            <h5 className="text-xs sm:text-sm font-semibold text-neutral-700 mb-3">OPD Immunization</h5>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4">
+              <NumberInput label="OPD Total" name="health_opd_total" value={formData.health_opd_total} onChange={handleChange} />
               <NumberInput label="PENTA1" name="health_penta1" value={formData.health_penta1} onChange={handleChange} />
               <NumberInput label="BCG" name="health_bcg" value={formData.health_bcg} onChange={handleChange} />
               <NumberInput label="PENTA3" name="health_penta3" value={formData.health_penta3} onChange={handleChange} />
               <NumberInput label="MEASLES" name="health_measles" value={formData.health_measles} onChange={handleChange} />
             </div>
 
-            <h5 className="text-xs sm:text-sm font-semibold text-neutral-700 mt-6 mb-3">OPD (Under 5)</h5>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+            <h5 className="text-xs sm:text-sm font-semibold text-neutral-700 mt-6 mb-3">OPD Under 5</h5>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+              <NumberInput label="OPD Under 5 Total" name="health_opd_under5_total" value={formData.health_opd_under5_total} onChange={handleChange} />
               <NumberInput label="MALARIA UNDER 5" name="health_malaria_under5" value={formData.health_malaria_under5} onChange={handleChange} />
               <NumberInput label="DIARRHEA UNDER 5" name="health_diarrhea_under5" value={formData.health_diarrhea_under5} onChange={handleChange} />
             </div>
 
             <h5 className="text-xs sm:text-sm font-semibold text-neutral-700 mt-6 mb-3">ANC</h5>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-              <NumberInput label="First Visit" name="health_anc_first_visit" value={formData.health_anc_first_visit} onChange={handleChange} />
-              <NumberInput label="Fourth Visit" name="health_anc_fourth_visit" value={formData.health_anc_fourth_visit} onChange={handleChange} />
-              <NumberInput label="Eight Visit" name="health_anc_eighth_visit" value={formData.health_anc_eighth_visit} onChange={handleChange} />
+              <NumberInput label="ANC Total" name="health_anc_total" value={formData.health_anc_total} onChange={handleChange} />
+              <NumberInput label="FIRST VISIT" name="health_anc_first_visit" value={formData.health_anc_first_visit} onChange={handleChange} />
+              <NumberInput label="FOURTH VISIT" name="health_anc_fourth_visit" value={formData.health_anc_fourth_visit} onChange={handleChange} />
+              <NumberInput label="EIGHTH VISIT" name="health_anc_eighth_visit" value={formData.health_anc_eighth_visit} onChange={handleChange} />
             </div>
 
             <h5 className="text-xs sm:text-sm font-semibold text-neutral-700 mt-6 mb-3">Labour, Deliveries & Post-Natal</h5>
@@ -969,9 +1076,9 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <NumberInput label="Items donated by WDC" name="items_donated_count" value={formData.items_donated_count} onChange={handleChange} />
+                  <NumberInput label="Number of items donated to health facilities by WDC" name="items_donated_count" value={formData.items_donated_count} onChange={handleChange} />
                   <div className="mt-2">
-                    <label className="block text-xs text-neutral-600 mb-1">Type of items:</label>
+                    <label className="block text-xs text-neutral-600 mb-1">Type of items donated:</label>
                     <div className="flex flex-wrap gap-1 sm:gap-2">
                       {DONATION_ITEMS.slice(0, 6).map(item => (
                         <button
@@ -988,9 +1095,49 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
                       ))}
                     </div>
                   </div>
+
+                  <div className="mt-4">
+                    <NumberInput label="Number of items donated to health facilities by Government" name="items_donated_govt_count" value={formData.items_donated_govt_count} onChange={handleChange} />
+                    <div className="mt-2">
+                      <label className="block text-xs text-neutral-600 mb-1">Type of items donated:</label>
+                      <div className="flex flex-wrap gap-1 sm:gap-2">
+                        {DONATION_ITEMS.slice(0, 6).map(item => (
+                          <button
+                            key={item}
+                            type="button"
+                            onClick={() => handleMultiSelect('items_donated_govt_types', item)}
+                            className={`px-2 py-1 text-xs rounded-full border transition-colors ${formData.items_donated_govt_types.includes(item)
+                              ? 'bg-primary-100 border-primary-500 text-primary-700'
+                              : 'bg-neutral-50 border-neutral-200 text-neutral-600'
+                              }`}
+                          >
+                            {item}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 <div>
-                  <NumberInput label="Items repaired" name="items_repaired_count" value={formData.items_repaired_count} onChange={handleChange} />
+                  <NumberInput label="Number of items repaired in health facilities through WDC/Government/Partners" name="items_repaired_count" value={formData.items_repaired_count} onChange={handleChange} />
+                  <div className="mt-2">
+                    <label className="block text-xs text-neutral-600 mb-1">Type of items repaired:</label>
+                    <div className="flex flex-wrap gap-1 sm:gap-2">
+                      {REPAIR_ITEMS.slice(0, 6).map(item => (
+                        <button
+                          key={item}
+                          type="button"
+                          onClick={() => handleMultiSelect('items_repaired_types', item)}
+                          className={`px-2 py-1 text-xs rounded-full border transition-colors ${formData.items_repaired_types.includes(item)
+                            ? 'bg-primary-100 border-primary-500 text-primary-700'
+                            : 'bg-neutral-50 border-neutral-200 text-neutral-600'
+                            }`}
+                        >
+                          {item}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1002,10 +1149,10 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
               3C. Transportation & Emergency
             </h4>
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
-              <NumberInput label="Women to ANC" name="women_transported_anc" value={formData.women_transported_anc} onChange={handleChange} />
-              <NumberInput label="Women to Delivery" name="women_transported_delivery" value={formData.women_transported_delivery} onChange={handleChange} />
-              <NumberInput label="Children U5 (danger)" name="children_transported_danger" value={formData.children_transported_danger} onChange={handleChange} />
-              <NumberInput label="Delivery items support" name="women_supported_delivery_items" value={formData.women_supported_delivery_items} onChange={handleChange} />
+              <NumberInput label="Number of women transported to facility for ANC by WDC/VDC" name="women_transported_anc" value={formData.women_transported_anc} onChange={handleChange} />
+              <NumberInput label="Number of women transported to facility for delivery by WDC/VDC" name="women_transported_delivery" value={formData.women_transported_delivery} onChange={handleChange} />
+              <NumberInput label="Number of children under 5 with danger signs transported" name="children_transported_danger" value={formData.children_transported_danger} onChange={handleChange} />
+              <NumberInput label="Number of women supported with delivery items through WDC efforts" name="women_supported_delivery_items" value={formData.women_supported_delivery_items} onChange={handleChange} />
             </div>
           </div>
 
@@ -1106,61 +1253,63 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
         </div>
       </FormSection>
 
-      {/* Section 4: Community Involvement & Town Hall Feedback */}
-      <FormSection title="COMMUNITY INVOLVEMENT & TOWN HALL FEEDBACK" number="4" icon={MessageSquare}>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-2">
-              Quarterly Town Hall Conducted?
-            </label>
-            <div className="flex gap-4">
-              {['Yes', 'No'].map(opt => (
-                <label key={opt} className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="town_hall_conducted"
-                    value={opt}
-                    checked={formData.town_hall_conducted === opt}
-                    onChange={handleChange}
-                    className="w-4 h-4 text-primary-600 border-neutral-300 focus:ring-primary-500"
-                  />
-                  <span className="text-sm text-neutral-700">{opt}</span>
-                </label>
+      {/* Section 4: Community Involvement & Town Hall Feedback (Quarterly only) */}
+      {formData.meeting_type === 'Quarterly Town Hall' && (
+        <FormSection title="COMMUNITY INVOLVEMENT & TOWN HALL FEEDBACK" number="4" icon={MessageSquare} defaultOpen={true}>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-2">
+                Quarterly Town Hall Conducted?
+              </label>
+              <div className="flex gap-4">
+                {['Yes', 'No'].map(opt => (
+                  <label key={opt} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="town_hall_conducted"
+                      value={opt}
+                      checked={formData.town_hall_conducted === opt}
+                      onChange={handleChange}
+                      className="w-4 h-4 text-primary-600 border-neutral-300 focus:ring-primary-500"
+                    />
+                    <span className="text-sm text-neutral-700">{opt}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {formData.community_feedback.map((item, idx) => (
+                <div key={idx} className="p-3 bg-neutral-50 rounded-lg">
+                  <p className="text-xs sm:text-sm font-medium text-neutral-700 mb-2">{item.indicator}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-neutral-600 mb-1">Feedback / Observation</label>
+                      <textarea
+                        value={item.feedback}
+                        onChange={(e) => handleFeedbackChange(idx, 'feedback', e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg resize-none"
+                        rows={2}
+                        placeholder="Feedback..."
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-neutral-600 mb-1">Action Required</label>
+                      <textarea
+                        value={item.action_required}
+                        onChange={(e) => handleFeedbackChange(idx, 'action_required', e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg resize-none"
+                        rows={2}
+                        placeholder="Action required..."
+                      />
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
           </div>
-
-          <div className="space-y-3">
-            {formData.community_feedback.map((item, idx) => (
-              <div key={idx} className="p-3 bg-neutral-50 rounded-lg">
-                <p className="text-xs sm:text-sm font-medium text-neutral-700 mb-2">{item.indicator}</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="block text-xs font-medium text-neutral-600 mb-1">Feedback / Observation</label>
-                    <textarea
-                      value={item.feedback}
-                      onChange={(e) => handleFeedbackChange(idx, 'feedback', e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg resize-none"
-                      rows={2}
-                      placeholder="Feedback..."
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-xs font-medium text-neutral-600 mb-1">Action Required</label>
-                    <textarea
-                      value={item.action_required}
-                      onChange={(e) => handleFeedbackChange(idx, 'action_required', e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg resize-none"
-                      rows={2}
-                      placeholder="Action required..."
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </FormSection>
+        </FormSection>
+      )}
 
       {/* Section 5: Reports from Village Development Committees (VDCs) */}
       <FormSection title="REPORTS FROM VILLAGE DEVELOPMENT COMMITTEES (VDCs)" number="5" icon={MapPin}>
@@ -1353,6 +1502,17 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
           Cancel
         </Button>
         <Button
+          type="button"
+          variant="outline"
+          size="lg"
+          icon={Save}
+          loading={draftMutation.isPending}
+          onClick={handleSaveDraft}
+          className="flex-1 sm:flex-none"
+        >
+          {draftMutation.isPending ? 'Saving...' : (draftId ? 'Update Draft' : 'Save as Draft')}
+        </Button>
+        <Button
           type="submit"
           variant="primary"
           size="lg"
@@ -1363,6 +1523,15 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
           Submit Report
         </Button>
       </div>
+      
+      {/* Draft Status */}
+      {draftSavedAt && (
+        <div className="text-center">
+          <p className="text-xs text-neutral-500">
+            Draft saved: {new Date(draftSavedAt).toLocaleString()}
+          </p>
+        </div>
+      )}
     </form>
   );
 };

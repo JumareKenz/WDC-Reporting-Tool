@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GET /api/reports/submission-info — 200 response",
+  "description": "Wrapped response describing the active submission window: which month is targeted, whether the window is open, and whether the authenticated user has already submitted.",
+  "type": "object",
+  "required": ["success", "data"],
+  "properties": {
+    "success": {
+      "type": "boolean"
+    },
+    "data": {
+      "type": "object",
+      "required": ["target_month", "month_name", "is_submission_window", "current_day", "already_submitted"],
+      "properties": {
+        "target_month": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}$"
+        },
+        "month_name": {
+          "type": "string"
+        },
+        "is_submission_window": {
+          "type": "boolean"
+        },
+        "current_day": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 31
+        },
+        "already_submitted": {
+          "type": "boolean"
+        },
+        "submission_period_description": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

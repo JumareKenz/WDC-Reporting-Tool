@@ -100,6 +100,7 @@ const StateDashboard = () => {
   });
   const [alertMessage, setAlertMessage] = useState(null);
   const [expandedLGA, setExpandedLGA] = useState(null);
+  const [selectedReport, setSelectedReport] = useState(null);
   const [copiedReport, setCopiedReport] = useState(false);
   const [updatingExecutive, setUpdatingExecutive] = useState(false);
   const [updatingLGAsWards, setUpdatingLGAsWards] = useState(false);
@@ -513,8 +514,8 @@ Kaduna State WDC Digital Reporting System
                   <AreaChart data={trends}>
                     <defs>
                       <linearGradient id="colorRate" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#16a34a" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#16a34a" stopOpacity={0}/>
+                        <stop offset="5%" stopColor="#16a34a" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#16a34a" stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
@@ -647,61 +648,94 @@ Kaduna State WDC Digital Reporting System
                   </thead>
                   <tbody>
                     {sortedLGAs.map((lga) => (
-                      <tr
-                        key={lga.id}
-                        className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors cursor-pointer"
-                        onClick={() => setExpandedLGA(expandedLGA === lga.id ? null : lga.id)}
-                      >
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            <div
-                              className={`w-2 h-2 rounded-full ${
-                                lga.submission_rate >= 90 ? 'bg-green-500' :
-                                lga.submission_rate >= 70 ? 'bg-blue-500' :
-                                lga.submission_rate >= 50 ? 'bg-yellow-500' : 'bg-red-500'
-                              }`}
-                            />
-                            <span className="font-medium text-neutral-900">{lga.name}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <div className="flex flex-col items-center">
-                            <span className="text-sm font-medium text-neutral-900">{lga.official_ward_count || lga.total_wards}</span>
-                            {lga.official_ward_count && lga.total_wards !== lga.official_ward_count && (
-                              <span className="text-xs text-yellow-600">({lga.total_wards} tracked)</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span className="inline-flex items-center justify-center w-8 h-6 rounded bg-green-100 text-green-700 text-sm font-medium">
-                            {lga.submitted_count}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span className={`inline-flex items-center justify-center w-8 h-6 rounded text-sm font-medium ${
-                            lga.missing_count > 0 ? 'bg-red-100 text-red-700' : 'bg-neutral-100 text-neutral-500'
-                          }`}>
-                            {lga.missing_count}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span className={`font-bold ${getSubmissionRateColor(lga.submission_rate)}`}>
-                            {lga.submission_rate}%
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                            lga.submission_rate >= 90 ? 'bg-green-100 text-green-700' :
-                            lga.submission_rate >= 70 ? 'bg-blue-100 text-blue-700' :
-                            lga.submission_rate >= 50 ? 'bg-yellow-100 text-yellow-700' :
-                            'bg-red-100 text-red-700'
-                          }`}>
-                            {lga.submission_rate >= 90 ? 'Excellent' :
-                             lga.submission_rate >= 70 ? 'Good' :
-                             lga.submission_rate >= 50 ? 'Fair' : 'Critical'}
-                          </span>
-                        </td>
-                      </tr>
+                      <>
+                        <tr
+                          key={lga.id}
+                          className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors cursor-pointer"
+                          onClick={() => setExpandedLGA(expandedLGA === lga.id ? null : lga.id)}
+                        >
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <div
+                                className={`w-2 h-2 rounded-full ${lga.submission_rate >= 90 ? 'bg-green-500' :
+                                  lga.submission_rate >= 70 ? 'bg-blue-500' :
+                                    lga.submission_rate >= 50 ? 'bg-yellow-500' : 'bg-red-500'
+                                  }`}
+                              />
+                              <span className="font-medium text-neutral-900">{lga.name}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <div className="flex flex-col items-center">
+                              <span className="text-sm font-medium text-neutral-900">{lga.official_ward_count || lga.total_wards}</span>
+                              {lga.official_ward_count && lga.total_wards !== lga.official_ward_count && (
+                                <span className="text-xs text-yellow-600">({lga.total_wards} tracked)</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className="inline-flex items-center justify-center w-8 h-6 rounded bg-green-100 text-green-700 text-sm font-medium">
+                              {lga.submitted_count}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className={`inline-flex items-center justify-center w-8 h-6 rounded text-sm font-medium ${lga.missing_count > 0 ? 'bg-red-100 text-red-700' : 'bg-neutral-100 text-neutral-500'
+                              }`}>
+                              {lga.missing_count}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className={`font-bold ${getSubmissionRateColor(lga.submission_rate)}`}>
+                              {lga.submission_rate}%
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${lga.submission_rate >= 90 ? 'bg-green-100 text-green-700' :
+                              lga.submission_rate >= 70 ? 'bg-blue-100 text-blue-700' :
+                                lga.submission_rate >= 50 ? 'bg-yellow-100 text-yellow-700' :
+                                  'bg-red-100 text-red-700'
+                              }`}>
+                              {lga.submission_rate >= 90 ? 'Excellent' :
+                                lga.submission_rate >= 70 ? 'Good' :
+                                  lga.submission_rate >= 50 ? 'Fair' : 'Critical'}
+                            </span>
+                          </td>
+                        </tr>
+                        {expandedLGA === lga.id && (
+                          <tr className="bg-neutral-50 border-b border-neutral-200">
+                            <td colSpan="6" className="p-4">
+                              {lga.reports && lga.reports.length > 0 ? (
+                                <div className="bg-white rounded border border-neutral-200 p-4">
+                                  <h4 className="font-semibold mb-3 text-sm text-neutral-700 flex justify-between items-center">
+                                    <span>Submissions ({lga.reports.length})</span>
+                                    <span className="text-xs font-normal text-neutral-500">Click to view details</span>
+                                  </h4>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                    {lga.reports.map(report => (
+                                      <div
+                                        key={report.id}
+                                        className="p-3 border rounded hover:bg-neutral-50 hover:border-primary-300 transition-colors cursor-pointer flex justify-between items-center bg-white"
+                                        onClick={(e) => { e.stopPropagation(); setSelectedReport(report); }}
+                                      >
+                                        <div className="overflow-hidden">
+                                          <p className="font-medium text-sm truncate">{report.ward_name}</p>
+                                          <p className="text-xs text-neutral-500 flex items-center gap-1">
+                                            <Calendar className="w-3 h-3" />
+                                            {formatDate(report.submitted_at)}
+                                          </p>
+                                        </div>
+                                        <Button size="xs" variant="ghost" className="text-primary-600">View</Button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : (
+                                <p className="text-sm text-neutral-500 text-center py-2">No individual reports available for view.</p>
+                              )}
+                            </td>
+                          </tr>
+                        )}
+                      </>
                     ))}
                   </tbody>
                 </table>
@@ -808,11 +842,10 @@ Kaduna State WDC Digital Reporting System
                         <p className="text-sm text-neutral-600 mb-3 line-clamp-2">{inv.description}</p>
                       )}
                       <div className="flex items-center justify-between">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          inv.status === 'OPEN' ? 'bg-blue-100 text-blue-700' :
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${inv.status === 'OPEN' ? 'bg-blue-100 text-blue-700' :
                           inv.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-green-100 text-green-700'
-                        }`}>
+                            'bg-green-100 text-green-700'
+                          }`}>
                           {INVESTIGATION_LABELS[inv.status]}
                         </span>
                         <div className="flex gap-1">
@@ -1004,6 +1037,202 @@ Kaduna State WDC Digital Reporting System
           </div>
         </div>
       </Modal>
+
+      {/* Report Detail Modal */}
+      {selectedReport && (
+        <Modal
+          isOpen={!!selectedReport}
+          onClose={() => setSelectedReport(null)}
+          title={`Report Details - ${selectedReport.ward_name} (${formatMonth(selectedReport.report_month)})`}
+          size="lg"
+        >
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4 p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+              <div>
+                <p className="text-sm text-neutral-500">Submitted By</p>
+                <p className="font-medium">{selectedReport.submitted_by}</p>
+              </div>
+              <div>
+                <p className="text-sm text-neutral-500">Date Submitted</p>
+                <p className="font-medium">{formatDate(selectedReport.submitted_at)}</p>
+              </div>
+              <div>
+                <p className="text-sm text-neutral-500">Meeting Type</p>
+                <p className="font-medium">{selectedReport.meeting_type}</p>
+              </div>
+              <div>
+                <p className="text-sm text-neutral-500">Attendance</p>
+                <p className="font-medium">{selectedReport.attendees_count}</p>
+              </div>
+            </div>
+
+            {/* Section 1: Agenda */}
+            <div>
+              <h4 className="font-bold text-neutral-800 border-b pb-2 mb-3">1. Agenda & Governance</h4>
+              <div className="grid grid-cols-1 gap-3 text-sm">
+                <p><span className="font-medium">Opening Prayer:</span> {selectedReport.agenda_opening_prayer}</p>
+                <p><span className="font-medium">Minutes:</span> {selectedReport.agenda_minutes}</p>
+              </div>
+            </div>
+
+            {/* Section 3A: Health Data */}
+            <div>
+              <h4 className="font-bold text-neutral-800 border-b pb-2 mb-3">3A. Health Data (General Attendance)</h4>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <p className="font-medium text-primary-700">OPD Immunization</p>
+                  <p>Total: {selectedReport.health_opd_total}</p>
+                  <p>PENTA1: {selectedReport.health_penta1}</p>
+                  <p>BCG: {selectedReport.health_bcg}</p>
+                  <p>PENTA3: {selectedReport.health_penta3}</p>
+                  <p>Measles: {selectedReport.health_measles}</p>
+                </div>
+                <div>
+                  <p className="font-medium text-primary-700">OPD Under 5</p>
+                  <p>Total: {selectedReport.health_opd_under5_total}</p>
+                  <p>Malaria: {selectedReport.health_malaria_under5}</p>
+                  <p>Diarrhea: {selectedReport.health_diarrhea_under5}</p>
+                </div>
+                <div>
+                  <p className="font-medium text-primary-700">ANC</p>
+                  <p>Total: {selectedReport.health_anc_total}</p>
+                  <p>1st Visit: {selectedReport.health_anc_first_visit}</p>
+                  <p>4th Visit: {selectedReport.health_anc_fourth_visit}</p>
+                  <p>8th Visit: {selectedReport.health_anc_eighth_visit}</p>
+                </div>
+                <div>
+                  <p className="font-medium text-primary-700">Deliveries</p>
+                  <p>Deliveries: {selectedReport.health_deliveries}</p>
+                  <p>Post-Natal: {selectedReport.health_postnatal}</p>
+                </div>
+                <div>
+                  <p className="font-medium text-primary-700">Family Planning</p>
+                  <p>Counselling: {selectedReport.health_fp_counselling}</p>
+                  <p>New Acceptors: {selectedReport.health_fp_new_acceptors}</p>
+                </div>
+                <div>
+                  <p className="font-medium text-primary-700">Others</p>
+                  <p>HepB Tested: {selectedReport.health_hepb_tested}</p>
+                  <p>HepB Positive: {selectedReport.health_hepb_positive}</p>
+                  <p>TB Presumptive: {selectedReport.health_tb_presumptive}</p>
+                  <p>TB On Treatment: {selectedReport.health_tb_on_treatment}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 3B: Facility Support */}
+            <div>
+              <h4 className="font-bold text-neutral-800 border-b pb-2 mb-3">3B. Health Facility Support</h4>
+              <div className="space-y-4 text-sm">
+                <div>
+                  <p className="font-medium mb-1">Renovations</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <p>Govt: {selectedReport.facilities_renovated_govt}</p>
+                    <p>Partners: {selectedReport.facilities_renovated_partners}</p>
+                    <p>WDC: {selectedReport.facilities_renovated_wdc}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="font-medium">Items Donated (WDC)</p>
+                    <p>Count: {selectedReport.items_donated_count}</p>
+                    <p className="text-neutral-500">{selectedReport.items_donated_types?.join(', ') || 'None'}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium">Items Donated (Govt)</p>
+                    <p>Count: {selectedReport.items_donated_govt_count}</p>
+                    <p className="text-neutral-500">{selectedReport.items_donated_govt_types?.join(', ') || 'None'}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium">Items Repaired</p>
+                    <p>Count: {selectedReport.items_repaired_count}</p>
+                    <p className="text-neutral-500">{selectedReport.items_repaired_types?.join(', ') || 'None'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 3C: Transportation */}
+            <div>
+              <h4 className="font-bold text-neutral-800 border-b pb-2 mb-3">3C. Transportation & Emergency</h4>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <p>Women to ANC: {selectedReport.women_transported_anc}</p>
+                <p>Women to Delivery: {selectedReport.women_transported_delivery}</p>
+                <p>Children U5 (Danger): {selectedReport.children_transported_danger}</p>
+                <p>Delivery Items Support: {selectedReport.women_supported_delivery_items}</p>
+              </div>
+            </div>
+
+            {/* Section 3D: cMPDSR */}
+            <div>
+              <h4 className="font-bold text-neutral-800 border-b pb-2 mb-3">3D. cMPDSR</h4>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p><span className="font-medium">Maternal Deaths:</span> {selectedReport.maternal_deaths}</p>
+                  {selectedReport.maternal_death_causes?.filter(Boolean).length > 0 && (
+                    <ul className="list-disc list-inside text-neutral-600 mt-1">
+                      {selectedReport.maternal_death_causes.filter(Boolean).map((c, i) => <li key={i}>{c}</li>)}
+                    </ul>
+                  )}
+                </div>
+                <div>
+                  <p><span className="font-medium">Perinatal Deaths:</span> {selectedReport.perinatal_deaths}</p>
+                  {selectedReport.perinatal_death_causes?.filter(Boolean).length > 0 && (
+                    <ul className="list-disc list-inside text-neutral-600 mt-1">
+                      {selectedReport.perinatal_death_causes.filter(Boolean).map((c, i) => <li key={i}>{c}</li>)}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Section 4 & 5 & 6 & 7: Qualitative Data */}
+            <div>
+              <h4 className="font-bold text-neutral-800 border-b pb-2 mb-3">Qualitative Reports</h4>
+              <div className="space-y-4 text-sm">
+                {selectedReport.town_hall_conducted && (
+                  <div>
+                    <p className="font-medium text-primary-700">Quarterly Town Hall Feedback</p>
+                    <p>Conducted: {selectedReport.town_hall_conducted}</p>
+                  </div>
+                )}
+
+                {selectedReport.vdc_reports?.length > 0 && (
+                  <div>
+                    <p className="font-medium text-primary-700">VDC Reports ({selectedReport.vdc_reports.length})</p>
+                    <div className="max-h-32 overflow-y-auto border rounded p-2 mt-1">
+                      {selectedReport.vdc_reports.map((r, i) => (
+                        <div key={i} className="mb-2 last:mb-0 border-b last:border-0 pb-2">
+                          <p className="font-medium text-xs">{r.vdc_name}</p>
+                          <p className="text-neutral-600">{r.issues}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedReport.action_plan?.length > 0 && (
+                  <div>
+                    <p className="font-medium text-primary-700">Action Plan ({selectedReport.action_plan.length})</p>
+                    <div className="max-h-32 overflow-y-auto border rounded p-2 mt-1">
+                      {selectedReport.action_plan.map((p, i) => (
+                        <div key={i} className="mb-2 last:mb-0 border-b last:border-0 pb-2">
+                          <p className="font-medium text-xs">{p.issue}</p>
+                          <p className="text-neutral-600">{p.action}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-4 border-t">
+              <Button onClick={() => setSelectedReport(null)}>Close</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

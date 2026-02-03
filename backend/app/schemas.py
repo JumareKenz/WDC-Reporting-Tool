@@ -265,17 +265,20 @@ class ReportBase(BaseModel):
     recommendations: Optional[str] = None
     additional_notes: Optional[str] = None
     
-    # Section 3A: Health Data - OPD
+    # Section 3A: Health Data - OPD Immunization
+    health_opd_total: Optional[int] = Field(None, ge=0)
     health_penta1: Optional[int] = Field(None, ge=0)
     health_bcg: Optional[int] = Field(None, ge=0)
     health_penta3: Optional[int] = Field(None, ge=0)
     health_measles: Optional[int] = Field(None, ge=0)
     
     # Section 3A: Health Data - OPD Under 5
+    health_opd_under5_total: Optional[int] = Field(None, ge=0)
     health_malaria_under5: Optional[int] = Field(None, ge=0)
     health_diarrhea_under5: Optional[int] = Field(None, ge=0)
     
     # Section 3A: Health Data - ANC
+    health_anc_total: Optional[int] = Field(None, ge=0)
     health_anc_first_visit: Optional[int] = Field(None, ge=0)
     health_anc_fourth_visit: Optional[int] = Field(None, ge=0)
     health_anc_eighth_visit: Optional[int] = Field(None, ge=0)
@@ -299,9 +302,15 @@ class ReportBase(BaseModel):
     facilities_renovated_partners: Optional[int] = Field(None, ge=0)
     facilities_renovated_wdc: Optional[int] = Field(None, ge=0)
     
-    # Section 3B: Items
+    # Section 3B: Items donated by WDC
     items_donated_count: Optional[int] = Field(None, ge=0)
     items_donated_types: Optional[List[str]] = None
+    
+    # Section 3B: Items donated by Government
+    items_donated_govt_count: Optional[int] = Field(None, ge=0)
+    items_donated_govt_types: Optional[List[str]] = None
+    
+    # Section 3B: Items repaired
     items_repaired_count: Optional[int] = Field(None, ge=0)
     items_repaired_types: Optional[List[str]] = None
     

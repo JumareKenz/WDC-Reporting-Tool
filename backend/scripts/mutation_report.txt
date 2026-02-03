@@ -1,0 +1,207 @@
+============================================================
+MUTATION TESTING REPORT
+============================================================
+
+Tables: ['sqlite_sequence', 'MiscData', 'SourceFile', 'Line', 'Mutant']
+
+sqlite_sequence: ['name', 'seq']
+
+MiscData: ['key', 'value']
+
+SourceFile: ['id', 'filename', 'hash']
+
+Line: ['id', 'sourcefile', 'line', 'line_number']
+
+Mutant: ['id', 'line', 'index', 'tested_against_hash', 'status']
+
+=== Summary ===
+  bad_survived: 4
+  ok_killed: 16
+  ok_suspicious: 1
+
+Mutation Score: 76.2%
+
+=== Raw Surviving Mutants ===
+
+============================================================
+MUTANT DETAILS (from mutmut show)
+============================================================
+
+--- Mutant 7 ---
+--- app/dependencies.py
++++ app/dependencies.py
+@@ -24,7 +24,7 @@
+     if user is None:
+         raise HTTPException(
+             status_code=status.HTTP_401_UNAUTHORIZED,
+-            detail="User not found"
++            detail="XXUser not foundXX"
+         )
+ 
+     if not user.is_active:
+
+
+
+--- Mutant 9 ---
+--- app/dependencies.py
++++ app/dependencies.py
+@@ -30,7 +30,7 @@
+     if not user.is_active:
+         raise HTTPException(
+             status_code=status.HTTP_403_FORBIDDEN,
+-            detail="Inactive user"
++            detail="XXInactive userXX"
+         )
+ 
+     return user
+
+
+
+--- Mutant 10 ---
+--- app/dependencies.py
++++ app/dependencies.py
+@@ -39,7 +39,7 @@
+ def require_role(allowed_roles: list):
+     """Dependency to check if user has required role."""
+     def role_checker(current_user: User = Depends(get_current_user)) -> User:
+-        if current_user.role not in allowed_roles:
++        if current_user.role  in allowed_roles:
+             raise HTTPException(
+                 status_code=status.HTTP_403_FORBIDDEN,
+                 detail=f"Access forbidden. Required roles: {', '.join(allowed_roles)}"
+
+
+
+--- Mutant 11 ---
+--- app/dependencies.py
++++ app/dependencies.py
+@@ -42,7 +42,7 @@
+         if current_user.role not in allowed_roles:
+             raise HTTPException(
+                 status_code=status.HTTP_403_FORBIDDEN,
+-                detail=f"Access forbidden. Required roles: {', '.join(allowed_roles)}"
++                detail=f"Access forbidden. Required roles: {'XX, XX'.join(allowed_roles)}"
+             )
+         return current_user
+     return role_checker
+
+
+
+--- Mutant 12 ---
+--- app/dependencies.py
++++ app/dependencies.py
+@@ -42,7 +42,7 @@
+         if current_user.role not in allowed_roles:
+             raise HTTPException(
+                 status_code=status.HTTP_403_FORBIDDEN,
+-                detail=f"Access forbidden. Required roles: {', '.join(allowed_roles)}"
++                detail=f"XXAccess forbidden. Required roles: {', '.join(allowed_roles)}XX"
+             )
+         return current_user
+     return role_checker
+
+
+
+--- Mutant 13 ---
+--- app/dependencies.py
++++ app/dependencies.py
+@@ -50,7 +50,7 @@
+ 
+ def get_wdc_secretary(current_user: User = Depends(get_current_user)) -> User:
+     """Dependency for WDC Secretary role."""
+-    if current_user.role != "WDC_SECRETARY":
++    if current_user.role == "WDC_SECRETARY":
+         raise HTTPException(
+             status_code=status.HTTP_403_FORBIDDEN,
+             detail="Access forbidden. WDC Secretary role required."
+
+
+
+--- Mutant 14 ---
+--- app/dependencies.py
++++ app/dependencies.py
+@@ -50,7 +50,7 @@
+ 
+ def get_wdc_secretary(current_user: User = Depends(get_current_user)) -> User:
+     """Dependency for WDC Secretary role."""
+-    if current_user.role != "WDC_SECRETARY":
++    if current_user.role != "XXWDC_SECRETARYXX":
+         raise HTTPException(
+             status_code=status.HTTP_403_FORBIDDEN,
+             detail="Access forbidden. WDC Secretary role required."
+
+
+
+--- Mutant 15 ---
+--- app/dependencies.py
++++ app/dependencies.py
+@@ -53,7 +53,7 @@
+     if current_user.role != "WDC_SECRETARY":
+         raise HTTPException(
+             status_code=status.HTTP_403_FORBIDDEN,
+-            detail="Access forbidden. WDC Secretary role required."
++            detail="XXAccess forbidden. WDC Secretary role required.XX"
+         )
+     return current_user
+ 
+
+
+
+--- Mutant 16 ---
+--- app/dependencies.py
++++ app/dependencies.py
+@@ -60,7 +60,7 @@
+ 
+ def get_lga_coordinator(current_user: User = Depends(get_current_user)) -> User:
+     """Dependency for LGA Coordinator role."""
+-    if current_user.role != "LGA_COORDINATOR":
++    if current_user.role == "LGA_COORDINATOR":
+         raise HTTPException(
+             status_code=status.HTTP_403_FORBIDDEN,
+             detail="Access forbidden. LGA Coordinator role required."
+
+
+
+--- Mutant 17 ---
+--- app/dependencies.py
++++ app/dependencies.py
+@@ -60,7 +60,7 @@
+ 
+ def get_lga_coordinator(current_user: User = Depends(get_current_user)) -> User:
+     """Dependency for LGA Coordinator role."""
+-    if current_user.role != "LGA_COORDINATOR":
++    if current_user.role != "XXLGA_COORDINATORXX":
+         raise HTTPException(
+             status_code=status.HTTP_403_FORBIDDEN,
+             detail="Access forbidden. LGA Coordinator role required."
+
+
+
+--- Mutant 18 ---
+--- app/dependencies.py
++++ app/dependencies.py
+@@ -63,7 +63,7 @@
+     if current_user.role != "LGA_COORDINATOR":
+         raise HTTPException(
+             status_code=status.HTTP_403_FORBIDDEN,
+-            detail="Access forbidden. LGA Coordinator role required."
++            detail="XXAccess forbidden. LGA Coordinator role required.XX"
+         )
+     return current_user
+ 
+
+
+
+--- Mutant 21 ---
+--- app/dependencies.py
++++ app/dependencies.py
+@@ -73,7 +73,7 @@
+     if current_user.role != "STATE_OFFICIAL":
+         raise HTTPException(
+             status_code=status.HTTP_403_FORBIDDEN,
+-            detail="Access forbidden. State Official role required."
++            detail="XXAccess forbidden. State Official role required.XX"
+         )
+     return current_user
+ 
+

@@ -145,7 +145,13 @@ def send_feedback_message(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ward ID is required"
         )
-    # STATE_OFFICIAL can send feedback without ward_id
+    # STATE_OFFICIAL can send feedback without ward_id, but the Feedback
+    # model requires ward_id (NOT NULL).  Require it for all roles.
+    if not ward_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ward ID is required"
+        )
 
     # Determine recipient_id based on recipient_type if provided
     recipient_id = feedback_data.recipient_id

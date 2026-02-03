@@ -293,6 +293,8 @@ export default function StateUsersPage() {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showRevokeConfirm, setShowRevokeConfirm]= useState(false);
   const [showAssignModal, setShowAssignModal]     = useState(false);
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  const [userCredentials, setUserCredentials] = useState(null);
 
   const [editForm, setEditForm] = useState({ full_name: '', phone: '' });
   const [passwordForm, setPasswordForm] = useState({ new_password: '', confirm_password: '' });
@@ -300,6 +302,8 @@ export default function StateUsersPage() {
   const [showPw, setShowPw]     = useState(false);
   const [showCfPw, setShowCfPw] = useState(false);
   const [copiedEmail, setCopiedEmail] = useState(false);
+  const [copiedPassword, setCopiedPassword] = useState(false);
+  const [copiedUsername, setCopiedUsername] = useState(false);
 
   const [assignForm, setAssignForm] = useState({
     full_name: '', email: '', phone: '', password: '', confirm_password: '',
@@ -489,17 +493,21 @@ export default function StateUsersPage() {
       });
       setShowAssignModal(false);
 
-      // Show success message with SMS status
-      const roleLabel = selectedWardId ? 'WDC Secretary' : 'LGA Coordinator';
-      let message = `${roleLabel} assigned successfully.`;
-
-      if (result.sms_sent) {
-        message += ' Login credentials sent via SMS.';
-      } else if (result.credentials) {
-        message += ` Credentials: ${result.credentials.email} / ${result.credentials.password}`;
+      // Show credentials modal if password was auto-generated
+      if (result.credentials && result.credentials.password) {
+        setUserCredentials({
+          fullName: assignForm.full_name,
+          email: result.credentials.email,
+          password: result.credentials.password,
+          role: selectedWardId ? 'WDC Secretary' : 'LGA Coordinator',
+          smsSent: result.sms_sent
+        });
+        setShowCredentialsModal(true);
+      } else {
+        // Show success toast if SMS was sent
+        const roleLabel = selectedWardId ? 'WDC Secretary' : 'LGA Coordinator';
+        showToast(`${roleLabel} assigned successfully. Login credentials sent via SMS.`);
       }
-
-      showToast(message);
     } catch (err) {
       showToast(err.message || 'Failed to assign user.', 'error');
     }
@@ -1042,6 +1050,115 @@ export default function StateUsersPage() {
             <Button variant="primary" size="sm" onClick={handleAssignSave} loading={assignUserMutation.isPending}>
               <UserPlus className="w-4 h-4" />
               {' '}Assign {selectedWardId ? 'Secretary' : 'Coordinator'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Credentials Display Modal ── */}
+      <Modal
+        isOpen={showCredentialsModal}
+        onClose={() => setShowCredentialsModal(false)}
+        title="User Credentials"
+        size="md"
+      >
+        <div className="space-y-4">
+          {/* Success Message */}
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-semibold text-green-900 mb-1">User Assigned Successfully!</h4>
+                <p className="text-sm text-green-700">
+                  {userCredentials?.fullName} has been assigned as {userCredentials?.role}.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* SMS Status */}
+          {!userCredentials?.smsSent && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-semibold text-amber-900 mb-1">SMS Not Sent</h4>
+                  <p className="text-sm text-amber-700">
+                    Please share the credentials below with the user manually.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Credentials Display */}
+          <div className="space-y-3">
+            <h4 className="font-semibold text-neutral-800">Login Credentials</h4>
+
+            {/* Username/Email */}
+            <div>
+              <label className="block text-xs font-medium text-neutral-500 mb-1">
+                Username (Email)
+              </label>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg font-mono text-sm">
+                  {userCredentials?.email}
+                </div>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(userCredentials?.email || '');
+                    setCopiedUsername(true);
+                    setTimeout(() => setCopiedUsername(false), 2000);
+                  }}
+                  className="px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2"
+                >
+                  {copiedUsername ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copiedUsername ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="block text-xs font-medium text-neutral-500 mb-1">
+                Password
+              </label>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 px-3 py-2 bg-amber-50 border border-amber-300 rounded-lg font-mono text-lg font-bold text-amber-900">
+                  {userCredentials?.password}
+                </div>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(userCredentials?.password || '');
+                    setCopiedPassword(true);
+                    setTimeout(() => setCopiedPassword(false), 2000);
+                  }}
+                  className="px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2"
+                >
+                  {copiedPassword ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copiedPassword ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Instructions */}
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+            <h4 className="font-semibold text-blue-900 mb-2 text-sm">Share with User:</h4>
+            <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
+              <li>Login URL: <span className="font-mono">https://kadwdc.vercel.app</span></li>
+              <li>Use the username and password above</li>
+              <li>User should change password after first login</li>
+            </ul>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-2 pt-2 border-t border-neutral-100">
+            <Button
+              variant="primary"
+              onClick={() => setShowCredentialsModal(false)}
+            >
+              Done
             </Button>
           </div>
         </div>

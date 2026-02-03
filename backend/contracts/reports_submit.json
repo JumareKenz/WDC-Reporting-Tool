@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "POST /api/reports — 201 response",
+  "description": "Newly created report object returned directly (not wrapped in a success envelope). Contains the full ReportResponse shape; only the most stable fields are marked required here.",
+  "type": "object",
+  "required": ["id", "ward_id", "report_month", "status"],
+  "properties": {
+    "id": {
+      "type": "integer"
+    },
+    "ward_id": {
+      "type": "integer"
+    },
+    "report_month": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}$"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["SUBMITTED", "REVIEWED", "FLAGGED"]
+    },
+    "submitted_at": {
+      "type": ["string", "null"]
+    },
+    "meetings_held": {
+      "type": ["integer", "null"]
+    },
+    "attendance_total": {
+      "type": ["integer", "null"]
+    }
+  }
+}

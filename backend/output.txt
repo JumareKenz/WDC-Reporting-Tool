@@ -1,0 +1,34 @@
+﻿Tables: ['sqlite_sequence', 'MiscData', 'SourceFile', 'Line', 'Mutant']
+
+sqlite_sequence columns:
+  name ()
+  seq ()
+
+MiscData columns:
+  key (TEXT)
+  value (TEXT)
+
+SourceFile columns:
+  id (INTEGER)
+  filename (TEXT)
+  hash (TEXT)
+
+Line columns:
+  id (INTEGER)
+  sourcefile (INTEGER)
+  line (TEXT)
+  line_number (INTEGER)
+
+Mutant columns:
+  id (INTEGER)
+  line (INTEGER)
+  index (INTEGER)
+  tested_against_hash (TEXT)
+  status (TEXT)
+
+=== All Mutants ===
+(1, 11, 0, '4b0ce8b5922f9ac6ac3bb36ca65f24ff25ab6fc0f56f1e45f0e31594ef14f713', 'ok_killed')
+(2, 19, 0, '4b0ce8b5922f9ac6ac3bb36ca65f24ff25ab6fc0f56f1e45f0e31594ef14f713', 'ok_killed')
+(3, 20, 0, '4b0ce8b5922f9ac6ac3bb36ca65f24ff25ab6fc0f56f1e45f0e31594ef14f713', 'ok_killed')
+(4, 22, 0, '4b0ce8b5922f9ac6ac3bb36ca65f24ff25ab6fc0f56f1e45f0e31594ef14f713', 'ok_killed')
+(5, 22, 1, '4b0ce8b5922f9ac6ac3bb36ca65f24ff25ab6fc0f56f1e45f0e31594ef14f713', 'ok_killed')
