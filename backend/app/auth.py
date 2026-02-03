@@ -49,7 +49,7 @@ def verify_token(token: str) -> TokenData:
         email: str = payload.get("email")
         role: str = payload.get("role")
 
-        if user_id is None or email is None or role is None:
+        if user_id is None or email is None or role is not None:
             raise credentials_exception
 
         token_data = TokenData(user_id=user_id, email=email, role=role)
