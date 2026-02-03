@@ -17,13 +17,33 @@ DATABASE_URL = os.getenv(
 )
 
 # File Upload
-UPLOAD_DIR = BASE_DIR / "uploads"
+# File Upload
+UPLOAD_DIR_ENV = os.getenv("UPLOAD_DIR")
+if UPLOAD_DIR_ENV:
+    UPLOAD_DIR = Path(UPLOAD_DIR_ENV)
+else:
+    UPLOAD_DIR = BASE_DIR / "uploads"
+
 VOICE_NOTES_DIR = UPLOAD_DIR / "voice_notes"
 MAX_VOICE_NOTE_SIZE = 10 * 1024 * 1024  # 10 MB
 ALLOWED_AUDIO_EXTENSIONS = {".mp3", ".m4a", ".wav", ".ogg", ".webm"}
 
 # Create upload directories if they don't exist
-VOICE_NOTES_DIR.mkdir(parents=True, exist_ok=True)
+try:
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    VOICE_NOTES_DIR.mkdir(parents=True, exist_ok=True)
+except Exception as e:
+    print(f"Warning: Could not create upload directories at {UPLOAD_DIR}: {e}")
+    # Fallback to temp dir if permission error
+    import tempfile
+    UPLOAD_DIR = Path(tempfile.gettempdir()) / "wdc_uploads"
+    VOICE_NOTES_DIR = UPLOAD_DIR / "voice_notes"
+    try:
+        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+        VOICE_NOTES_DIR.mkdir(parents=True, exist_ok=True)
+        print(f"Using fallback upload directory: {UPLOAD_DIR}")
+    except Exception as e2:
+        print(f"Critical: Could not create fallback upload directory: {e2}")
 
 # CORS - Allowed origins for API access
 # Can be overridden via ALLOWED_ORIGINS environment variable (comma-separated)
