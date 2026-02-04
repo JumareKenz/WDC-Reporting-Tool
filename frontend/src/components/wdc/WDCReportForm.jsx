@@ -953,6 +953,10 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
                 <p className="text-xs text-amber-200/80 mb-2">
                   To report, your account must be assigned to both an LGA and a Ward.
                 </p>
+                <div className="text-xs text-amber-200/60 mb-2 pb-2 border-b border-amber-500/20 font-mono">
+                  User: {user?.email || 'Unknown'}<br />
+                  Role: {user?.role || 'Unknown'}
+                </div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className={`p-2 rounded ${userLGA?.id ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-100' : 'bg-red-500/20 border border-red-500/30 text-red-100'}`}>
                     <span className="font-bold block mb-0.5">LGA</span>
