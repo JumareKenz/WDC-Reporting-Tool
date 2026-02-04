@@ -112,8 +112,8 @@ const SubmitReportPage = () => {
           <WDCReportForm
             onSuccess={handleSuccess}
             onCancel={handleCancel}
-            userWard={{ id: user?.ward_id, name: user?.ward_name }}
-            userLGA={{ id: user?.lga_id, name: user?.lga_name }}
+            userWard={{ id: user?.ward?.id, name: user?.ward?.name }}
+            userLGA={{ id: user?.ward?.lga_id || user?.lga?.id, name: user?.ward?.lga_name || user?.lga?.name }}
             submissionInfo={submissionInfo}
           />
         )}

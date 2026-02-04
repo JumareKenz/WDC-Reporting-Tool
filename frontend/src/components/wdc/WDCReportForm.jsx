@@ -69,7 +69,7 @@ const REPAIR_ITEMS = [
 ];
 
 // Section component for collapsible sections
-const FormSection = ({ title, number, icon: Icon, children, defaultOpen = true }) => {
+const FormSection = ({ title, number, icon: Icon, children, defaultOpen = false }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
@@ -97,7 +97,7 @@ const FormSection = ({ title, number, icon: Icon, children, defaultOpen = true }
   );
 };
 
-// Text input — optionally shows a compact VoiceRecorder if onVoiceNote is provided
+// Text input â€” optionally shows a compact VoiceRecorder if onVoiceNote is provided
 const TextInput = ({
   label,
   name,
@@ -164,7 +164,7 @@ const TextInput = ({
   );
 };
 
-// Number input (numerical fields are filled manually — AI does not populate these)
+// Number input (numerical fields are filled manually â€” AI does not populate these)
 const NumberInput = ({ label, name, value, onChange, min = 0, ...props }) => (
   <div className="space-y-1">
     <label className="block text-xs sm:text-sm font-medium text-neutral-700 whitespace-normal">{label}</label>
@@ -813,6 +813,12 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
     e.preventDefault();
     setSubmitError(null);
 
+    // Validate user assignment first
+    if (!userLGA?.id || !userWard?.id) {
+      setSubmitError('Your account is missing State/LGA/Ward assignment. Contact admin to complete your profile.');
+      return;
+    }
+
     // Validate form
     const validationErrors = validateForm();
     if (validationErrors.length > 0) {
@@ -820,7 +826,15 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
       return;
     }
 
-    submitMutation.mutate(formData);
+    // Ensure LGA and Ward are set from user profile (not editable)
+    const submissionData = {
+      ...formData,
+      state: 'Kaduna State',
+      lga_id: userLGA?.id,
+      ward_id: userWard?.id,
+    };
+
+    submitMutation.mutate(submissionData);
   };
 
   const handleSaveDraft = async () => {
@@ -861,7 +875,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
       <Alert
         type="info"
         title="WDC Monthly Report Form"
-        message="Complete all sections. Use the microphone icon next to text fields to record voice notes — they will be transcribed automatically."
+        message="Complete all sections. Use the microphone icon next to text fields to record voice notes â€” they will be transcribed automatically."
       />
 
       {/* Submission Period Banner */}
@@ -901,59 +915,67 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
       {/* Header Section */}
       <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white p-4 sm:p-6 rounded-xl shadow-lg">
         <h2 className="text-lg sm:text-2xl font-bold mb-4">KADUNA STATE WDC MONTHLY REPORT</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <div className="col-span-2 sm:col-span-1">
-            <label className="block text-xs sm:text-sm font-medium text-primary-100 mb-1">State</label>
-            <div className="px-3 py-2 bg-white/10 rounded-lg text-white font-medium text-sm">
-              Kaduna State
+        
+        {/* User Assignment Display - Auto-assigned, Read-only */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4">
+          <div className="bg-white/10 rounded-lg p-3 border border-white/20">
+            <label className="block text-xs font-medium text-primary-200 mb-1">State (Auto-assigned)</label>
+            <div className="flex items-center gap-2">
+              <Building className="w-4 h-4 text-primary-200" />
+              <span className="font-semibold text-sm">Kaduna State</span>
             </div>
           </div>
-          <div className="col-span-2 sm:col-span-1">
-            <label className="block text-xs sm:text-sm font-medium text-primary-100 mb-1">LGA</label>
-            <select
-              name="lga_id"
-              value={formData.lga_id}
-              onChange={handleChange}
-              className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm focus:ring-2 focus:ring-white/50"
-            >
-              <option value="" className="text-neutral-900">Select LGA</option>
-              {KADUNA_LGAS.map(lga => (
-                <option key={lga.id} value={lga.id} className="text-neutral-900">
-                  {lga.name}
-                </option>
-              ))}
-            </select>
+          <div className="bg-white/10 rounded-lg p-3 border border-white/20">
+            <label className="block text-xs font-medium text-primary-200 mb-1">LGA (Auto-assigned)</label>
+            <div className="flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-primary-200" />
+              <span className="font-semibold text-sm">{userLGA?.name || 'Not assigned'}</span>
+            </div>
           </div>
+          <div className="bg-white/10 rounded-lg p-3 border border-white/20">
+            <label className="block text-xs font-medium text-primary-200 mb-1">Ward (Auto-assigned)</label>
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-primary-200" />
+              <span className="font-semibold text-sm">{userWard?.name || 'Not assigned'}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Error if user assignment is missing */}
+        {(!userLGA?.id || !userWard?.id) && (
+          <div className="bg-red-500/20 border border-red-400/50 rounded-lg p-3 mb-4">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-5 h-5 text-red-200 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-sm text-red-100">Account Assignment Missing</p>
+                <p className="text-xs text-red-200">
+                  Your account is missing LGA/Ward assignment. Please contact admin to complete your profile.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <div>
-            <label className="block text-xs sm:text-sm font-medium text-primary-100 mb-1">Ward</label>
+            <label className="block text-xs font-medium text-primary-100 mb-1">Report Date</label>
             <input
-              type="text"
-              value={userWard?.name || 'Auto-detected'}
-              disabled
+              type="date"
+              name="report_date"
+              value={formData.report_date}
+              onChange={handleChange}
               className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm"
             />
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="block text-xs font-medium text-primary-100 mb-1">Date</label>
-              <input
-                type="date"
-                name="report_date"
-                value={formData.report_date}
-                onChange={handleChange}
-                className="w-full px-2 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-xs sm:text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-primary-100 mb-1">Time</label>
-              <input
-                type="time"
-                name="report_time"
-                value={formData.report_time}
-                onChange={handleChange}
-                className="w-full px-2 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-xs sm:text-sm"
-              />
-            </div>
+          <div>
+            <label className="block text-xs font-medium text-primary-100 mb-1">Report Time</label>
+            <input
+              type="time"
+              name="report_time"
+              value={formData.report_time}
+              onChange={handleChange}
+              className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm"
+            />
           </div>
         </div>
       </div>
