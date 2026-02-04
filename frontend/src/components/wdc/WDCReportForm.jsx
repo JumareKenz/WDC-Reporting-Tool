@@ -69,7 +69,7 @@ const REPAIR_ITEMS = [
 ];
 
 // Section component for collapsible sections
-const FormSection = ({ title, number, icon: Icon, children, defaultOpen = false }) => {
+const FormSection = ({ title, number, icon: Icon, children, defaultOpen = true }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
@@ -915,7 +915,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
       {/* Header Section */}
       <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white p-4 sm:p-6 rounded-xl shadow-lg">
         <h2 className="text-lg sm:text-2xl font-bold mb-4">KADUNA STATE WDC MONTHLY REPORT</h2>
-        
+
         {/* User Assignment Display - Auto-assigned, Read-only */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4">
           <div className="bg-white/10 rounded-lg p-3 border border-white/20">
@@ -955,7 +955,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
             </div>
           </div>
         )}
-        
+
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <div>
             <label className="block text-xs font-medium text-primary-100 mb-1">Report Date</label>
