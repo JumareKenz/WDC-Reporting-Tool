@@ -943,14 +943,32 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
 
         {/* Error if user assignment is missing */}
         {(!userLGA?.id || !userWard?.id) && (
-          <div className="bg-red-500/20 border border-red-400/50 rounded-lg p-3 mb-4">
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="w-5 h-5 text-red-200 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-semibold text-sm text-red-100">Account Assignment Missing</p>
-                <p className="text-xs text-red-200">
-                  Your account is missing LGA/Ward assignment. Please contact admin to complete your profile.
+          <div className="bg-amber-500/10 border border-amber-400/30 rounded-lg p-4 mb-4 backdrop-blur-sm">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-5 h-5 text-amber-200" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-sm text-amber-100 mb-1">Account Assignment Incomplete</h3>
+                <p className="text-xs text-amber-200/80 mb-2">
+                  To report, your account must be assigned to both an LGA and a Ward.
                 </p>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className={`p-2 rounded ${userLGA?.id ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-100' : 'bg-red-500/20 border border-red-500/30 text-red-100'}`}>
+                    <span className="font-bold block mb-0.5">LGA</span>
+                    {userLGA?.id ? userLGA.name : 'Missing'}
+                  </div>
+                  <div className={`p-2 rounded ${userWard?.id ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-100' : 'bg-red-500/20 border border-red-500/30 text-red-100'}`}>
+                    <span className="font-bold block mb-0.5">Ward</span>
+                    {userWard?.id ? userWard.name : 'Missing'}
+                  </div>
+                </div>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="mt-3 text-xs font-semibold text-amber-200 hover:text-white underline decoration-dashed underline-offset-4"
+                >
+                  Refresh Profile
+                </button>
               </div>
             </div>
           </div>
