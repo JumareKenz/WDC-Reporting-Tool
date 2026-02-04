@@ -69,7 +69,7 @@ const REPAIR_ITEMS = [
 ];
 
 // Section component for collapsible sections
-const FormSection = ({ title, number, icon: Icon, children, defaultOpen = false }) => {
+const FormSection = ({ title, number, icon: Icon, children, defaultOpen = true }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
