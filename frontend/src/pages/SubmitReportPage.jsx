@@ -102,19 +102,14 @@ const SubmitReportPage = () => {
               </div>
             </div>
           </Card>
-        ) : activeForm ? (
-          <DynamicForm
-            definition={activeForm.definition}
-            onSuccess={handleSuccess}
-            onCancel={handleCancel}
-          />
         ) : (
-          <WDCReportForm
-            onSuccess={handleSuccess}
-            onCancel={handleCancel}
-            userWard={{ id: user?.ward?.id, name: user?.ward?.name }}
-            userLGA={{ id: user?.ward?.lga_id || user?.lga?.id, name: user?.ward?.lga_name || user?.lga?.name }}
-            submissionInfo={submissionInfo}
+        ): (
+            <WDCReportForm
+            onSuccess = { handleSuccess }
+            onCancel = { handleCancel }
+            userWard = {{ id: user?.ward?.id, name: user?.ward?.name }}
+        userLGA={{ id: user?.ward?.lga_id || user?.lga?.id, name: user?.ward?.lga_name || user?.lga?.name }}
+        submissionInfo={submissionInfo}
           />
         )}
       </div>
