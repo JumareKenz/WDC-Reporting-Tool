@@ -405,7 +405,7 @@ async def create_report(
 
     # Create notification for LGA Coordinator
     ward = db.query(Ward).filter(Ward.id == current_user.ward_id).first()
-    if ward:
+    if ward and ward.lga_id:
         coordinator = db.query(User).filter(
             User.lga_id == ward.lga_id,
             User.role == "LGA_COORDINATOR"
