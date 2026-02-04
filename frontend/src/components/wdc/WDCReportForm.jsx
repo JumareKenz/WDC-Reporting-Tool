@@ -1626,6 +1626,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
           icon={Save}
           loading={draftMutation.isPending}
           onClick={handleSaveDraft}
+          disabled={!userLGA?.id || !userWard?.id}
           className="flex-1 sm:flex-none"
         >
           {draftMutation.isPending ? 'Saving...' : (draftId ? 'Update Draft' : 'Save as Draft')}
@@ -1636,6 +1637,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
           size="lg"
           icon={Send}
           loading={submitMutation.isPending}
+          disabled={!userLGA?.id || !userWard?.id}
           className="flex-1"
         >
           Submit Report

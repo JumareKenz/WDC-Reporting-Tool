@@ -146,6 +146,14 @@ async def create_report(
             detail="User is not assigned to a ward"
         )
 
+    # Validate Ward exists
+    ward = db.query(Ward).filter(Ward.id == current_user.ward_id).first()
+    if not ward:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Assigned Ward ID {current_user.ward_id} not found in database. Contact Admin."
+        )
+
     # Validate report month matches expected submission period
     is_valid, error_msg = validate_report_month(report_month)
     if not is_valid:
