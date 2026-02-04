@@ -27,6 +27,7 @@ import VoiceRecorder from './VoiceRecorder';
 import apiClient from '../../api/client';
 import { getTargetReportMonth, formatMonthDisplay, getSubmissionPeriodDescription } from '../../utils/dateUtils';
 import { saveDraft, getExistingDraft } from '../../api/reports';
+import { useAuth } from '../../hooks/useAuth';
 
 // Kaduna LGAs data
 const KADUNA_LGAS = [
