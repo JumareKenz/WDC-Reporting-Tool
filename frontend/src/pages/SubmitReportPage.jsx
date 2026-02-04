@@ -13,7 +13,7 @@ import { getSubmissionInfo } from '../api/reports';
 
 const SubmitReportPage = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, verifyToken } = useAuth();
   const [activeForm, setActiveForm] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submissionInfo, setSubmissionInfo] = useState(null);
@@ -22,6 +22,9 @@ const SubmitReportPage = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Refresh user data first to get latest assignments
+        await verifyToken().catch(err => console.warn('Background user refresh failed', err));
+
         // Fetch submission info
         const infoResponse = await getSubmissionInfo();
         const info = infoResponse?.data || getLocalSubmissionInfo();
@@ -41,7 +44,7 @@ const SubmitReportPage = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [verifyToken]);
 
   const handleSuccess = () => {
     navigate('/wdc');
