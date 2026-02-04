@@ -336,6 +336,7 @@ const DynamicTable = ({ columns, rows, onRowChange, onAddRow, onRemoveRow, table
  * Comprehensive WDC Monthly Report Form
  */
 const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo }) => {
+  const { user } = useAuth();
   const [submitError, setSubmitError] = useState(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [voiceNotes, setVoiceNotes] = useState({});
