@@ -69,8 +69,8 @@ const SubmitReportPage = () => {
               <span className="hidden sm:inline">Back to Dashboard</span>
             </Button>
             <div className="flex-1">
-              <h1 className="text-lg sm:text-xl font-bold text-neutral-900">
-                Submit Monthly Report
+              <h1 className="text-lg sm:text-xl font-bold text-neutral-900 flex items-center gap-2">
+                Submit Monthly Report <span className="text-xs bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full">v2.5</span>
               </h1>
               <p className="text-xs sm:text-sm text-neutral-600">
                 {user?.ward?.name || 'Your Ward'} • {user?.ward?.lga_name || user?.lga?.name || 'Your LGA'}
