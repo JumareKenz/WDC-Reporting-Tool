@@ -1,0 +1,44 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e5]:
+  - generic [ref=e6]:
+    - img [ref=e9]
+    - heading "KADUNA STATE WDC" [level=1] [ref=e13]
+    - paragraph [ref=e14]: Digital Reporting System
+  - generic [ref=e15]:
+    - generic [ref=e16]:
+      - generic [ref=e17]:
+        - generic [ref=e18]: Email Address
+        - generic [ref=e19]:
+          - img [ref=e20]
+          - textbox "Email Address" [ref=e23]:
+            - /placeholder: your.email@kaduna.gov.ng
+      - generic [ref=e24]:
+        - generic [ref=e25]: Password
+        - generic [ref=e26]:
+          - img [ref=e27]
+          - textbox "Password" [ref=e30]:
+            - /placeholder: Enter your password
+        - button "Forgot Password?" [ref=e32] [cursor=pointer]
+      - button "Sign In" [ref=e33] [cursor=pointer]:
+        - img [ref=e34]
+        - generic [ref=e37]: Sign In
+    - generic [ref=e42]: Quick Demo Access
+    - generic [ref=e43]:
+      - paragraph [ref=e44]:
+        - img [ref=e45]
+        - generic [ref=e47]: Select a demo account to explore the system
+      - button "Amina Yusuf (WDC Secretary - Barnawa) wdc.chikun.barnawa@kaduna.gov.ng" [ref=e48] [cursor=pointer]:
+        - paragraph [ref=e49]: Amina Yusuf (WDC Secretary - Barnawa)
+        - paragraph [ref=e50]: wdc.chikun.barnawa@kaduna.gov.ng
+      - button "Ibrahim Suleiman (LGA Coordinator - Chikun) coord.chikun@kaduna.gov.ng" [ref=e51] [cursor=pointer]:
+        - paragraph [ref=e52]: Ibrahim Suleiman (LGA Coordinator - Chikun)
+        - paragraph [ref=e53]: coord.chikun@kaduna.gov.ng
+      - button "Dr. Fatima Abdullahi (State Official) state.official@kaduna.gov.ng" [ref=e54] [cursor=pointer]:
+        - paragraph [ref=e55]: Dr. Fatima Abdullahi (State Official)
+        - paragraph [ref=e56]: state.official@kaduna.gov.ng
+  - generic [ref=e57]:
+    - paragraph [ref=e58]: Kaduna State, Nigeria
+    - paragraph [ref=e59]: "Support: support@kaduna.gov.ng"
+```

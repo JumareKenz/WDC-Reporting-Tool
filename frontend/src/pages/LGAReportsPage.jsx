@@ -13,6 +13,7 @@ import {
   TrendingUp,
   Download,
   BarChart3,
+  XCircle,
 } from 'lucide-react';
 import Card, { IconCard, EmptyCard } from '../components/common/Card';
 import Button from '../components/common/Button';
@@ -34,6 +35,8 @@ const LGAReportsPage = () => {
   const [selectedReport, setSelectedReport] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [alertMessage, setAlertMessage] = useState(null);
+  const [showDeclineModal, setShowDeclineModal] = useState(false);
+  const [declineReason, setDeclineReason] = useState('');
 
   const { data: reportsData, isLoading, refetch } = useLGAReports(lgaId, { limit: 100 });
   const reviewMutation = useReviewReport();
@@ -62,21 +65,45 @@ const LGAReportsPage = () => {
   const submittedCount = reports.filter(r => r.status === REPORT_STATUS.SUBMITTED).length;
   const reviewedCount = reports.filter(r => r.status === REPORT_STATUS.REVIEWED).length;
   const flaggedCount = reports.filter(r => r.status === REPORT_STATUS.FLAGGED).length;
+  const declinedCount = reports.filter(r => r.status === REPORT_STATUS.DECLINED).length;
   const totalMeetings = reports.reduce((sum, r) => sum + (r.meetings_held || 0), 0);
   const totalAttendees = reports.reduce((sum, r) => sum + (r.attendees_count || 0), 0);
 
-  const handleReviewReport = async (reportId, status) => {
+  const handleReviewReport = async (reportId, action, reason = null) => {
     try {
       await reviewMutation.mutateAsync({
         reportId,
-        data: { status, reviewer_notes: '' },
+        data: { action, decline_reason: reason },
       });
-      setAlertMessage({ type: 'success', text: `Report marked as ${STATUS_LABELS[status]}` });
+      const actionLabel = action === 'approve' ? 'approved' : 'declined';
+      setAlertMessage({ type: 'success', text: `Report ${actionLabel} successfully` });
       setShowDetailsModal(false);
+      setShowDeclineModal(false);
       setSelectedReport(null);
+      setDeclineReason('');
       refetch();
     } catch (error) {
       setAlertMessage({ type: 'error', text: error.message || 'Failed to update report' });
+    }
+  };
+
+  const handleApprove = () => {
+    if (selectedReport) {
+      handleReviewReport(selectedReport.id, 'approve');
+    }
+  };
+
+  const handleDeclineClick = () => {
+    setShowDeclineModal(true);
+  };
+
+  const handleDeclineSubmit = () => {
+    if (!declineReason.trim()) {
+      setAlertMessage({ type: 'error', text: 'Please provide a reason for declining' });
+      return;
+    }
+    if (selectedReport) {
+      handleReviewReport(selectedReport.id, 'decline', declineReason.trim());
     }
   };
 
@@ -258,11 +285,10 @@ const LGAReportsPage = () => {
                   >
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${
-                          report.status === REPORT_STATUS.REVIEWED ? 'bg-green-500' :
+                        <div className={`w-2 h-2 rounded-full ${report.status === REPORT_STATUS.REVIEWED ? 'bg-green-500' :
                           report.status === REPORT_STATUS.FLAGGED ? 'bg-red-500' :
-                          'bg-blue-500'
-                        }`} />
+                            'bg-blue-500'
+                          }`} />
                         <p className="font-medium text-neutral-900">{report.ward_name || 'Unknown Ward'}</p>
                       </div>
                     </td>
@@ -407,27 +433,79 @@ const LGAReportsPage = () => {
               )}
             </div>
 
+            {/* Decline Reason Display (for declined reports) */}
+            {selectedReport.status === REPORT_STATUS.DECLINED && selectedReport.decline_reason && (
+              <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+                <h4 className="font-semibold text-red-900 mb-2 flex items-center gap-2">
+                  <XCircle className="w-4 h-4 text-red-600" />
+                  Decline Reason
+                </h4>
+                <p className="text-sm text-red-700 leading-relaxed">{selectedReport.decline_reason}</p>
+                {selectedReport.reviewer_name && (
+                  <p className="text-xs text-red-500 mt-2">
+                    Declined by: {selectedReport.reviewer_name}
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Actions */}
             {selectedReport.status === REPORT_STATUS.SUBMITTED && (
-              <div className="flex gap-3 pt-4 border-t border-neutral-200">
-                <Button
-                  variant="success"
-                  icon={CheckCircle}
-                  onClick={() => handleReviewReport(selectedReport.id, REPORT_STATUS.REVIEWED)}
-                  loading={reviewMutation.isPending}
-                  className="flex-1"
-                >
-                  Approve Report
-                </Button>
-                <Button
-                  variant="danger"
-                  icon={AlertTriangle}
-                  onClick={() => handleReviewReport(selectedReport.id, REPORT_STATUS.FLAGGED)}
-                  loading={reviewMutation.isPending}
-                  className="flex-1"
-                >
-                  Flag for Review
-                </Button>
+              <div className="space-y-4 pt-4 border-t border-neutral-200">
+                {showDeclineModal ? (
+                  <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+                    <h4 className="font-semibold text-red-900 mb-3">Decline Report</h4>
+                    <textarea
+                      value={declineReason}
+                      onChange={(e) => setDeclineReason(e.target.value)}
+                      placeholder="Please provide a reason for declining this report (required)..."
+                      className="w-full p-3 border border-red-300 rounded-lg text-sm focus:ring-red-500 focus:border-red-500"
+                      rows={3}
+                    />
+                    <div className="flex gap-2 mt-3">
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={handleDeclineSubmit}
+                        loading={reviewMutation.isPending}
+                        disabled={!declineReason.trim()}
+                      >
+                        Confirm Decline
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setShowDeclineModal(false);
+                          setDeclineReason('');
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex gap-3">
+                    <Button
+                      variant="success"
+                      icon={CheckCircle}
+                      onClick={handleApprove}
+                      loading={reviewMutation.isPending}
+                      className="flex-1"
+                    >
+                      Approve Report
+                    </Button>
+                    <Button
+                      variant="danger"
+                      icon={XCircle}
+                      onClick={handleDeclineClick}
+                      loading={reviewMutation.isPending}
+                      className="flex-1"
+                    >
+                      Decline Report
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </div>

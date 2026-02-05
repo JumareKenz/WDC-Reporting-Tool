@@ -200,6 +200,7 @@ class Report(Base):
     submitted_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     reviewed_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    decline_reason = Column(Text, nullable=True)  # Required when status is DECLINED
 
     # Relationships
     ward = relationship("Ward", back_populates="reports")
@@ -208,7 +209,7 @@ class Report(Base):
     voice_notes = relationship("VoiceNote", back_populates="report", cascade="all, delete-orphan")
 
     __table_args__ = (
-        CheckConstraint("status IN ('DRAFT', 'SUBMITTED', 'REVIEWED', 'FLAGGED')", name="report_status_check"),
+        CheckConstraint("status IN ('DRAFT', 'SUBMITTED', 'REVIEWED', 'FLAGGED', 'DECLINED')", name="report_status_check"),
         CheckConstraint("meetings_held >= 0", name="meetings_positive_check"),
         CheckConstraint("attendees_count >= 0", name="attendees_positive_check"),
         UniqueConstraint('ward_id', 'report_month', name='unique_ward_month'),

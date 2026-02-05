@@ -208,6 +208,60 @@ class TestReportReview:
         response = client.patch("/api/reports/9999/review", headers=lga_headers)
         assert response.status_code == 404
 
+    def test_decline_requires_reason(self, client, wdc_headers, lga_headers):
+        """Declining without a reason should return 400"""
+        create_resp = _submit_report(client, wdc_headers)
+        report_id = create_resp.json()["id"]
+
+        response = client.patch(
+            f"/api/reports/{report_id}/review",
+            headers=lga_headers,
+            json={"action": "decline"}  # No decline_reason
+        )
+        assert response.status_code == 400
+        assert "reason is required" in response.json()["detail"].lower()
+
+    def test_decline_stores_reason(self, client, wdc_headers, lga_headers):
+        """Declining with a reason should store it correctly"""
+        create_resp = _submit_report(client, wdc_headers)
+        report_id = create_resp.json()["id"]
+
+        decline_reason = "Report missing required data"
+        response = client.patch(
+            f"/api/reports/{report_id}/review",
+            headers=lga_headers,
+            json={"action": "decline", "decline_reason": decline_reason}
+        )
+        assert response.status_code == 200
+        assert response.json()["data"]["status"] == "DECLINED"
+        assert response.json()["data"]["decline_reason"] == decline_reason
+
+    def test_approve_clears_decline_reason(self, client, wdc_headers, lga_headers):
+        """Approving should clear any previous decline reason"""
+        create_resp = _submit_report(client, wdc_headers)
+        report_id = create_resp.json()["id"]
+
+        response = client.patch(
+            f"/api/reports/{report_id}/review",
+            headers=lga_headers,
+            json={"action": "approve"}
+        )
+        assert response.status_code == 200
+        assert response.json()["data"]["status"] == "REVIEWED"
+        assert response.json()["data"]["decline_reason"] is None
+
+    def test_invalid_action_rejected(self, client, wdc_headers, lga_headers):
+        """Invalid action should return 400"""
+        create_resp = _submit_report(client, wdc_headers)
+        report_id = create_resp.json()["id"]
+
+        response = client.patch(
+            f"/api/reports/{report_id}/review",
+            headers=lga_headers,
+            json={"action": "invalid_action"}
+        )
+        assert response.status_code == 400
+
 
 # ---------------------------------------------------------------------------
 # Check submitted

@@ -952,15 +952,40 @@ def get_report(
 @router.patch("/{report_id}/review")
 def review_report(
     report_id: int,
+    action: str = Body("approve", embed=True),  # "approve" or "decline"
+    decline_reason: Optional[str] = Body(None, embed=True),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Mark a report as reviewed (LGA Coordinator or State Official)."""
+    """
+    Review a report - approve or decline (LGA Coordinator or State Official).
+    
+    Actions:
+    - "approve": Mark as REVIEWED
+    - "decline": Mark as DECLINED with mandatory reason
+    """
+    import logging
+    logger = logging.getLogger(__name__)
 
     if current_user.role not in ["LGA_COORDINATOR", "STATE_OFFICIAL"]:
+        logger.warning(f"Permission denied: user_id={current_user.id} attempted to review report_id={report_id}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only LGA Coordinators and State Officials can review reports"
+        )
+
+    # Validate action
+    if action not in ["approve", "decline"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Action must be 'approve' or 'decline'"
+        )
+
+    # Validate decline_reason is provided for declines
+    if action == "decline" and not decline_reason:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Decline reason is required when declining a report"
         )
 
     report = db.query(Report).filter(Report.id == report_id).first()
@@ -971,20 +996,33 @@ def review_report(
             detail="Report not found"
         )
 
-    # Check permissions for LGA Coordinator
+    # Check permissions for LGA Coordinator - can only review wards in their LGA
     if current_user.role == "LGA_COORDINATOR":
         ward = db.query(Ward).filter(Ward.id == report.ward_id).first()
         if ward.lga_id != current_user.lga_id:
+            logger.warning(f"Permission denied: user_id={current_user.id} (LGA) attempted to review report_id={report_id} outside scope")
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to review this report"
             )
 
-    report.status = "REVIEWED"
+    # Update report status
+    if action == "approve":
+        report.status = "REVIEWED"
+        report.decline_reason = None  # Clear any previous decline reason
+        message = "Report approved successfully"
+    else:  # decline
+        report.status = "DECLINED"
+        report.decline_reason = decline_reason.strip()
+        message = "Report declined"
+
     report.reviewed_by = current_user.id
     report.reviewed_at = datetime.utcnow()
 
     db.commit()
+
+    # Log the action for audit trail
+    logger.info(f"Report {report_id} {action}d by user_id={current_user.id}, role={current_user.role}")
 
     return {
         "success": True,
@@ -992,9 +1030,11 @@ def review_report(
             "id": report.id,
             "status": report.status,
             "reviewed_by": report.reviewed_by,
-            "reviewed_at": report.reviewed_at
+            "reviewed_at": report.reviewed_at,
+            "decline_reason": report.decline_reason,
+            "reviewer_name": current_user.full_name
         },
-        "message": "Report marked as reviewed"
+        "message": message
     }
 
 

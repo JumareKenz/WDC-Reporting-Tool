@@ -17,13 +17,15 @@ export const REPORT_STATUS = {
   SUBMITTED: 'SUBMITTED',
   REVIEWED: 'REVIEWED',
   FLAGGED: 'FLAGGED',
+  DECLINED: 'DECLINED',
 };
 
 export const STATUS_LABELS = {
   [REPORT_STATUS.DRAFT]: 'Draft',
   [REPORT_STATUS.SUBMITTED]: 'Submitted',
-  [REPORT_STATUS.REVIEWED]: 'Reviewed',
+  [REPORT_STATUS.REVIEWED]: 'Approved',
   [REPORT_STATUS.FLAGGED]: 'Flagged',
+  [REPORT_STATUS.DECLINED]: 'Declined',
 };
 
 export const STATUS_COLORS = {
@@ -31,6 +33,7 @@ export const STATUS_COLORS = {
   [REPORT_STATUS.SUBMITTED]: 'info',
   [REPORT_STATUS.REVIEWED]: 'success',
   [REPORT_STATUS.FLAGGED]: 'warning',
+  [REPORT_STATUS.DECLINED]: 'error',
 };
 
 // Investigation Statuses

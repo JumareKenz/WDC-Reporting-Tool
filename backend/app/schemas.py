@@ -17,6 +17,7 @@ class ReportStatus(str, Enum):
     SUBMITTED = "SUBMITTED"
     REVIEWED = "REVIEWED"
     FLAGGED = "FLAGGED"
+    DECLINED = "DECLINED"
 
 
 class NotificationType(str, Enum):
@@ -437,6 +438,8 @@ class ReportResponse(ReportBase):
     submitted_at: datetime
     reviewed_by: Optional[int] = None
     reviewed_at: Optional[datetime] = None
+    decline_reason: Optional[str] = None
+    reviewer_name: Optional[str] = None
     ward: Optional[WardSimple] = None
     submitted_by: Optional[UserSimple] = None
     voice_notes: List[VoiceNoteSimple] = []
@@ -466,6 +469,10 @@ class ReportListItem(BaseModel):
     has_voice_note: bool = False
     ward_name: Optional[str] = None
     secretary_name: Optional[str] = None
+    decline_reason: Optional[str] = None
+    reviewed_by: Optional[int] = None
+    reviewed_at: Optional[datetime] = None
+    reviewer_name: Optional[str] = None
 
     class Config:
         from_attributes = True

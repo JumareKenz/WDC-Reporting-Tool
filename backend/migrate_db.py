@@ -17,7 +17,8 @@ def migrate():
         ("health_anc_total", "INTEGER DEFAULT 0"),
         ("items_donated_govt_count", "INTEGER DEFAULT 0"),
         ("items_donated_govt_types", "TEXT"),
-        ("group_photo_path", "TEXT")
+        ("group_photo_path", "TEXT"),
+        ("decline_reason", "TEXT"),  # For storing LGA coordinator decline reasons
     ]
     
     with engine.connect() as conn:
