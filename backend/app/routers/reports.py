@@ -939,7 +939,10 @@ def get_report(
             file_name=vn.file_name,
             file_size=vn.file_size,
             duration_seconds=vn.duration_seconds,
-            download_url=f"/api/voice-notes/{vn.id}/download"
+            download_url=f"/api/voice-notes/{vn.id}/download",
+            field_name=vn.field_name,
+            transcription_status=vn.transcription_status,
+            transcription_text=vn.transcription_text
         ) for vn in voice_notes
     ]
 
