@@ -132,6 +132,7 @@ async def create_report(
     Supports both simple form submission (individual fields) and 
     comprehensive form submission (report_data JSON blob).
     """
+    print(f"DEBUG: create_report called by {current_user.id} ({current_user.email}) for ward {current_user.ward_id}")
 
     # Check if user is WDC Secretary
     if current_user.role != "WDC_SECRETARY":
