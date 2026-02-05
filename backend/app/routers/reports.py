@@ -903,69 +903,104 @@ def get_report(
     db: Session = Depends(get_db)
 ):
     """Get detailed report information."""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    try:
+        logger.info(f"get_report called: report_id={report_id}, user_id={current_user.id}, role={current_user.role}")
+        
+        report = db.query(Report).filter(Report.id == report_id).first()
 
-    report = db.query(Report).filter(Report.id == report_id).first()
-
-    if not report:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Report not found"
-        )
-
-    # Check permissions
-    if current_user.role == "WDC_SECRETARY":
-        if report.ward_id != current_user.ward_id:
+        if not report:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not authorized to view this report"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Report not found"
             )
-    elif current_user.role == "LGA_COORDINATOR":
+
+        # Check permissions
+        if current_user.role == "WDC_SECRETARY":
+            if report.ward_id != current_user.ward_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Not authorized to view this report"
+                )
+        elif current_user.role == "LGA_COORDINATOR":
+            ward = db.query(Ward).filter(Ward.id == report.ward_id).first()
+            if ward and ward.lga_id != current_user.lga_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Not authorized to view this report"
+                )
+
+        # Get ward info
         ward = db.query(Ward).filter(Ward.id == report.ward_id).first()
-        if ward.lga_id != current_user.lga_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not authorized to view this report"
+        lga = db.query(LGA).filter(LGA.id == ward.lga_id).first() if ward else None
+
+        # Get voice notes
+        voice_notes = db.query(VoiceNote).filter(VoiceNote.report_id == report.id).all()
+
+        # Build response data as dict first (Pydantic v2 safe pattern)
+        response_data = {
+            "id": report.id,
+            "ward_id": report.ward_id,
+            "user_id": report.user_id,
+            "report_month": report.report_month,
+            "meetings_held": report.meetings_held,
+            "attendees_count": report.attendees_count,
+            "issues_identified": report.issues_identified,
+            "actions_taken": report.actions_taken,
+            "challenges": report.challenges,
+            "recommendations": report.recommendations,
+            "additional_notes": report.additional_notes,
+            "status": report.status,
+            "submitted_at": report.submitted_at,
+            "reviewed_by": report.reviewed_by,
+            "reviewed_at": report.reviewed_at,
+            "decline_reason": getattr(report, 'decline_reason', None),
+            "submission_id": getattr(report, 'submission_id', None),
+            "has_voice_note": len(voice_notes) > 0,
+            "voice_notes": [
+                VoiceNoteSimple(
+                    id=vn.id,
+                    file_name=vn.file_name,
+                    file_size=vn.file_size,
+                    duration_seconds=vn.duration_seconds,
+                    download_url=f"/api/voice-notes/{vn.id}/download",
+                    field_name=vn.field_name,
+                    transcription_status=vn.transcription_status,
+                    transcription_text=vn.transcription_text
+                ) for vn in voice_notes
+            ],
+        }
+        
+        # Add ward info
+        if ward:
+            response_data["ward"] = WardSimple(
+                id=ward.id,
+                name=ward.name,
+                code=ward.code,
+                lga_id=ward.lga_id,
+                lga_name=lga.name if lga else None
+            )
+        
+        # Add submitter info
+        if report.user:
+            response_data["submitted_by"] = UserSimple(
+                id=report.user.id,
+                full_name=report.user.full_name
             )
 
-    # Get ward info
-    ward = db.query(Ward).filter(Ward.id == report.ward_id).first()
-    lga = db.query(LGA).filter(LGA.id == ward.lga_id).first() if ward else None
-
-    # Get voice notes
-    voice_notes = db.query(VoiceNote).filter(VoiceNote.report_id == report.id).all()
-
-    # Prepare response
-    response = ReportResponse.model_validate(report)
-    response.has_voice_note = len(voice_notes) > 0
-
-    if ward:
-        response.ward = WardSimple(
-            id=ward.id,
-            name=ward.name,
-            code=ward.code,
-            lga_id=ward.lga_id,
-            lga_name=lga.name if lga else None
+        # Create response using dict - avoids Pydantic v2 mutation issues
+        return ReportResponse(**response_data)
+        
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions as-is
+    except Exception as e:
+        logger.error(f"Error in get_report: report_id={report_id}, error={str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error retrieving report: {str(e)}"
         )
-
-    response.submitted_by = UserSimple(
-        id=report.user.id,
-        full_name=report.user.full_name
-    )
-
-    response.voice_notes = [
-        VoiceNoteSimple(
-            id=vn.id,
-            file_name=vn.file_name,
-            file_size=vn.file_size,
-            duration_seconds=vn.duration_seconds,
-            download_url=f"/api/voice-notes/{vn.id}/download",
-            field_name=vn.field_name,
-            transcription_status=vn.transcription_status,
-            transcription_text=vn.transcription_text
-        ) for vn in voice_notes
-    ]
-
-    return response
 
 
 @router.patch("/{report_id}/review")
