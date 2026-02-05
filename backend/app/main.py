@@ -27,6 +27,12 @@ app.add_middleware(
     max_age=3600,  # Cache preflight requests for 1 hour
 )
 
+@app.on_event("startup")
+def startup_event():
+    """Run database migrations on startup"""
+    from .migration import run_migrations
+    run_migrations()
+
 # Include routers
 app.include_router(auth.router, prefix="/api")
 app.include_router(profile.router, prefix="/api")
