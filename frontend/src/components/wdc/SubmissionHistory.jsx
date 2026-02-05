@@ -8,6 +8,7 @@ import {
   Eye,
   Mic,
   ChevronRight,
+  XCircle,
 } from 'lucide-react';
 import Button from '../common/Button';
 import LoadingSpinner from '../common/LoadingSpinner';
@@ -39,6 +40,11 @@ const SubmissionHistory = ({ reports = [], loading = false, showPagination = fal
         icon: FileText,
         text: 'Draft',
         className: 'bg-neutral-100 text-neutral-800 border-neutral-200',
+      },
+      [REPORT_STATUS.DECLINED]: {
+        icon: XCircle,
+        text: 'Declined',
+        className: 'bg-red-100 text-red-800 border-red-200',
       },
     };
 

@@ -259,7 +259,8 @@ const StateSubmissionsPage = () => {
           >
             <option value="">All Status</option>
             <option value={REPORT_STATUS.SUBMITTED}>Submitted</option>
-            <option value={REPORT_STATUS.REVIEWED}>Reviewed</option>
+            <option value={REPORT_STATUS.REVIEWED}>Approved</option>
+            <option value={REPORT_STATUS.DECLINED}>Declined</option>
             <option value={REPORT_STATUS.FLAGGED}>Flagged</option>
           </select>
 
@@ -314,23 +315,22 @@ const StateSubmissionsPage = () => {
                     {lga.submission_rate}%
                   </span>
                   <span
-                    className={`px-3 py-1 text-xs font-medium rounded-full ${
-                      lga.submission_rate >= 90
+                    className={`px-3 py-1 text-xs font-medium rounded-full ${lga.submission_rate >= 90
                         ? 'bg-green-100 text-green-800'
                         : lga.submission_rate >= 70
-                        ? 'bg-blue-100 text-blue-800'
-                        : lga.submission_rate >= 50
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}
+                          ? 'bg-blue-100 text-blue-800'
+                          : lga.submission_rate >= 50
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-red-100 text-red-800'
+                      }`}
                   >
                     {lga.submission_rate >= 90
                       ? 'Excellent'
                       : lga.submission_rate >= 70
-                      ? 'Good'
-                      : lga.submission_rate >= 50
-                      ? 'Fair'
-                      : 'Critical'}
+                        ? 'Good'
+                        : lga.submission_rate >= 50
+                          ? 'Fair'
+                          : 'Critical'}
                   </span>
                 </div>
               </button>
@@ -498,11 +498,10 @@ const StateSubmissionsPage = () => {
                       {/* Play / Pause button */}
                       <button
                         onClick={() => handlePlayAudio(vn)}
-                        className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
-                          playingAudio === vn.id
+                        className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-colors ${playingAudio === vn.id
                             ? 'bg-purple-600 text-white hover:bg-purple-700'
                             : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
-                        }`}
+                          }`}
                       >
                         {playingAudio === vn.id ? (
                           <Pause className="w-4 h-4" />
