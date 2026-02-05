@@ -19,6 +19,7 @@ def migrate():
         ("items_donated_govt_types", "TEXT"),
         ("group_photo_path", "TEXT"),
         ("decline_reason", "TEXT"),  # For storing LGA coordinator decline reasons
+        ("submission_id", "VARCHAR(36)"),  # Client-generated UUID for idempotency
     ]
     
     with engine.connect() as conn:

@@ -439,6 +439,7 @@ class ReportResponse(ReportBase):
     reviewed_by: Optional[int] = None
     reviewed_at: Optional[datetime] = None
     decline_reason: Optional[str] = None
+    submission_id: Optional[str] = None
     reviewer_name: Optional[str] = None
     ward: Optional[WardSimple] = None
     submitted_by: Optional[UserSimple] = None

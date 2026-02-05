@@ -201,6 +201,7 @@ class Report(Base):
     reviewed_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
     decline_reason = Column(Text, nullable=True)  # Required when status is DECLINED
+    submission_id = Column(String(36), nullable=True, unique=True, index=True)  # Client-generated UUID for idempotency
 
     # Relationships
     ward = relationship("Ward", back_populates="reports")

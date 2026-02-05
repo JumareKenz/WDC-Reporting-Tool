@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   FileText,
@@ -20,14 +20,18 @@ import {
   X,
   Info,
   Save,
+  RefreshCw,
 } from 'lucide-react';
 import Button from '../common/Button';
 import Alert from '../common/Alert';
 import VoiceRecorder from './VoiceRecorder';
+import DraftStatusBar from './DraftStatusBar';
 import apiClient from '../../api/client';
 import { getTargetReportMonth, formatMonthDisplay, getSubmissionPeriodDescription } from '../../utils/dateUtils';
 import { saveDraft, getExistingDraft } from '../../api/reports';
 import { useAuth } from '../../hooks/useAuth';
+import { useLocalDraft } from '../../hooks/useLocalDraft';
+import { useOfflineQueue } from '../../hooks/useOfflineQueue';
 
 // Kaduna LGAs data
 const KADUNA_LGAS = [
@@ -346,6 +350,11 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
   const [draftId, setDraftId] = useState(null);
   const [draftSavedAt, setDraftSavedAt] = useState(null);
   const [isLoadingDraft, setIsLoadingDraft] = useState(true);
+  const [showDraftModal, setShowDraftModal] = useState(false);
+  const [pendingDraft, setPendingDraft] = useState(null);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [localDraftStatus, setLocalDraftStatus] = useState('idle'); // idle | saving | saved | error
+  const [localLastSavedAt, setLocalLastSavedAt] = useState(null);
 
   // Calculate report month on mount
   useEffect(() => {
@@ -465,46 +474,236 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
     secretary_signature: '',
   });
 
-  // Load existing draft on mount
+  // Generate draft key for localStorage
+  const getDraftKey = useCallback(() => {
+    if (!user?.id || !userWard?.id || !reportMonth) return null;
+    return `wdc_draft:${user.id}:${userWard.id}:${reportMonth}`;
+  }, [user?.id, userWard?.id, reportMonth]);
+
+  // Save draft to localStorage
+  const saveDraftToLocal = useCallback((data, instant = false) => {
+    const key = getDraftKey();
+    if (!key) return false;
+
+    try {
+      const draftPayload = {
+        formData: data,
+        savedAt: new Date().toISOString(),
+        version: 1,
+      };
+      localStorage.setItem(key, JSON.stringify(draftPayload));
+      setLocalLastSavedAt(new Date());
+      setLocalDraftStatus('saved');
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[WDCReportForm] Draft saved to localStorage', { key, instant });
+      }
+      return true;
+    } catch (error) {
+      setLocalDraftStatus('error');
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[WDCReportForm] Failed to save draft:', error);
+      }
+      return false;
+    }
+  }, [getDraftKey]);
+
+  // Load draft from localStorage
+  const loadDraftFromLocal = useCallback(() => {
+    const key = getDraftKey();
+    if (!key) return null;
+
+    try {
+      const stored = localStorage.getItem(key);
+      if (!stored) return null;
+      const parsed = JSON.parse(stored);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[WDCReportForm] Draft loaded from localStorage', { key, savedAt: parsed.savedAt });
+      }
+      return parsed;
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[WDCReportForm] Failed to load draft:', error);
+      }
+      return null;
+    }
+  }, [getDraftKey]);
+
+  // Debounce ref for auto-save
+  const debounceRef = React.useRef(null);
+  const formDataRef = React.useRef(formData);
+
+  // Keep ref in sync
+  useEffect(() => {
+    formDataRef.current = formData;
+  }, [formData]);
+
+  // Debounced auto-save on form changes
+  useEffect(() => {
+    if (!getDraftKey() || isLoadingDraft) return;
+
+    setLocalDraftStatus('saving');
+
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    debounceRef.current = setTimeout(() => {
+      saveDraftToLocal(formData);
+    }, 1000); // 1 second debounce
+
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, [formData, getDraftKey, saveDraftToLocal, isLoadingDraft]);
+
+  // Save on visibility change (tab blur / app background)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden' && getDraftKey()) {
+        if (debounceRef.current) {
+          clearTimeout(debounceRef.current);
+        }
+        saveDraftToLocal(formDataRef.current, true);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [saveDraftToLocal, getDraftKey]);
+
+  // Save on beforeunload (page close/refresh)
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (getDraftKey()) {
+        if (debounceRef.current) {
+          clearTimeout(debounceRef.current);
+        }
+        saveDraftToLocal(formDataRef.current, true);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [saveDraftToLocal, getDraftKey]);
+
+  // Online/offline event handlers
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[WDCReportForm] Back online');
+      }
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[WDCReportForm] Went offline');
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Load draft on mount - localStorage first, then server fallback
   useEffect(() => {
     const loadDraft = async () => {
-      if (!reportMonth) return;
+      if (!reportMonth || !user?.id || !userWard?.id) return;
 
       try {
         setIsLoadingDraft(true);
-        const response = await getExistingDraft(reportMonth);
 
-        if (response.has_draft && response.report_data) {
-          const draftData = response.report_data;
+        // 1. Check localStorage first
+        const localDraft = loadDraftFromLocal();
 
-          // Merge draft data into form state
-          setFormData(prev => ({
-            ...prev,
-            ...draftData,
-            // Ensure arrays are properly set
-            action_tracker: draftData.action_tracker || prev.action_tracker,
-            community_feedback: draftData.community_feedback || prev.community_feedback,
-            vdc_reports: draftData.vdc_reports || prev.vdc_reports,
-            action_plan: draftData.action_plan || prev.action_plan,
-            maternal_death_causes: draftData.maternal_death_causes || prev.maternal_death_causes,
-            perinatal_death_causes: draftData.perinatal_death_causes || prev.perinatal_death_causes,
-            items_donated_types: draftData.items_donated_types || prev.items_donated_types,
-            items_donated_govt_types: draftData.items_donated_govt_types || prev.items_donated_govt_types,
-            items_repaired_types: draftData.items_repaired_types || prev.items_repaired_types,
-          }));
-
-          setDraftId(response.draft_id);
-          setDraftSavedAt(response.saved_at);
+        // 2. Try to get server draft if online
+        let serverDraft = null;
+        if (isOnline) {
+          try {
+            const response = await getExistingDraft(reportMonth);
+            if (response.has_draft && response.report_data) {
+              serverDraft = {
+                formData: response.report_data,
+                savedAt: response.saved_at,
+                draftId: response.draft_id,
+              };
+            }
+          } catch (error) {
+            if (process.env.NODE_ENV === 'development') {
+              console.warn('[WDCReportForm] Server draft fetch failed (offline?):', error.message);
+            }
+          }
         }
+
+        // 3. Determine which draft to use
+        if (localDraft && serverDraft) {
+          // Both exist - use the more recent one or ask user
+          const localTime = new Date(localDraft.savedAt).getTime();
+          const serverTime = new Date(serverDraft.savedAt).getTime();
+
+          if (localTime > serverTime) {
+            // Local is newer - use it
+            applyDraftData(localDraft.formData);
+            setLocalLastSavedAt(new Date(localDraft.savedAt));
+          } else {
+            // Server is newer - use it
+            applyDraftData(serverDraft.formData);
+            setDraftId(serverDraft.draftId);
+            setDraftSavedAt(serverDraft.savedAt);
+          }
+        } else if (localDraft) {
+          // Only local exists
+          applyDraftData(localDraft.formData);
+          setLocalLastSavedAt(new Date(localDraft.savedAt));
+        } else if (serverDraft) {
+          // Only server exists
+          applyDraftData(serverDraft.formData);
+          setDraftId(serverDraft.draftId);
+          setDraftSavedAt(serverDraft.savedAt);
+        }
+        // else: no draft found, use initial form state
+
       } catch (error) {
-        console.error('Error loading draft:', error);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('[WDCReportForm] Error loading draft:', error);
+        }
       } finally {
         setIsLoadingDraft(false);
       }
     };
 
+    // Helper to apply draft data to form
+    const applyDraftData = (draftData) => {
+      setFormData(prev => ({
+        ...prev,
+        ...draftData,
+        // Ensure arrays are properly set
+        action_tracker: draftData.action_tracker || prev.action_tracker,
+        community_feedback: draftData.community_feedback || prev.community_feedback,
+        vdc_reports: draftData.vdc_reports || prev.vdc_reports,
+        action_plan: draftData.action_plan || prev.action_plan,
+        maternal_death_causes: draftData.maternal_death_causes || prev.maternal_death_causes,
+        perinatal_death_causes: draftData.perinatal_death_causes || prev.perinatal_death_causes,
+        items_donated_types: draftData.items_donated_types || prev.items_donated_types,
+        items_donated_govt_types: draftData.items_donated_govt_types || prev.items_donated_govt_types,
+        items_repaired_types: draftData.items_repaired_types || prev.items_repaired_types,
+      }));
+      setLocalDraftStatus('saved');
+    };
+
     loadDraft();
-  }, [reportMonth]);
+  }, [reportMonth, user?.id, userWard?.id, isOnline, loadDraftFromLocal]);
 
   // Handle per-field voice note recording
   const handleVoiceNote = (fieldName, file) => {
@@ -836,12 +1035,64 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
       ward_id: userWard?.id,
     };
 
-    submitMutation.mutate(submissionData);
+    if (isOnline) {
+      // Online: Direct submit
+      submitMutation.mutate(submissionData);
+    } else {
+      // Offline: Add to queue
+      try {
+        addToQueue({
+          formData: submissionData,
+          reportMonth: reportMonth
+        });
+
+        // Show offline success message
+        setSubmitSuccess(true);
+        // Clear local draft? Maybe keep until synced.
+      } catch (error) {
+        setSubmitError(`Failed to queue offline submission: ${error.message}`);
+      }
+    }
   };
 
-  const handleSaveDraft = async () => {
+  // Offline queue hook
+  const { addToQueue, syncQueue, getQueueStats, retryFailed, clearFailed, isSyncing, queue } = useOfflineQueue({
+    submitFn: async (data, month, headers) => {
+      // Create FormData compatible with submitMutation
+      const formPayload = new FormData();
+      formPayload.append('report_month', month);
+      formPayload.append('report_data', JSON.stringify(data));
+
+      // Note: Voice notes and images would need careful handling for offline queue
+      // For MVP, we pass minimal FormData. In prod, we'd store blobs in IndexedDB.
+
+      const response = await apiClient.post('/reports', formPayload, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          ...headers
+        },
+      });
+      return response;
+    }
+  });
+
+  const handleManualSaveDraft = async () => {
     setSubmitError(null);
-    draftMutation.mutate(formData);
+
+    // Force local save immediately
+    const saved = saveDraftToLocal(formData, true);
+
+    if (saved) {
+      if (isOnline) {
+        // If online, also try to sync to server
+        draftMutation.mutate(formData);
+      } else {
+        // If offline, just show success from local save
+        // DraftStatusBar handles the "Saved" indicator
+      }
+    } else {
+      setSubmitError('Failed to save draft locally');
+    }
   };
 
   if (submitSuccess) {
@@ -878,6 +1129,17 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
         type="info"
         title="WDC Monthly Report Form"
         message="Complete all sections. Use the microphone icon next to text fields to record voice notes â€” they will be transcribed automatically."
+      />
+
+      {/* Draft & Offline Status */}
+      <DraftStatusBar
+        draftStatus={localDraftStatus}
+        lastSavedAt={localLastSavedAt}
+        isOnline={isOnline}
+        queueStats={getQueueStats()}
+        isSyncing={isSyncing}
+        onForceSave={() => saveDraftToLocal(formData, true)}
+        onRetryFailed={retryFailed}
       />
 
       {/* Submission Period Banner */}
@@ -1624,12 +1886,12 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
           variant="outline"
           size="lg"
           icon={Save}
-          loading={draftMutation.isPending}
-          onClick={handleSaveDraft}
+          loading={localDraftStatus === 'saving'}
+          onClick={handleManualSaveDraft}
           disabled={!userLGA?.id || !userWard?.id}
           className="flex-1 sm:flex-none"
         >
-          {draftMutation.isPending ? 'Saving...' : (draftId ? 'Update Draft' : 'Save as Draft')}
+          {localDraftStatus === 'saving' ? 'Saving...' : 'Save Draft'}
         </Button>
         <Button
           type="submit"
@@ -1640,18 +1902,9 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
           disabled={!userLGA?.id || !userWard?.id}
           className="flex-1"
         >
-          Submit Report
+          {isOnline ? 'Submit Report' : 'Queue Submission'}
         </Button>
       </div>
-
-      {/* Draft Status */}
-      {draftSavedAt && (
-        <div className="text-center">
-          <p className="text-xs text-neutral-500">
-            Draft saved: {new Date(draftSavedAt).toLocaleString()}
-          </p>
-        </div>
-      )}
     </form>
   );
 };

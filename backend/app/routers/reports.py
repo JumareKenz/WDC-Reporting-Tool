@@ -154,6 +154,16 @@ async def create_report(
             detail=f"Assigned Ward ID {current_user.ward_id} not found in database. Contact Admin."
         )
 
+    # Check for Idempotency using Submission ID (Client-generated UUID)
+    submission_id = request.headers.get("X-Submission-ID")
+    if submission_id:
+        existing_idempotent = db.query(Report).filter(Report.submission_id == submission_id).first()
+        if existing_idempotent:
+            # Idempotent success - return existing report
+            # Note: We return it as is. If images/voice notes were still uploading in background on previous attempt,
+            # they might still be processing. This is acceptable for offline sync retries.
+            return existing_idempotent
+
     # Validate report month matches expected submission period
     is_valid, error_msg = validate_report_month(report_month)
     if not is_valid:
@@ -296,7 +306,8 @@ async def create_report(
         'chairman_signature': get_value('chairman_signature'),
         'secretary_signature': get_value('secretary_signature'),
         
-        'status': 'SUBMITTED'
+        'status': 'SUBMITTED',
+        'submission_id': submission_id
     }
 
     # Collect any unknown keys from comprehensive_data into custom_fields JSON
@@ -308,6 +319,13 @@ async def create_report(
         report_kwargs['custom_fields'] = json.dumps(custom)
 
     if existing_report:
+        # If duplicated by simple constraints but no submission_id (legacy or race condition)
+        # Update submission_id if we have one now
+        if submission_id and not existing_report.submission_id:
+            existing_report.submission_id = submission_id
+            db.commit()
+            return existing_report
+
         # Reject duplicate submission
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
