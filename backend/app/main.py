@@ -33,6 +33,22 @@ def startup_event():
     from .migration import run_migrations
     run_migrations()
 
+from fastapi import Request
+from fastapi.responses import JSONResponse
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Global exception handler to capture 500 errors and return details"""
+    print(f"Global Exception: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "success": False,
+            "message": "Internal Server Error", 
+            "detail": str(exc)
+        },
+    )
+
 # Include routers
 app.include_router(auth.router, prefix="/api")
 app.include_router(profile.router, prefix="/api")

@@ -1,4 +1,4 @@
-from sqlalchemy import text
+from sqlalchemy import text, inspect
 from .database import engine
 
 def run_migrations():
@@ -6,6 +6,7 @@ def run_migrations():
     print(f"checking database migrations...")
     
     # New columns for Reports table
+    # Format: (column_name, sql_type)
     new_columns = [
         ("health_opd_total", "INTEGER DEFAULT 0"),
         ("health_opd_under5_total", "INTEGER DEFAULT 0"),
@@ -13,30 +14,30 @@ def run_migrations():
         ("items_donated_govt_count", "INTEGER DEFAULT 0"),
         ("items_donated_govt_types", "TEXT"),
         ("group_photo_path", "TEXT"),
-        ("decline_reason", "TEXT"),  # For storing LGA coordinator decline reasons
-        ("submission_id", "VARCHAR(36)"),  # Client-generated UUID for idempotency
+        ("decline_reason", "TEXT"),
+        ("submission_id", "VARCHAR(36)"),
     ]
     
-    with engine.connect() as conn:
-        for col_name, col_type in new_columns:
-            try:
-                # Attempt to add column in its own transaction
-                # SQLite doesn't support IF NOT EXISTS for ADD COLUMN directly in standard SQL universally, 
-                # but we rely on catch-fail for existing columns.
-                stmt = text(f"ALTER TABLE reports ADD COLUMN {col_name} {col_type}")
-                conn.execute(stmt)
-                conn.commit()
-                print(f"Added column: {col_name}")
-            except Exception as e:
-                # If using Postgres, transaction might be aborted, so rollback
-                conn.rollback()
-                
-                err_str = str(e).lower()
-                # Check for various SQL drivers' duplicate column messages
-                if "duplicate column" in err_str or "already exists" in err_str:
-                     # Column already exists, safe to ignore
-                     pass
+    try:
+        inspector = inspect(engine)
+        existing_columns = [col['name'] for col in inspector.get_columns('reports')]
+        
+        with engine.connect() as conn:
+            for col_name, col_type in new_columns:
+                if col_name not in existing_columns:
+                    print(f"Migrating: Adding column {col_name}...")
+                    try:
+                        stmt = text(f"ALTER TABLE reports ADD COLUMN {col_name} {col_type}")
+                        conn.execute(stmt)
+                        conn.commit()
+                        print(f"Successfully added column: {col_name}")
+                    except Exception as e:
+                        conn.rollback()
+                        print(f"Error adding {col_name}: {e}")
                 else:
-                     print(f"Warning/Error adding {col_name}: {e}")
+                    print(f"Column {col_name} already exists. Skipping.")
+                    
+    except Exception as e:
+        print(f"Migration check failed: {e}")
         
     print("Database migration check completed.")
