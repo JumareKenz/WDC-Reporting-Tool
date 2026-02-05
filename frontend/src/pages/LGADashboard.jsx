@@ -72,6 +72,7 @@ const LGADashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [alertMessage, setAlertMessage] = useState(null);
   const [expandedWard, setExpandedWard] = useState(null);
+  const [reviewerNotes, setReviewerNotes] = useState('');
 
   // Data fetching
   const { data: wardsData, isLoading: loadingWards, refetch: refetchWards } = useLGAWards(lgaId, { month: targetMonth });
@@ -158,11 +159,12 @@ const LGADashboard = () => {
     try {
       await reviewMutation.mutateAsync({
         reportId: selectedReport.id,
-        data: { status, reviewer_notes: '' },
+        data: { status, reviewer_notes: reviewerNotes },
       });
       setAlertMessage({ type: 'success', text: `Report marked as ${STATUS_LABELS[status]}` });
       setShowReviewModal(false);
       setSelectedReport(null);
+      setReviewerNotes('');
       refetchReports();
       refetchWards();
     } catch (error) {
@@ -344,12 +346,11 @@ const LGADashboard = () => {
                 </div>
                 <div className="w-full bg-neutral-200 rounded-full h-4 overflow-hidden">
                   <div
-                    className={`h-4 rounded-full transition-all duration-500 ${
-                      submissionRate >= 90 ? 'bg-gradient-to-r from-green-400 to-green-600' :
+                    className={`h-4 rounded-full transition-all duration-500 ${submissionRate >= 90 ? 'bg-gradient-to-r from-green-400 to-green-600' :
                       submissionRate >= 70 ? 'bg-gradient-to-r from-blue-400 to-blue-600' :
-                      submissionRate >= 50 ? 'bg-gradient-to-r from-yellow-400 to-yellow-600' :
-                      'bg-gradient-to-r from-red-400 to-red-600'
-                    }`}
+                        submissionRate >= 50 ? 'bg-gradient-to-r from-yellow-400 to-yellow-600' :
+                          'bg-gradient-to-r from-red-400 to-red-600'
+                      }`}
                     style={{ width: `${submissionRate}%` }}
                   />
                 </div>
@@ -434,11 +435,10 @@ const LGADashboard = () => {
                   }))).map((item) => (
                     <div
                       key={item.ward_id}
-                      className={`flex items-center justify-between p-3 rounded-lg border transition-all duration-200 ${
-                        selectedWards.includes(item.ward_id)
-                          ? 'border-primary-500 bg-primary-50 shadow-sm'
-                          : 'border-neutral-200 hover:bg-neutral-50 hover:border-neutral-300'
-                      }`}
+                      className={`flex items-center justify-between p-3 rounded-lg border transition-all duration-200 ${selectedWards.includes(item.ward_id)
+                        ? 'border-primary-500 bg-primary-50 shadow-sm'
+                        : 'border-neutral-200 hover:bg-neutral-50 hover:border-neutral-300'
+                        }`}
                     >
                       <label className="flex items-center gap-3 cursor-pointer flex-1">
                         <input
@@ -634,10 +634,9 @@ const LGADashboard = () => {
                 </div>
                 <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
                   <span className="text-sm text-neutral-600">Submission Rate</span>
-                  <span className={`text-lg font-bold ${
-                    submissionRate >= 80 ? 'text-green-600' :
+                  <span className={`text-lg font-bold ${submissionRate >= 80 ? 'text-green-600' :
                     submissionRate >= 60 ? 'text-yellow-600' : 'text-red-600'
-                  }`}>
+                    }`}>
                     {submissionRate}%
                   </span>
                 </div>
@@ -723,6 +722,7 @@ const LGADashboard = () => {
         onClose={() => {
           setShowReviewModal(false);
           setSelectedReport(null);
+          setReviewerNotes('');
         }}
         title="Review Report"
         size="lg"
@@ -769,6 +769,19 @@ const LGADashboard = () => {
               </div>
             )}
 
+            <div className="pt-2">
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                Reviewer Notes / Feedback
+              </label>
+              <textarea
+                value={reviewerNotes}
+                onChange={(e) => setReviewerNotes(e.target.value)}
+                placeholder="Add comments, feedback, or reasons for flagging..."
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 text-sm"
+                rows={3}
+              />
+            </div>
+
             <div className="flex gap-3 pt-4 border-t border-neutral-200">
               <Button
                 variant="success"
@@ -790,7 +803,8 @@ const LGADashboard = () => {
               </Button>
             </div>
           </div>
-        )}
+        )
+        }
       </Modal>
 
       {/* Notify Modal */}
@@ -804,7 +818,7 @@ const LGADashboard = () => {
         variant="primary"
         loading={sendNotificationMutation.isPending}
       />
-    </div>
+    </div >
   );
 };
 

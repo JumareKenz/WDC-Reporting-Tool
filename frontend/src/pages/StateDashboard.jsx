@@ -1186,9 +1186,31 @@ Kaduna State WDC Digital Reporting System
               </div>
             </div>
 
+            {/* General Qualitative Data */}
+            <div className="space-y-4 text-sm bg-neutral-50 p-4 rounded-lg border border-neutral-200">
+              {selectedReport.issues_identified && (
+                <div>
+                  <p className="font-bold text-neutral-800">Issues Identified</p>
+                  <p className="text-neutral-700 whitespace-pre-wrap">{selectedReport.issues_identified}</p>
+                </div>
+              )}
+              {selectedReport.actions_taken && (
+                <div>
+                  <p className="font-bold text-neutral-800">Actions Taken</p>
+                  <p className="text-neutral-700 whitespace-pre-wrap">{selectedReport.actions_taken}</p>
+                </div>
+              )}
+              {selectedReport.challenges && (
+                <div>
+                  <p className="font-bold text-amber-800">Challenges</p>
+                  <p className="text-neutral-700 whitespace-pre-wrap">{selectedReport.challenges}</p>
+                </div>
+              )}
+            </div>
+
             {/* Section 4 & 5 & 6 & 7: Qualitative Data */}
             <div>
-              <h4 className="font-bold text-neutral-800 border-b pb-2 mb-3">Qualitative Reports</h4>
+              <h4 className="font-bold text-neutral-800 border-b pb-2 mb-3">Qualitative Reports (VDC & Action Plans)</h4>
               <div className="space-y-4 text-sm">
                 {selectedReport.town_hall_conducted && (
                   <div>
