@@ -53,7 +53,7 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)):
     )
 
     # Prepare user response with ward/lga info
-    user_data = UserResponse.from_orm(user)
+    user_data = UserResponse.model_validate(user)
 
     # Add ward info if WDC Secretary
     if user.ward_id:
@@ -89,7 +89,7 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)):
 def get_current_user_info(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get current authenticated user information."""
 
-    user_data = UserResponse.from_orm(current_user)
+    user_data = UserResponse.model_validate(current_user)
 
     # Add ward info if WDC Secretary
     if current_user.ward_id:

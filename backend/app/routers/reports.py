@@ -455,7 +455,7 @@ async def create_report(
         db.commit()
 
     # Prepare response
-    response = ReportResponse.from_orm(new_report)
+    response = ReportResponse.model_validate(new_report)
     response.has_voice_note = len(saved_voice_notes) > 0
     response.voice_notes = [
         VoiceNoteSimple(
@@ -562,7 +562,7 @@ async def update_report(
     db.refresh(existing_report)
 
     # Prepare response
-    response = ReportResponse.from_orm(existing_report)
+    response = ReportResponse.model_validate(existing_report)
     return response
 
 
@@ -935,7 +935,7 @@ def get_report(
     voice_notes = db.query(VoiceNote).filter(VoiceNote.report_id == report.id).all()
 
     # Prepare response
-    response = ReportResponse.from_orm(report)
+    response = ReportResponse.model_validate(report)
     response.has_voice_note = len(voice_notes) > 0
 
     if ward:
@@ -1271,7 +1271,7 @@ async def save_draft(
         saved_voice_notes.append(voice_note_record)
 
     # Prepare response
-    response = ReportResponse.from_orm(new_report)
+    response = ReportResponse.model_validate(new_report)
     response.has_voice_note = len(saved_voice_notes) > 0
     response.voice_notes = [
         VoiceNoteSimple(

@@ -20,7 +20,7 @@ router = APIRouter(prefix="/profile", tags=["Profile"])
 def get_profile(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get current user profile."""
 
-    user_data = UserResponse.from_orm(current_user)
+    user_data = UserResponse.model_validate(current_user)
 
     # Add ward info if WDC Secretary
     if current_user.ward_id:
