@@ -83,11 +83,10 @@ def health_check():
         "success": True,
         "data": {
             "status": "healthy",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.utcnow().isoformat(),
             "version": "1.0.0",
             "database": "connected",
-            "cors_enabled": True,
-            "allowed_origins_count": len(ALLOWED_ORIGINS)
+            "cors_enabled": True
         }
     }
 
