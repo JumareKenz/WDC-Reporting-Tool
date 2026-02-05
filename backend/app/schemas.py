@@ -458,6 +458,7 @@ class ReportResponse(ReportBase):
 
     class Config:
         from_attributes = True
+        validate_assignment = True  # Allow modifying model after creation
 
 
 class ReportListItem(BaseModel):
