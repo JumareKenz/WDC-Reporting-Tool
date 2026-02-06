@@ -939,25 +939,12 @@ def get_report(
         # Get voice notes
         voice_notes = db.query(VoiceNote).filter(VoiceNote.report_id == report.id).all()
 
-        # Build response data as dict first (Pydantic v2 safe pattern)
-        response_data = {
-            "id": report.id,
-            "ward_id": report.ward_id,
-            "user_id": report.user_id,
-            "report_month": report.report_month,
-            "meetings_held": report.meetings_held,
-            "attendees_count": report.attendees_count,
-            "issues_identified": report.issues_identified,
-            "actions_taken": report.actions_taken,
-            "challenges": report.challenges,
-            "recommendations": report.recommendations,
-            "additional_notes": report.additional_notes,
-            "status": report.status,
-            "submitted_at": report.submitted_at,
-            "reviewed_by": report.reviewed_by,
-            "reviewed_at": report.reviewed_at,
-            "decline_reason": getattr(report, 'decline_reason', None),
-            "submission_id": getattr(report, 'submission_id', None),
+        # Use model_validate to automatically map ALL fields from ORM model (80+ fields)
+        # This ensures all 8 sections are included in the response
+        response = ReportResponse.model_validate(report)
+        
+        # Build update dict for derived/related fields
+        update_data = {
             "has_voice_note": len(voice_notes) > 0,
             "voice_notes": [
                 VoiceNoteSimple(
@@ -975,7 +962,7 @@ def get_report(
         
         # Add ward info
         if ward:
-            response_data["ward"] = WardSimple(
+            update_data["ward"] = WardSimple(
                 id=ward.id,
                 name=ward.name,
                 code=ward.code,
@@ -985,13 +972,16 @@ def get_report(
         
         # Add submitter info
         if report.user:
-            response_data["submitted_by"] = UserSimple(
+            update_data["submitted_by"] = UserSimple(
                 id=report.user.id,
                 full_name=report.user.full_name
             )
 
-        # Create response using dict - avoids Pydantic v2 mutation issues
-        return ReportResponse(**response_data)
+        # Use model_copy to create new model with updates (Pydantic v2 pattern)
+        final_response = response.model_copy(update=update_data)
+        
+        logger.info(f"get_report success: report_id={report_id}, fields_returned={len(final_response.model_fields)}")
+        return final_response
         
     except HTTPException:
         raise  # Re-raise HTTP exceptions as-is
