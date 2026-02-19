@@ -32,6 +32,13 @@ const ReportDetailView = ({ report }) => {
   const [lightboxIndex, setLightboxIndex] = useState(null);
   if (!report) return null;
 
+  // Debug logging
+  console.log('ReportDetailView - Full report data:', report);
+  console.log('action_tracker:', report.action_tracker);
+  console.log('community_feedback:', report.community_feedback);
+  console.log('vdc_reports:', report.vdc_reports);
+  console.log('action_plan:', report.action_plan);
+
   // Parse group photos — stored as JSON string or already an array
   const groupPhotos = (() => {
     if (!report.group_photo_path) return [];

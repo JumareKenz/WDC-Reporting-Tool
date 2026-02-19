@@ -365,10 +365,36 @@ def seed_reports(wards, users):
 
     import random
 
+    import json
+
     for secretary in wdc_secretaries[:30]:  # Create reports for first 30 secretaries
         for month_idx, month in enumerate(months):
             # Not all wards submit every month (realistic scenario)
             if random.random() < 0.85:  # 85% submission rate
+                # Sample table data
+                action_tracker_data = [
+                    {"action_point": "Follow up on vaccine stockout", "status": "completed", "challenges": "Limited cold chain capacity", "timeline": "2024-12-15", "responsible_person": "PHC Focal Person"},
+                    {"action_point": "Repair broken labor ward equipment", "status": "in_progress", "challenges": "Waiting for spare parts", "timeline": "2024-12-20", "responsible_person": "WDC Chairman"}
+                ]
+
+                community_feedback_data = [
+                    {"indicator": "Health Workers' Attitude", "feedback": "Improved significantly", "action_required": "Continue training"},
+                    {"indicator": "Waiting Time", "feedback": "Still long during ANC days", "action_required": "Add more personnel"},
+                    {"indicator": "Service Charges / Fees", "feedback": "Affordable and transparent", "action_required": "None"},
+                    {"indicator": "Client Satisfaction", "feedback": "Generally satisfied", "action_required": "Maintain standards"},
+                    {"indicator": "Others", "feedback": "Need better lighting at night", "action_required": "Install solar lights"}
+                ]
+
+                vdc_reports_data = [
+                    {"vdc_name": "Ungwan Rimi VDC", "issues": "Water scarcity affecting hygiene", "action_taken": "Borehole repair initiated"},
+                    {"vdc_name": "Sabon Gari VDC", "issues": "No ambulance for emergencies", "action_taken": "Requested motorcycle ambulance"}
+                ]
+
+                action_plan_data = [
+                    {"issue": "Low ANC attendance", "action": "Community sensitization campaign", "timeline": "January 2025", "responsible_person": "VHW Team"},
+                    {"issue": "Incomplete immunization", "action": "Door-to-door vaccination follow-up", "timeline": "Ongoing", "responsible_person": "Ward Focal Person"}
+                ]
+
                 report = Report(
                     ward_id=secretary.ward_id,
                     user_id=secretary.id,
@@ -380,7 +406,11 @@ def seed_reports(wards, users):
                     challenges=random.choice(challenges_samples) if random.random() < 0.7 else None,
                     recommendations=random.choice(recommendations_samples) if random.random() < 0.6 else None,
                     additional_notes="Community engagement was positive and productive.",
-                    status="REVIEWED" if month_idx > 0 else "SUBMITTED"
+                    status="REVIEWED" if month_idx > 0 else "SUBMITTED",
+                    action_tracker=json.dumps(action_tracker_data) if random.random() < 0.8 else None,
+                    community_feedback=json.dumps(community_feedback_data) if random.random() < 0.7 else None,
+                    vdc_reports=json.dumps(vdc_reports_data) if random.random() < 0.6 else None,
+                    action_plan=json.dumps(action_plan_data) if random.random() < 0.75 else None
                 )
                 db.add(report)
                 reports.append(report)
