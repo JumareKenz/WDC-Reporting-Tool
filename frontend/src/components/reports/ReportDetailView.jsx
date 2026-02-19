@@ -147,35 +147,42 @@ const ReportDetailView = ({ report }) => {
       )}
 
       {/* Section 3: Action Tracker */}
-      {report.action_tracker && report.action_tracker.length > 0 && (
+      {report.action_tracker && report.action_tracker.filter(i => i.action_point?.trim()).length > 0 && (
         <div className="bg-white rounded-lg border border-neutral-200 p-5">
           {renderSectionHeader('Action Tracker', <Activity className="w-5 h-5 text-primary-600" />)}
-          <div className="space-y-3">
-            {report.action_tracker.map((item, index) => (
-              <div key={index} className="bg-neutral-50 rounded-lg p-4 border border-neutral-200">
-                <div className="flex items-start justify-between mb-2">
-                  <h4 className="font-semibold text-neutral-900 text-sm">Action #{index + 1}</h4>
-                  <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                    item.status === 'completed' ? 'bg-green-100 text-green-800' :
-                    item.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                    'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {toTitleCase(item.status?.replace('_', ' ') || 'Pending')}
-                  </span>
-                </div>
-                <p className="text-sm text-neutral-700 mb-2">{item.action}</p>
-                {item.responsible && (
-                  <p className="text-xs text-neutral-600">
-                    <span className="font-medium">Responsible:</span> {item.responsible}
-                  </p>
-                )}
-                {item.deadline && (
-                  <p className="text-xs text-neutral-600">
-                    <span className="font-medium">Deadline:</span> {formatDate(item.deadline)}
-                  </p>
-                )}
-              </div>
-            ))}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-neutral-100 text-left">
+                  <th className="px-3 py-2 font-semibold text-neutral-700 rounded-tl-lg">#</th>
+                  <th className="px-3 py-2 font-semibold text-neutral-700">Action Point</th>
+                  <th className="px-3 py-2 font-semibold text-neutral-700">Responsible</th>
+                  <th className="px-3 py-2 font-semibold text-neutral-700">Timeline</th>
+                  <th className="px-3 py-2 font-semibold text-neutral-700">Challenges</th>
+                  <th className="px-3 py-2 font-semibold text-neutral-700 rounded-tr-lg">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-100">
+                {report.action_tracker.filter(i => i.action_point?.trim()).map((item, index) => (
+                  <tr key={index} className="hover:bg-neutral-50">
+                    <td className="px-3 py-2.5 text-neutral-500 font-medium">{index + 1}</td>
+                    <td className="px-3 py-2.5 text-neutral-900">{item.action_point}</td>
+                    <td className="px-3 py-2.5 text-neutral-700">{item.responsible_person || '—'}</td>
+                    <td className="px-3 py-2.5 text-neutral-700">{item.timeline || '—'}</td>
+                    <td className="px-3 py-2.5 text-neutral-700">{item.challenges || '—'}</td>
+                    <td className="px-3 py-2.5">
+                      <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                        item.status === 'completed' ? 'bg-green-100 text-green-800' :
+                        item.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                        item.status ? 'bg-yellow-100 text-yellow-800' : 'bg-neutral-100 text-neutral-600'
+                      }`}>
+                        {item.status ? toTitleCase(item.status.replace(/_/g, ' ')) : 'Pending'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
@@ -486,46 +493,58 @@ const ReportDetailView = ({ report }) => {
           {renderSectionHeader('Community Feedback', <MessageSquare className="w-5 h-5 text-primary-600" />)}
           {report.town_hall_conducted && (
             <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-              <p className="text-sm font-medium text-blue-900">Town Hall Meeting Conducted</p>
+              <p className="text-sm font-medium text-blue-900">Town Hall Meeting</p>
               <p className="text-xs text-blue-700 mt-1">{report.town_hall_conducted}</p>
             </div>
           )}
-          <div className="space-y-3">
-            {report.community_feedback.map((feedback, index) => (
-              <div key={index} className="bg-neutral-50 rounded-lg p-4 border border-neutral-200">
-                <p className="text-sm font-semibold text-neutral-900 mb-2">{feedback.question}</p>
-                <p className="text-sm text-neutral-700">{feedback.response}</p>
-              </div>
-            ))}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-neutral-100 text-left">
+                  <th className="px-3 py-2 font-semibold text-neutral-700 rounded-tl-lg w-1/4">Indicator</th>
+                  <th className="px-3 py-2 font-semibold text-neutral-700">Community Feedback</th>
+                  <th className="px-3 py-2 font-semibold text-neutral-700 rounded-tr-lg">Action Required</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-100">
+                {report.community_feedback.map((item, index) => (
+                  <tr key={index} className="hover:bg-neutral-50">
+                    <td className="px-3 py-2.5 font-medium text-neutral-800">{item.indicator}</td>
+                    <td className="px-3 py-2.5 text-neutral-700">{item.feedback || '—'}</td>
+                    <td className="px-3 py-2.5 text-neutral-700">{item.action_required || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
       {/* Section 9: VDC Reports */}
-      {report.vdc_reports && report.vdc_reports.length > 0 && (
+      {report.vdc_reports && report.vdc_reports.filter(v => v.vdc_name?.trim()).length > 0 && (
         <div className="bg-white rounded-lg border border-neutral-200 p-5">
           {renderSectionHeader('Village Development Committee (VDC) Reports', <Map className="w-5 h-5 text-primary-600" />)}
-          <div className="space-y-3">
-            {report.vdc_reports.map((vdc, index) => (
-              <div key={index} className="bg-neutral-50 rounded-lg p-4 border border-neutral-200">
-                <h4 className="font-semibold text-neutral-900 text-sm mb-2">{vdc.village_name}</h4>
-                <p className="text-sm text-neutral-700 mb-2">{vdc.report_summary}</p>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  {vdc.health_events !== undefined && (
-                    <div>
-                      <span className="font-medium text-neutral-600">Health Events:</span>
-                      <span className="text-neutral-900 ml-1">{vdc.health_events}</span>
-                    </div>
-                  )}
-                  {vdc.community_activities !== undefined && (
-                    <div>
-                      <span className="font-medium text-neutral-600">Community Activities:</span>
-                      <span className="text-neutral-900 ml-1">{vdc.community_activities}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-neutral-100 text-left">
+                  <th className="px-3 py-2 font-semibold text-neutral-700 rounded-tl-lg">#</th>
+                  <th className="px-3 py-2 font-semibold text-neutral-700">VDC Name</th>
+                  <th className="px-3 py-2 font-semibold text-neutral-700">Issues Identified</th>
+                  <th className="px-3 py-2 font-semibold text-neutral-700 rounded-tr-lg">Action Taken</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-100">
+                {report.vdc_reports.filter(v => v.vdc_name?.trim()).map((vdc, index) => (
+                  <tr key={index} className="hover:bg-neutral-50">
+                    <td className="px-3 py-2.5 text-neutral-500 font-medium">{index + 1}</td>
+                    <td className="px-3 py-2.5 font-medium text-neutral-900">{vdc.vdc_name}</td>
+                    <td className="px-3 py-2.5 text-neutral-700">{vdc.issues || '—'}</td>
+                    <td className="px-3 py-2.5 text-neutral-700">{vdc.action_taken || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
@@ -558,30 +577,32 @@ const ReportDetailView = ({ report }) => {
       )}
 
       {/* Section 11: Community Action Plan */}
-      {report.action_plan && report.action_plan.length > 0 && (
+      {report.action_plan && report.action_plan.filter(p => p.issue?.trim()).length > 0 && (
         <div className="bg-white rounded-lg border border-neutral-200 p-5">
           {renderSectionHeader('Community Action Plan', <Target className="w-5 h-5 text-primary-600" />)}
-          <div className="space-y-3">
-            {report.action_plan.map((plan, index) => (
-              <div key={index} className="bg-neutral-50 rounded-lg p-4 border border-neutral-200">
-                <div className="flex items-start justify-between mb-2">
-                  <h4 className="font-semibold text-neutral-900 text-sm flex-1">{plan.activity}</h4>
-                  {plan.target_date && (
-                    <span className="text-xs text-neutral-600 ml-2">{formatDate(plan.target_date)}</span>
-                  )}
-                </div>
-                {plan.responsible_person && (
-                  <p className="text-xs text-neutral-600">
-                    <span className="font-medium">Lead:</span> {plan.responsible_person}
-                  </p>
-                )}
-                {plan.resources_needed && (
-                  <p className="text-xs text-neutral-600 mt-1">
-                    <span className="font-medium">Resources:</span> {plan.resources_needed}
-                  </p>
-                )}
-              </div>
-            ))}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-neutral-100 text-left">
+                  <th className="px-3 py-2 font-semibold text-neutral-700 rounded-tl-lg">#</th>
+                  <th className="px-3 py-2 font-semibold text-neutral-700">Issue</th>
+                  <th className="px-3 py-2 font-semibold text-neutral-700">Action</th>
+                  <th className="px-3 py-2 font-semibold text-neutral-700">Responsible</th>
+                  <th className="px-3 py-2 font-semibold text-neutral-700 rounded-tr-lg">Timeline</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-100">
+                {report.action_plan.filter(p => p.issue?.trim()).map((plan, index) => (
+                  <tr key={index} className="hover:bg-neutral-50">
+                    <td className="px-3 py-2.5 text-neutral-500 font-medium">{index + 1}</td>
+                    <td className="px-3 py-2.5 font-medium text-neutral-900">{plan.issue}</td>
+                    <td className="px-3 py-2.5 text-neutral-700">{plan.action || '—'}</td>
+                    <td className="px-3 py-2.5 text-neutral-700">{plan.responsible_person || '—'}</td>
+                    <td className="px-3 py-2.5 text-neutral-700">{plan.timeline || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
