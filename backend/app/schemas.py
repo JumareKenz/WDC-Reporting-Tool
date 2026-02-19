@@ -446,7 +446,9 @@ class ReportResponse(ReportBase):
     voice_notes: List[VoiceNoteSimple] = []
     has_voice_note: bool = False
 
-    @validator('action_tracker', 'community_feedback', 'vdc_reports', 'action_plan', pre=True)
+    @validator('action_tracker', 'community_feedback', 'vdc_reports', 'action_plan',
+               'items_donated_types', 'items_donated_govt_types', 'items_repaired_types',
+               'maternal_death_causes', 'perinatal_death_causes', pre=True)
     def parse_json_fields(cls, v):
         """Parse JSON string fields from database into lists."""
         if isinstance(v, str):
