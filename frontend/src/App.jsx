@@ -1,7 +1,11 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './hooks/useAuth';
+import { ToastProvider } from './hooks/useToast';
 import { USER_ROLES } from './utils/constants';
+import { useSessionManager } from './hooks/useSessionManager';
+import SessionWarningModal from './components/common/SessionWarningModal';
+import ToastContainer from './components/common/ToastContainer';
 
 // Pages
 import Login from './pages/Login';
@@ -353,15 +357,42 @@ const NotFound = () => {
 };
 
 /**
+ * Session guard: only active when user is authenticated.
+ * Mounts the idle-timeout warning modal.
+ */
+const SessionGuard = () => {
+  const { isAuthenticated, logout } = useAuth();
+  const { showWarning, countdown, continueSession, logoutNow } = useSessionManager({
+    onLogout: logout,
+    idleMs: 25 * 60 * 1000,  // 25 min idle before warning
+    warnMs: 5 * 60 * 1000,   // 5 min countdown
+    enabled: isAuthenticated,
+  });
+
+  return (
+    <SessionWarningModal
+      isOpen={showWarning}
+      countdown={countdown}
+      onContinue={continueSession}
+      onLogout={logoutNow}
+    />
+  );
+};
+
+/**
  * Main App Component
  */
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <AuthProvider>
-          <AppRoutes />
-        </AuthProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <SessionGuard />
+            <AppRoutes />
+            <ToastContainer />
+          </AuthProvider>
+        </ToastProvider>
         <PWAInstallPrompt />
         <OfflineBanner />
       </BrowserRouter>

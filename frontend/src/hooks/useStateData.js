@@ -10,6 +10,7 @@ import {
   updateInvestigation,
   getStateSubmissions,
 } from '../api/analytics';
+import apiClient from '../api/client';
 import {
   getForms,
   createForm,
@@ -214,6 +215,21 @@ export const useAssignUser = () => {
       queryClient.invalidateQueries({ queryKey: [STATE_QUERY_KEYS.coordinator] });
       queryClient.invalidateQueries({ queryKey: [STATE_QUERY_KEYS.secretary] });
       queryClient.invalidateQueries({ queryKey: [STATE_QUERY_KEYS.usersSummary] });
+    },
+  });
+};
+
+/**
+ * Review a report: approve (REVIEWED), decline (DECLINED), or flag (FLAGGED).
+ * PATCH /reports/{report_id}/review
+ */
+export const useReviewReport = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ reportId, action, notes }) =>
+      apiClient.patch(`/reports/${reportId}/review`, { action, notes }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [STATE_QUERY_KEYS.stateSubmissions] });
     },
   });
 };

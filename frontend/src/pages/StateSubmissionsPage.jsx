@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import {
   FileText,
   ChevronDown,
@@ -13,13 +13,19 @@ import {
   Mic,
   TrendingUp,
   Download,
+  ArrowUpDown,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  MessageSquare,
 } from 'lucide-react';
 import Card, { IconCard, EmptyCard } from '../components/common/Card';
 import Button from '../components/common/Button';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Modal from '../components/common/Modal';
 import ReportDetailView from '../components/reports/ReportDetailView';
-import { useStateSubmissions, useLGAs } from '../hooks/useStateData';
+import { useStateSubmissions, useLGAs, useReviewReport } from '../hooks/useStateData';
+import { useToast } from '../hooks/useToast';
 import {
   formatDate,
   formatMonth,
@@ -39,14 +45,21 @@ const StateSubmissionsPage = () => {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [lgaFilter, setLgaFilter] = useState('');
+  const [sortField, setSortField] = useState('submitted_at');
+  const [sortDir, setSortDir] = useState('desc');
   const [expandedLGAs, setExpandedLGAs] = useState({});
   const [selectedReport, setSelectedReport] = useState(null);
   const [fullReportData, setFullReportData] = useState(null);
   const [loadingReport, setLoadingReport] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [playingAudio, setPlayingAudio] = useState(null);
+  const [reviewNotes, setReviewNotes] = useState('');
+  const [showReviewNotes, setShowReviewNotes] = useState(false);
+  const [reviewAction, setReviewAction] = useState(null);
   const audioUrlCache = useRef({});
   const audioRef = useRef(null);
+  const { toast } = useToast();
+  const reviewMutation = useReviewReport();
 
   // Debounce search input
   useEffect(() => {
@@ -141,13 +154,26 @@ const StateSubmissionsPage = () => {
     }
   };
 
+  // Toggle sort column; flip direction if same column clicked again
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDir('desc');
+    }
+  };
+
   const fetchFullReportDetails = async (reportId) => {
     setLoadingReport(true);
     try {
       const response = await apiClient.get(`/reports/${reportId}`);
-      setFullReportData(response);
+      // The interceptor returns response.data; handle both wrapped { data: {...} } and direct formats
+      const reportData = response?.data || response;
+      setFullReportData(reportData);
     } catch (err) {
       console.error('Failed to fetch report details:', err);
+      toast.error('Could not load the full report. Please try again.');
     } finally {
       setLoadingReport(false);
     }
@@ -155,14 +181,41 @@ const StateSubmissionsPage = () => {
 
   const handleViewReport = async (report) => {
     setSelectedReport(report);
+    setFullReportData(null);
+    setReviewNotes('');
+    setShowReviewNotes(false);
+    setReviewAction(null);
     setShowModal(true);
     await fetchFullReportDetails(report.id);
+  };
+
+  const handleReviewSubmit = async (action) => {
+    if (!selectedReport) return;
+    try {
+      await reviewMutation.mutateAsync({
+        reportId: selectedReport.id,
+        action,
+        notes: reviewNotes || undefined,
+      });
+      const labels = { REVIEWED: 'approved', DECLINED: 'declined', FLAGGED: 'flagged' };
+      toast.success(`Report ${labels[action] || 'reviewed'} successfully.`);
+      // Update local selected report status for immediate UI feedback
+      setSelectedReport((prev) => prev ? { ...prev, status: action } : prev);
+      setShowReviewNotes(false);
+      setReviewNotes('');
+      setReviewAction(null);
+    } catch (err) {
+      toast.error(err.message || 'Review action failed. Please try again.');
+    }
   };
 
   const closeModal = () => {
     setShowModal(false);
     setSelectedReport(null);
     setFullReportData(null);
+    setReviewNotes('');
+    setShowReviewNotes(false);
+    setReviewAction(null);
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
@@ -343,7 +396,14 @@ const StateSubmissionsPage = () => {
                       <thead>
                         <tr className="bg-neutral-50">
                           <th className="text-left py-2.5 px-4 text-xs font-semibold text-neutral-600 uppercase tracking-wider">
-                            Ward
+                            <button
+                              className="flex items-center gap-1 hover:text-neutral-900 transition-colors"
+                              onClick={() => handleSort('ward_name')}
+                              aria-label="Sort by ward"
+                            >
+                              Ward
+                              <ArrowUpDown className="w-3 h-3" />
+                            </button>
                           </th>
                           <th className="text-center py-2.5 px-4 text-xs font-semibold text-neutral-600 uppercase tracking-wider">
                             Meetings
@@ -352,10 +412,28 @@ const StateSubmissionsPage = () => {
                             Attendees
                           </th>
                           <th className="text-left py-2.5 px-4 text-xs font-semibold text-neutral-600 uppercase tracking-wider">
-                            Status
+                            <button
+                              className="flex items-center gap-1 hover:text-neutral-900 transition-colors"
+                              onClick={() => handleSort('status')}
+                              aria-label="Sort by status"
+                            >
+                              Status
+                              <ArrowUpDown className="w-3 h-3" />
+                            </button>
                           </th>
                           <th className="text-left py-2.5 px-4 text-xs font-semibold text-neutral-600 uppercase tracking-wider hidden sm:table-cell">
-                            Submitted
+                            <button
+                              className="flex items-center gap-1 hover:text-neutral-900 transition-colors"
+                              onClick={() => handleSort('submitted_at')}
+                              aria-label="Sort by submission date"
+                            >
+                              Submitted
+                              {sortField === 'submitted_at' && (
+                                <span className="text-primary-600">
+                                  {sortDir === 'asc' ? '↑' : '↓'}
+                                </span>
+                              )}
+                            </button>
                           </th>
                           <th className="text-center py-2.5 px-4 text-xs font-semibold text-neutral-600 uppercase tracking-wider">
                             Audio
@@ -366,7 +444,14 @@ const StateSubmissionsPage = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {lga.reports.map((report) => (
+                        {[...lga.reports]
+                          .sort((a, b) => {
+                            const aVal = a[sortField] ?? '';
+                            const bVal = b[sortField] ?? '';
+                            const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+                            return sortDir === 'asc' ? cmp : -cmp;
+                          })
+                          .map((report) => (
                           <tr
                             key={report.id}
                             className="border-t border-neutral-100 hover:bg-primary-50 transition-colors"
@@ -540,10 +625,87 @@ const StateSubmissionsPage = () => {
               </div>
             )}
 
-            {/* Footer */}
-            <div className="flex items-center justify-between text-xs text-neutral-500 pt-3 border-t border-neutral-200">
-              <span>Submitted: {formatDate(selectedReport.submitted_at, true)}</span>
-              <span>Report ID: #{selectedReport.id}</span>
+            {/* Review Notes Input (shown when a review action is pending) */}
+            {showReviewNotes && (
+              <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 space-y-3">
+                <p className="text-sm font-medium text-neutral-700">
+                  Add review notes{reviewAction === 'FLAGGED' ? ' (required for flagging)' : ' (optional)'}:
+                </p>
+                <textarea
+                  value={reviewNotes}
+                  onChange={(e) => setReviewNotes(e.target.value)}
+                  placeholder="Enter feedback or reason for this decision…"
+                  rows={3}
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500 resize-none"
+                  aria-label="Review notes"
+                />
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant={reviewAction === 'REVIEWED' ? 'primary' : reviewAction === 'DECLINED' ? 'danger' : 'outline'}
+                    onClick={() => handleReviewSubmit(reviewAction)}
+                    loading={reviewMutation.isPending}
+                    disabled={reviewAction === 'FLAGGED' && !reviewNotes.trim()}
+                    className={reviewAction === 'FLAGGED' ? 'border-amber-500 text-amber-700' : ''}
+                  >
+                    Confirm {reviewAction === 'REVIEWED' ? 'Approval' : reviewAction === 'DECLINED' ? 'Decline' : 'Flag'}
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => { setShowReviewNotes(false); setReviewAction(null); }}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Footer: meta + review buttons */}
+            <div className="space-y-3 pt-3 border-t border-neutral-200">
+              <div className="flex items-center justify-between text-xs text-neutral-500">
+                <span>Submitted: {formatDate(selectedReport.submitted_at, true)}</span>
+                <span>Report ID: #{selectedReport.id}</span>
+              </div>
+
+              {/* Review Action Buttons — shown only for submitted/flagged reports */}
+              {!loadingReport && selectedReport.status !== REPORT_STATUS.REVIEWED && (
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    icon={CheckCircle}
+                    onClick={() => { setReviewAction('REVIEWED'); setShowReviewNotes(true); }}
+                    disabled={reviewMutation.isPending}
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    icon={AlertTriangle}
+                    className="border-amber-400 text-amber-700 hover:bg-amber-50"
+                    onClick={() => { setReviewAction('FLAGGED'); setShowReviewNotes(true); }}
+                    disabled={reviewMutation.isPending}
+                  >
+                    Flag
+                  </Button>
+                  {selectedReport.status !== REPORT_STATUS.DECLINED && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      icon={XCircle}
+                      className="border-red-300 text-red-600 hover:bg-red-50"
+                      onClick={() => { setReviewAction('DECLINED'); setShowReviewNotes(true); }}
+                      disabled={reviewMutation.isPending}
+                    >
+                      Decline
+                    </Button>
+                  )}
+                </div>
+              )}
+              {!loadingReport && selectedReport.status === REPORT_STATUS.REVIEWED && (
+                <p className="text-xs text-green-700 font-medium flex items-center gap-1.5">
+                  <CheckCircle className="w-4 h-4" />
+                  This report has been approved.
+                </p>
+              )}
             </div>
           </div>
         )}

@@ -186,8 +186,11 @@ export const DEMO_CREDENTIALS = [
 // File Upload
 export const FILE_UPLOAD = {
   VOICE_NOTE_MAX_SIZE: 10 * 1024 * 1024, // 10MB
-  VOICE_NOTE_FORMATS: ['.mp3', '.m4a', '.wav', '.ogg'],
-  VOICE_NOTE_MIME_TYPES: ['audio/mpeg', 'audio/mp4', 'audio/wav', 'audio/ogg'],
+  VOICE_NOTE_FORMATS: ['.mp3', '.m4a', '.wav', '.ogg', '.webm'],
+  VOICE_NOTE_MIME_TYPES: ['audio/mpeg', 'audio/mp4', 'audio/wav', 'audio/ogg', 'audio/webm'],
+  PHOTO_MAX_SIZE: 10 * 1024 * 1024, // 10MB
+  PHOTO_FORMATS: ['.jpg', '.jpeg', '.png', '.webp'],
+  PHOTO_MIME_TYPES: ['image/jpeg', 'image/png', 'image/webp'],
 };
 
 // Pagination

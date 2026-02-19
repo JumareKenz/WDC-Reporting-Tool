@@ -37,7 +37,10 @@ const Login = () => {
         navigate(getDefaultRoute(), { replace: true });
       }
     } catch (err) {
-      setError(err.message || 'Login failed. Please check your credentials.');
+      const msg = err.isNetworkError
+        ? 'Cannot reach the server. Make sure the backend is running on port 8000, then try again.'
+        : err.message || 'Login failed. Please check your credentials.';
+      setError(msg);
       setLoading(false);
     }
   };
@@ -56,7 +59,10 @@ const Login = () => {
         navigate(getDefaultRoute(), { replace: true });
       }
     } catch (err) {
-      setError(err.message || 'Demo login failed.');
+      const msg = err.isNetworkError
+        ? 'Cannot reach the server. Make sure the backend is running on port 8000, then try again.'
+        : err.message || 'Demo login failed.';
+      setError(msg);
       setLoading(false);
     }
   };
@@ -99,12 +105,25 @@ const Login = () => {
           <div className="rounded-2xl p-8" style={{ background: 'rgba(255,255,255,0.13)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.18)', boxShadow: '0 8px 32px rgba(0,0,0,0.25)' }}>
             {/* Error Alert */}
             {error && (
-              <Alert
-                type="error"
-                message={error}
-                onClose={() => setError(null)}
-                className="mb-5"
-              />
+              <div
+                role="alert"
+                className="mb-5 flex items-start gap-3 px-4 py-3 rounded-xl bg-red-500/20 border border-red-400/40 text-red-100"
+              >
+                <svg className="w-5 h-5 flex-shrink-0 mt-0.5 text-red-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                </svg>
+                <p className="text-sm font-medium flex-1">{error}</p>
+                <button
+                  type="button"
+                  onClick={() => setError(null)}
+                  className="text-red-300 hover:text-red-100 transition-colors"
+                  aria-label="Dismiss error"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             )}
 
             {/* Login Form */}
@@ -169,9 +188,9 @@ const Login = () => {
                 size="lg"
                 fullWidth
                 loading={loading}
-                icon={LogIn}
+                icon={loading ? undefined : LogIn}
               >
-                Sign In
+                {loading ? 'Signing in…' : 'Sign In'}
               </Button>
             </form>
 
@@ -201,8 +220,13 @@ const Login = () => {
                   key={index}
                   onClick={() => handleDemoLogin(cred)}
                   disabled={loading}
-                  className="w-full text-left px-4 py-3 rounded-xl bg-white/10 border border-white/20 hover:bg-white/20 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group"
+                  className="w-full text-left px-4 py-3 rounded-xl bg-white/10 border border-white/20 hover:bg-white/20 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group relative overflow-hidden"
+                  aria-label={`Sign in as ${cred.name}`}
                 >
+                  {/* Loading shimmer when this demo is being used */}
+                  {loading && (
+                    <span className="absolute inset-0 bg-white/5 animate-pulse" aria-hidden="true" />
+                  )}
                   <p className="text-sm font-semibold text-white group-hover:text-emerald-200 transition-colors">
                     {cred.name}
                   </p>

@@ -1,10 +1,18 @@
 import { useState, useRef } from 'react';
-import { Upload, File, X, AlertCircle, Mic } from 'lucide-react';
+import { Upload, File, X, AlertCircle, Mic, CheckCircle } from 'lucide-react';
 import Button from '../common/Button';
 import { InlineAlert } from '../common/Alert';
 import { FILE_UPLOAD } from '../../utils/constants';
 
-const VoiceNoteUpload = ({ onChange, disabled = false }) => {
+/**
+ * Voice Note Upload Component
+ *
+ * @param {Function} onChange - Called with the selected File or null
+ * @param {boolean}  disabled - Disables the uploader
+ * @param {number}   uploadProgress - 0-100 upload progress (optional, shown during form submit)
+ * @param {boolean}  uploadSuccess - Show a success state after upload completes
+ */
+const VoiceNoteUpload = ({ onChange, disabled = false, uploadProgress = null, uploadSuccess = false }) => {
   const [file, setFile] = useState(null);
   const [error, setError] = useState(null);
   const [dragActive, setDragActive] = useState(false);
@@ -112,14 +120,18 @@ const VoiceNoteUpload = ({ onChange, disabled = false }) => {
 
   return (
     <div className="space-y-3">
-      {/* File Input (Hidden) */}
+      {/* File Input (Hidden) — include both extension and MIME type for cross-browser support */}
       <input
         ref={fileInputRef}
         type="file"
-        accept={FILE_UPLOAD.VOICE_NOTE_FORMATS.join(',')}
+        accept={[
+          ...FILE_UPLOAD.VOICE_NOTE_FORMATS,
+          ...FILE_UPLOAD.VOICE_NOTE_MIME_TYPES,
+        ].join(',')}
         onChange={handleFileInputChange}
         className="hidden"
         disabled={disabled}
+        aria-label="Choose audio file"
       />
 
       {/* Upload Area */}
@@ -152,7 +164,7 @@ const VoiceNoteUpload = ({ onChange, disabled = false }) => {
               Drag and drop or click to browse
             </p>
             <div className="space-y-1 text-xs text-neutral-500">
-              <p>Supported formats: MP3, M4A, WAV, OGG</p>
+              <p>Supported formats: MP3, M4A, WAV, OGG, WEBM</p>
               <p>Maximum size: 10MB</p>
             </div>
           </div>
@@ -205,6 +217,35 @@ const VoiceNoteUpload = ({ onChange, disabled = false }) => {
         </div>
       )}
 
+      {/* Upload Progress Bar (shown when form is submitting) */}
+      {uploadProgress !== null && uploadProgress >= 0 && uploadProgress < 100 && (
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-xs text-neutral-600">
+            <span>Uploading voice note…</span>
+            <span>{uploadProgress}%</span>
+          </div>
+          <div className="w-full bg-neutral-200 rounded-full h-2 overflow-hidden">
+            <div
+              className="h-2 bg-primary-500 rounded-full transition-all duration-300"
+              style={{ width: `${uploadProgress}%` }}
+              role="progressbar"
+              aria-valuenow={uploadProgress}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="Upload progress"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Upload Success */}
+      {uploadSuccess && (
+        <div className="flex items-center gap-2 text-xs text-green-700 bg-green-50 border border-green-200 px-3 py-2 rounded-lg">
+          <CheckCircle className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+          Voice note uploaded successfully.
+        </div>
+      )}
+
       {/* Error Message */}
       {error && (
         <InlineAlert type="error" message={error} />
@@ -213,7 +254,7 @@ const VoiceNoteUpload = ({ onChange, disabled = false }) => {
       {/* Help Text */}
       {!file && !error && (
         <div className="flex items-start gap-2 text-xs text-neutral-600">
-          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" aria-hidden="true" />
           <p>
             Voice notes help provide additional context to your report. This is optional
             but highly recommended for detailed explanations.

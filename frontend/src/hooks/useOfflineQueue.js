@@ -191,6 +191,10 @@ export const useOfflineQueue = ({
     }, [loadQueue]);
 
     // Handle online/offline events
+    // Note: we use a ref for syncQueue to avoid re-registering listeners on every render
+    const syncQueueRef = useRef(syncQueue);
+    useEffect(() => { syncQueueRef.current = syncQueue; }, [syncQueue]);
+
     useEffect(() => {
         const handleOnline = () => {
             setIsOnline(true);
@@ -198,7 +202,7 @@ export const useOfflineQueue = ({
                 console.log('[useOfflineQueue] Back online, triggering sync');
             }
             // Delay sync slightly to ensure connection is stable
-            setTimeout(() => syncQueue(), 1000);
+            setTimeout(() => syncQueueRef.current(), 1500);
         };
 
         const handleOffline = () => {
@@ -215,7 +219,7 @@ export const useOfflineQueue = ({
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
         };
-    }, [syncQueue]);
+    }, []); // stable listener – uses ref to access latest syncQueue
 
     // Try to sync on mount if online
     useEffect(() => {

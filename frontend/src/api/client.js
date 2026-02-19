@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { STORAGE_KEYS } from '../utils/constants';
+import { emitToast } from '../hooks/useToast';
 
 // Base API URL - can be configured via environment variable
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
@@ -51,7 +52,11 @@ apiClient.interceptors.response.use(
 
         // Only redirect if not already on login page
         if (!window.location.pathname.includes('/login')) {
-          window.location.href = '/login';
+          emitToast('warning', 'Your session has expired. Please log in again.', {
+            title: 'Session ended',
+            duration: 4000,
+          });
+          setTimeout(() => { window.location.href = '/login'; }, 1500);
         }
       }
 
@@ -84,11 +89,23 @@ apiClient.interceptors.response.use(
 
       return Promise.reject(enhancedError);
     } else if (error.request) {
-      // Request made but no response received (network error)
+      // Request made but no response received (network / server-down error)
       const networkError = new Error(
         'Network error. Please check your internet connection.'
       );
       networkError.isNetworkError = true;
+
+      // Only show the draft-save toast when the user is already authenticated.
+      // On public pages (login, forgot-password, reset-password) the form's own
+      // error state will surface the message — no toast needed there.
+      const isAuthenticated = !!localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+      if (isAuthenticated) {
+        emitToast('warning', 'No connection – your work has been saved as a draft and will sync when reconnected.', {
+          title: 'You are offline',
+          duration: 6000,
+        });
+      }
+
       return Promise.reject(networkError);
     } else {
       // Something else happened

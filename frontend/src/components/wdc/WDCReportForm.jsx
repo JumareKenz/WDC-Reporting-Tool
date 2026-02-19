@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   FileText,
@@ -24,7 +24,9 @@ import {
 } from 'lucide-react';
 import Button from '../common/Button';
 import Alert from '../common/Alert';
+import Tooltip from '../common/Tooltip';
 import VoiceRecorder from './VoiceRecorder';
+import { useToast } from '../../hooks/useToast';
 import DraftStatusBar from './DraftStatusBar';
 import apiClient from '../../api/client';
 import { getTargetReportMonth, formatMonthDisplay, getSubmissionPeriodDescription } from '../../utils/dateUtils';
@@ -341,6 +343,7 @@ const DynamicTable = ({ columns, rows, onRowChange, onAddRow, onRemoveRow, table
  */
 const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo }) => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [submitError, setSubmitError] = useState(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [voiceNotes, setVoiceNotes] = useState({});
@@ -899,12 +902,21 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
     },
     onSuccess: () => {
       setSubmitSuccess(true);
+      toast.success('Your monthly report has been submitted successfully!', {
+        title: 'Report Submitted',
+        duration: 6000,
+      });
       setTimeout(() => {
         onSuccess?.();
       }, 2000);
     },
     onError: (error) => {
-      setSubmitError(error.message || 'Failed to submit report');
+      const msg = error.message || 'Failed to submit report. Please try again.';
+      setSubmitError(msg);
+      // Also emit a toast so it's visible regardless of scroll position
+      toast.error(msg, { title: 'Submission Failed' });
+      // Scroll to top of form to show the inline error
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     },
   });
 
@@ -927,9 +939,17 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
       setDraftId(response.id);
       setDraftSavedAt(new Date().toISOString());
       setSubmitError(null);
+      toast.success('Draft saved to server successfully.');
     },
     onError: (error) => {
-      setSubmitError(error.message || 'Failed to save draft');
+      const msg = error.message || 'Failed to save draft to server';
+      setSubmitError(msg);
+      // If it's a network error, data is still saved locally — emit a softer warning
+      if (error.isNetworkError) {
+        toast.warning('Draft saved locally (offline). Will sync when reconnected.');
+      } else {
+        toast.error(msg, { title: 'Draft Save Failed' });
+      }
     },
   });
 
@@ -1023,7 +1043,13 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
     // Validate form
     const validationErrors = validateForm();
     if (validationErrors.length > 0) {
-      setSubmitError(validationErrors.join('; '));
+      const errMsg = validationErrors.join('; ');
+      setSubmitError(errMsg);
+      toast.error(
+        `Please fix ${validationErrors.length} validation error${validationErrors.length > 1 ? 's' : ''} before submitting.`,
+        { title: 'Validation Error', duration: 7000 }
+      );
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
@@ -1046,11 +1072,16 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
           reportMonth: reportMonth
         });
 
-        // Show offline success message
+        // Show offline queued confirmation
         setSubmitSuccess(true);
-        // Clear local draft? Maybe keep until synced.
+        toast.warning(
+          'You are offline. Your report has been saved and will be submitted automatically when you reconnect.',
+          { title: 'Saved Offline', duration: 8000 }
+        );
       } catch (error) {
-        setSubmitError(`Failed to queue offline submission: ${error.message}`);
+        const msg = `Failed to queue offline submission: ${error.message}`;
+        setSubmitError(msg);
+        toast.error(msg, { title: 'Queue Failed' });
       }
     }
   };
@@ -1737,26 +1768,151 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
             rows={3}
           />
 
-          <div className="bg-primary-50 p-4 rounded-lg border border-primary-200">
-            <h5 className="text-xs sm:text-sm font-semibold text-primary-800 mb-3">Attendance Summary</h5>
+          {/* ─── Attendance Summary ─────────────────────────────── */}
+          <div
+            className="bg-primary-50 p-4 rounded-lg border border-primary-200"
+            role="group"
+            aria-labelledby="attendance-summary-heading"
+          >
+            <h5
+              id="attendance-summary-heading"
+              className="text-xs sm:text-sm font-semibold text-primary-800 mb-1 flex items-center gap-2"
+            >
+              Attendance Summary
+              <Tooltip
+                text="Enter the total number of WDC members who attended this meeting, broken down by gender. The total must equal or exceed the sum of male and female counts."
+                position="right"
+              />
+            </h5>
+            <p className="text-xs text-primary-600 mb-3">
+              Step 1 of 2: Count attendees &rarr; Step 2: Upload signed attendance list below.
+            </p>
+
             <div className="grid grid-cols-3 gap-3 sm:gap-4">
-              <NumberInput label="Total" name="attendance_total" value={formData.attendance_total} onChange={handleChange} />
-              <NumberInput label="Male" name="attendance_male" value={formData.attendance_male} onChange={handleChange} />
-              <NumberInput label="Female" name="attendance_female" value={formData.attendance_female} onChange={handleChange} />
+              {/* Total */}
+              <div className="space-y-1">
+                <label
+                  htmlFor="attendance_total"
+                  className="block text-xs sm:text-sm font-medium text-neutral-700"
+                >
+                  Total
+                  <Tooltip text="Total people present at the meeting (must equal Male + Female)." position="top" />
+                </label>
+                <input
+                  id="attendance_total"
+                  type="number"
+                  name="attendance_total"
+                  value={formData.attendance_total}
+                  onChange={handleChange}
+                  min={0}
+                  aria-describedby="attendance-hint"
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              {/* Male */}
+              <div className="space-y-1">
+                <label
+                  htmlFor="attendance_male"
+                  className="block text-xs sm:text-sm font-medium text-neutral-700"
+                >
+                  Male
+                  <Tooltip text="Number of male attendees." position="top" />
+                </label>
+                <input
+                  id="attendance_male"
+                  type="number"
+                  name="attendance_male"
+                  value={formData.attendance_male}
+                  onChange={handleChange}
+                  min={0}
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              {/* Female */}
+              <div className="space-y-1">
+                <label
+                  htmlFor="attendance_female"
+                  className="block text-xs sm:text-sm font-medium text-neutral-700"
+                >
+                  Female
+                  <Tooltip text="Number of female attendees." position="top" />
+                </label>
+                <input
+                  id="attendance_female"
+                  type="number"
+                  name="attendance_female"
+                  value={formData.attendance_female}
+                  onChange={handleChange}
+                  min={0}
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
             </div>
-            <p className="text-xs text-primary-600 mt-2">(Attach attendance list with signatures and phone numbers with pictures)</p>
+
+            {/* Live gender-balance indicator */}
+            {(() => {
+              const total = parseInt(formData.attendance_total) || 0;
+              const male = parseInt(formData.attendance_male) || 0;
+              const female = parseInt(formData.attendance_female) || 0;
+              const genSum = male + female;
+              const hasValues = total > 0 || genSum > 0;
+              if (!hasValues) return null;
+              const isValid = total >= genSum;
+              return (
+                <div
+                  id="attendance-hint"
+                  className={`mt-3 px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 ${
+                    isValid ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+                  }`}
+                  role="status"
+                  aria-live="polite"
+                >
+                  {isValid ? (
+                    <>
+                      <span aria-hidden="true">✓</span>
+                      Total ({total}) equals Male ({male}) + Female ({female}) = {genSum}
+                      {total > genSum && ` — ${total - genSum} additional attendee(s) counted`}
+                    </>
+                  ) : (
+                    <>
+                      <AlertTriangle className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
+                      Total ({total}) is less than Male ({male}) + Female ({female}) = {genSum}.
+                      Please correct the numbers.
+                    </>
+                  )}
+                </div>
+              );
+            })()}
+
+            <p className="text-xs text-primary-600 mt-3">
+              Attach attendance list with signatures and phone numbers along with pictures.
+            </p>
           </div>
 
           {/* Attendance Picture Upload */}
-          <div className="bg-neutral-50 p-4 rounded-lg border border-neutral-200">
-            <h5 className="text-xs sm:text-sm font-semibold text-neutral-800 mb-3 flex items-center gap-2">
-              <Image className="w-4 h-4" />
+          <div className="bg-neutral-50 p-4 rounded-lg border border-neutral-200" role="group" aria-labelledby="attendance-photo-heading">
+            <h5
+              id="attendance-photo-heading"
+              className="text-xs sm:text-sm font-semibold text-neutral-800 mb-1 flex items-center gap-2"
+            >
+              <Image className="w-4 h-4" aria-hidden="true" />
               Upload Attendance Pictures
+              <Tooltip
+                text="Take or upload photos of the attendance sheet showing participant signatures. Supported formats: JPG, PNG (max 10MB each)."
+                position="right"
+              />
             </h5>
+            <p className="text-xs text-neutral-500 mb-3">
+              Step 2 of 2: Photograph the signed attendance list and upload it here.
+              If photos are unavailable, note the reason in the Support Required field below.
+            </p>
             <div className="space-y-3">
-              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-neutral-300 rounded-lg cursor-pointer hover:bg-neutral-100 transition-colors">
+              <label
+                className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-neutral-300 rounded-lg cursor-pointer hover:bg-neutral-100 transition-colors focus-within:ring-2 focus-within:ring-primary-500"
+                aria-label="Upload attendance picture files"
+              >
                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                  <Upload className="w-8 h-8 text-neutral-400 mb-2" />
+                  <Upload className="w-8 h-8 text-neutral-400 mb-2" aria-hidden="true" />
                   <p className="text-sm text-neutral-600">Click to upload attendance pictures</p>
                   <p className="text-xs text-neutral-500">PNG, JPG up to 10MB each</p>
                 </div>
