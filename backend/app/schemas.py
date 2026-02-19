@@ -351,7 +351,7 @@ class ReportBase(BaseModel):
     next_meeting_date: Optional[str] = None
     chairman_signature: Optional[str] = None
     secretary_signature: Optional[str] = None
-    group_photo_path: Optional[str] = None  # JSON array of file paths
+    group_photo_path: Optional[List[str]] = None
 
     @validator('attendance_total')
     def validate_attendance_total(cls, v, values):
@@ -448,7 +448,7 @@ class ReportResponse(ReportBase):
 
     @validator('action_tracker', 'community_feedback', 'vdc_reports', 'action_plan',
                'items_donated_types', 'items_donated_govt_types', 'items_repaired_types',
-               'maternal_death_causes', 'perinatal_death_causes', pre=True)
+               'maternal_death_causes', 'perinatal_death_causes', 'group_photo_path', pre=True)
     def parse_json_fields(cls, v):
         """Parse JSON string fields from database into lists."""
         if isinstance(v, str):

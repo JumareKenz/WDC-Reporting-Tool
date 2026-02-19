@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from .database import engine, Base
-from .config import ALLOWED_ORIGINS
+from .config import ALLOWED_ORIGINS, UPLOAD_DIR
 from .routers import auth, reports, lgas, notifications, feedback, investigations, analytics, forms, users, profile, admin_utils
 
 # Create database tables
@@ -48,6 +49,13 @@ async def global_exception_handler(request: Request, exc: Exception):
             "detail": str(exc)
         },
     )
+
+# Serve uploaded files (group photos, etc.) as static files
+try:
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
+except Exception as e:
+    print(f"Warning: Could not mount uploads directory: {e}")
 
 # Include routers
 app.include_router(auth.router, prefix="/api")

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   FileText,
   Calendar,
@@ -14,15 +15,31 @@ import {
   Target,
   HelpCircle,
   ClipboardList,
+  Image,
+  X,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { formatDate, formatMonth, toTitleCase } from '../../utils/formatters';
+
+const UPLOAD_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api').replace(/\/api$/, '');
 
 /**
  * Detailed Report View Component
  * Displays all fields and answers from a WDC submission in a professional, elegant format
  */
 const ReportDetailView = ({ report }) => {
+  const [lightboxIndex, setLightboxIndex] = useState(null);
   if (!report) return null;
+
+  // Parse group photos — stored as JSON string or already an array
+  const groupPhotos = (() => {
+    if (!report.group_photo_path) return [];
+    if (Array.isArray(report.group_photo_path)) return report.group_photo_path;
+    try { return JSON.parse(report.group_photo_path); } catch { return []; }
+  })();
+
+  const photoUrl = (path) => `${UPLOAD_BASE}/${path}`;
 
   // Helper to render a field value
   const renderField = (label, value, icon = null) => {
@@ -617,6 +634,34 @@ const ReportDetailView = ({ report }) => {
         </div>
       )}
 
+      {/* Group Photos */}
+      {groupPhotos.length > 0 && (
+        <div className="bg-white rounded-lg border border-neutral-200 p-5">
+          {renderSectionHeader('Meeting Photos', <Image className="w-5 h-5 text-primary-600" />)}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {groupPhotos.map((path, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => setLightboxIndex(idx)}
+                className="relative aspect-square rounded-lg overflow-hidden border border-neutral-200 hover:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all group"
+                aria-label={`View photo ${idx + 1}`}
+              >
+                <img
+                  src={photoUrl(path)}
+                  alt={`Meeting photo ${idx + 1}`}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                  <Image className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Section 13: Attendance & Next Meeting */}
       <div className="bg-white rounded-lg border border-neutral-200 p-5">
         {renderSectionHeader('Attendance & Next Steps', <ClipboardList className="w-5 h-5 text-primary-600" />)}
@@ -656,6 +701,58 @@ const ReportDetailView = ({ report }) => {
           </div>
         )}
       </div>
+      {/* Lightbox */}
+      {lightboxIndex !== null && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setLightboxIndex(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Photo viewer"
+        >
+          <button
+            type="button"
+            className="absolute top-4 right-4 text-white/80 hover:text-white p-2"
+            onClick={() => setLightboxIndex(null)}
+            aria-label="Close"
+          >
+            <X className="w-7 h-7" />
+          </button>
+
+          {lightboxIndex > 0 && (
+            <button
+              type="button"
+              className="absolute left-4 text-white/80 hover:text-white p-2"
+              onClick={(e) => { e.stopPropagation(); setLightboxIndex(lightboxIndex - 1); }}
+              aria-label="Previous photo"
+            >
+              <ChevronLeft className="w-8 h-8" />
+            </button>
+          )}
+
+          <img
+            src={photoUrl(groupPhotos[lightboxIndex])}
+            alt={`Meeting photo ${lightboxIndex + 1}`}
+            className="max-w-full max-h-[85vh] rounded-lg shadow-2xl object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+
+          {lightboxIndex < groupPhotos.length - 1 && (
+            <button
+              type="button"
+              className="absolute right-4 text-white/80 hover:text-white p-2"
+              onClick={(e) => { e.stopPropagation(); setLightboxIndex(lightboxIndex + 1); }}
+              aria-label="Next photo"
+            >
+              <ChevronRight className="w-8 h-8" />
+            </button>
+          )}
+
+          <p className="absolute bottom-4 text-white/60 text-sm">
+            {lightboxIndex + 1} / {groupPhotos.length}
+          </p>
+        </div>
+      )}
     </div>
   );
 };
