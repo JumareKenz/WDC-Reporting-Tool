@@ -378,21 +378,6 @@ class ReportBase(BaseModel):
                 raise ValueError(f'Hepatitis B positive cases ({v}) cannot exceed tested cases ({tested})')
         return v
 
-    @validator('next_meeting_date')
-    def validate_next_meeting_date(cls, v):
-        """Validate that next_meeting_date is in the future"""
-        if v:
-            from datetime import datetime
-            try:
-                meeting_date = datetime.strptime(v, '%Y-%m-%d')
-                if meeting_date.date() < datetime.utcnow().date():
-                    raise ValueError('Next meeting date must be in the future')
-            except ValueError as e:
-                if 'does not match format' in str(e):
-                    raise ValueError('Next meeting date must be in YYYY-MM-DD format')
-                raise
-        return v
-
     @validator('action_tracker')
     def validate_action_tracker_size(cls, v):
         """Validate action_tracker max size"""
@@ -423,7 +408,20 @@ class ReportBase(BaseModel):
 
 
 class ReportCreate(ReportBase):
-    pass
+    @validator('next_meeting_date')
+    def validate_next_meeting_date(cls, v):
+        """Validate that next_meeting_date is in the future when creating reports"""
+        if v:
+            from datetime import datetime
+            try:
+                meeting_date = datetime.strptime(v, '%Y-%m-%d')
+                if meeting_date.date() < datetime.utcnow().date():
+                    raise ValueError('Next meeting date must be in the future')
+            except ValueError as e:
+                if 'does not match format' in str(e):
+                    raise ValueError('Next meeting date must be in YYYY-MM-DD format')
+                raise
+        return v
 
 
 class ReportUpdate(BaseModel):
