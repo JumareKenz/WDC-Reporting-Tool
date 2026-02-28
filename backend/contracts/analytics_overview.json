@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GET /api/analytics/overview — 200 response",
+  "description": "Wrapped state-wide analytics summary.  state_summary carries the headline numbers; top_performing_lgas and low_performing_lgas are present in the live response but are not constrained here so that LGA-count variations do not break the contract.",
+  "type": "object",
+  "required": ["success", "data"],
+  "properties": {
+    "success": {
+      "type": "boolean"
+    },
+    "data": {
+      "type": "object",
+      "required": ["state_summary"],
+      "properties": {
+        "state_summary": {
+          "type": "object",
+          "required": ["total_lgas", "total_wards", "reports_submitted", "reports_missing", "submission_rate"],
+          "properties": {
+            "total_lgas": {
+              "type": "integer"
+            },
+            "total_wards": {
+              "type": "integer"
+            },
+            "reports_submitted": {
+              "type": "integer"
+            },
+            "reports_missing": {
+              "type": "integer"
+            },
+            "submission_rate": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    }
+  }
+}

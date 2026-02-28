@@ -1,0 +1,2068 @@
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import {
+  FileText,
+  CheckCircle,
+  Plus,
+  Trash2,
+  Send,
+  ChevronDown,
+  ChevronUp,
+  Building,
+  MapPin,
+  Users,
+  Heart,
+  MessageSquare,
+  Calendar,
+  AlertTriangle,
+  Upload,
+  Image,
+  X,
+  Info,
+  Save,
+  RefreshCw,
+} from 'lucide-react';
+import Button from '../common/Button';
+import Alert from '../common/Alert';
+import Tooltip from '../common/Tooltip';
+import VoiceRecorder from './VoiceRecorder';
+import { useToast } from '../../hooks/useToast';
+import DraftStatusBar from './DraftStatusBar';
+import apiClient from '../../api/client';
+import { getTargetReportMonth, formatMonthDisplay, getSubmissionPeriodDescription } from '../../utils/dateUtils';
+import { saveDraft, getExistingDraft } from '../../api/reports';
+import { useAuth } from '../../hooks/useAuth';
+import { useLocalDraft } from '../../hooks/useLocalDraft';
+import { useOfflineQueue } from '../../hooks/useOfflineQueue';
+
+// Kaduna LGAs data
+const KADUNA_LGAS = [
+  { id: 1, name: 'Birnin Gwari' },
+  { id: 2, name: 'Chikun' },
+  { id: 3, name: 'Giwa' },
+  { id: 4, name: 'Igabi' },
+  { id: 5, name: 'Ikara' },
+  { id: 6, name: 'Jaba' },
+  { id: 7, name: "Jema'a" },
+  { id: 8, name: 'Kachia' },
+  { id: 9, name: 'Kaduna North' },
+  { id: 10, name: 'Kaduna South' },
+  { id: 11, name: 'Kagarko' },
+  { id: 12, name: 'Kajuru' },
+  { id: 13, name: 'Kaura' },
+  { id: 14, name: 'Kauru' },
+  { id: 15, name: 'Kubau' },
+  { id: 16, name: 'Kudan' },
+  { id: 17, name: 'Lere' },
+  { id: 18, name: 'Makarfi' },
+  { id: 19, name: 'Sabon Gari' },
+  { id: 20, name: 'Sanga' },
+  { id: 21, name: 'Soba' },
+  { id: 22, name: 'Zangon Kataf' },
+  { id: 23, name: 'Zaria' },
+];
+
+// Donation item types
+const DONATION_ITEMS = [
+  'Hospital beds', 'Mattresses', 'Medical equipment', 'Drugs/Medicines',
+  'First aid supplies', 'Cleaning materials', 'Office furniture',
+  'Generator/Power backup', 'Water supply equipment', 'Ambulance/Vehicle', 'Other',
+];
+
+// Repair item types
+const REPAIR_ITEMS = [
+  'Building/Roofing', 'Plumbing', 'Electrical', 'Medical equipment',
+  'Furniture', 'Generator', 'Water pump', 'Fencing', 'Doors/Windows', 'Other',
+];
+
+// Section component for collapsible sections
+const FormSection = ({ title, number, icon: Icon, children, defaultOpen = true }) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-primary-50 to-white hover:from-primary-100 transition-colors"
+      >
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary-600 text-white text-xs sm:text-sm font-bold">
+            {number}
+          </div>
+          {Icon && <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600" />}
+          <h3 className="text-sm sm:text-lg font-semibold text-neutral-900 text-left">{title}</h3>
+        </div>
+        {isOpen ? (
+          <ChevronUp className="w-5 h-5 text-neutral-500 flex-shrink-0" />
+        ) : (
+          <ChevronDown className="w-5 h-5 text-neutral-500 flex-shrink-0" />
+        )}
+      </button>
+      {isOpen && <div className="p-4 sm:p-6 border-t border-neutral-100">{children}</div>}
+    </div>
+  );
+};
+
+// Text input â€” optionally shows a compact VoiceRecorder if onVoiceNote is provided
+const TextInput = ({
+  label,
+  name,
+  type = 'text',
+  value,
+  onChange,
+  onVoiceNote,
+  placeholder,
+  required = false,
+  error,
+  helpText,
+  rows,
+  ...props
+}) => {
+  const inputId = `field-${name}`;
+  const isTextarea = type === 'textarea';
+  const hasError = !!error;
+
+  return (
+    <div className="space-y-1">
+      <div className={onVoiceNote ? 'flex items-center justify-between gap-2' : ''}>
+        <label htmlFor={inputId} className="block text-xs sm:text-sm font-medium text-neutral-700">
+          {label} {required && <span className="text-red-500">*</span>}
+        </label>
+        {onVoiceNote && (
+          <VoiceRecorder fieldName={name} onRecordingComplete={onVoiceNote} compact />
+        )}
+      </div>
+      {isTextarea ? (
+        <textarea
+          id={inputId}
+          name={name}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          rows={rows || 3}
+          required={required}
+          className={`w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none ${hasError ? 'border-red-500 bg-red-50' : 'border-neutral-300'
+            }`}
+          {...props}
+        />
+      ) : (
+        <input
+          id={inputId}
+          type={type}
+          name={name}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          required={required}
+          className={`w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${hasError ? 'border-red-500 bg-red-50' : 'border-neutral-300'
+            }`}
+          {...props}
+        />
+      )}
+      {helpText && <p className="text-xs text-neutral-500">{helpText}</p>}
+      {error && (
+        <div className="flex items-center gap-1 text-red-600">
+          <AlertTriangle className="w-3 h-3" />
+          <p className="text-xs font-medium">{error}</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Number input (numerical fields are filled manually â€” AI does not populate these)
+const NumberInput = ({ label, name, value, onChange, min = 0, ...props }) => (
+  <div className="space-y-1">
+    <label className="block text-xs sm:text-sm font-medium text-neutral-700 whitespace-normal">{label}</label>
+    <input
+      type="number"
+      name={name}
+      value={value}
+      onChange={onChange}
+      min={min}
+      className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+      {...props}
+    />
+  </div>
+);
+
+// Mobile-friendly dynamic table with voice recording - card layout on mobile
+const DynamicTable = ({ columns, rows, onRowChange, onAddRow, onRemoveRow, tableId, maxRows = 10 }) => (
+  <div>
+    {/* Desktop Table */}
+    <div className="hidden sm:block overflow-x-auto">
+      <table className="w-full border-collapse text-sm">
+        <thead>
+          <tr className="bg-neutral-50">
+            <th className="border border-neutral-200 px-2 py-2 text-left text-xs font-semibold text-neutral-700 w-10">
+              SN
+            </th>
+            {columns.map((col, idx) => (
+              <th
+                key={idx}
+                className="border border-neutral-200 px-2 py-2 text-left text-xs font-semibold text-neutral-700"
+              >
+                {col.label}
+              </th>
+            ))}
+            <th className="border border-neutral-200 px-2 py-2 text-center text-xs font-semibold text-neutral-700 w-12">
+              Del
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, rowIdx) => (
+            <tr key={rowIdx} className="hover:bg-neutral-50">
+              <td className="border border-neutral-200 px-2 py-1 text-center font-medium">
+                {rowIdx + 1}
+              </td>
+              {columns.map((col, colIdx) => (
+                <td key={colIdx} className="border border-neutral-200 px-1 py-1">
+                  <div>
+                    {col.type === 'select' ? (
+                      <select
+                        value={row[col.name] || ''}
+                        onChange={(e) => onRowChange(rowIdx, col.name, e.target.value)}
+                        className="w-full px-2 py-1 text-xs border-0 focus:ring-1 focus:ring-primary-500 rounded"
+                      >
+                        <option value="">Select...</option>
+                        {col.options.map((opt, i) => (
+                          <option key={i} value={opt}>{opt}</option>
+                        ))}
+                      </select>
+                    ) : col.type === 'textarea' ? (
+                      <textarea
+                        value={row[col.name] || ''}
+                        onChange={(e) => onRowChange(rowIdx, col.name, e.target.value)}
+                        className="w-full px-2 py-1 text-xs border-0 focus:ring-1 focus:ring-primary-500 rounded resize-none"
+                        rows={2}
+                        placeholder={col.placeholder}
+                      />
+                    ) : (
+                      <input
+                        type={col.type || 'text'}
+                        value={row[col.name] || ''}
+                        onChange={(e) => onRowChange(rowIdx, col.name, e.target.value)}
+                        className="w-full px-2 py-1 text-xs border-0 focus:ring-1 focus:ring-primary-500 rounded"
+                        placeholder={col.placeholder}
+                      />
+                    )}
+                  </div>
+                </td>
+              ))}
+              <td className="border border-neutral-200 px-1 py-1 text-center">
+                {rows.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => onRemoveRow(rowIdx)}
+                    className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    {/* Mobile Card Layout */}
+    <div className="sm:hidden space-y-4">
+      {rows.map((row, rowIdx) => (
+        <div key={rowIdx} className="bg-neutral-50 rounded-lg p-4 border border-neutral-200">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-semibold text-primary-600">Item #{rowIdx + 1}</span>
+            {rows.length > 1 && (
+              <button
+                type="button"
+                onClick={() => onRemoveRow(rowIdx)}
+                className="p-1 text-red-500 hover:bg-red-100 rounded transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          <div className="space-y-3">
+            {columns.map((col, colIdx) => (
+              <div key={colIdx}>
+                <label className="block text-xs font-medium text-neutral-600 mb-1">
+                  {col.label}
+                </label>
+                {col.type === 'select' ? (
+                  <select
+                    value={row[col.name] || ''}
+                    onChange={(e) => onRowChange(rowIdx, col.name, e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-primary-500"
+                  >
+                    <option value="">Select...</option>
+                    {col.options.map((opt, i) => (
+                      <option key={i} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                ) : col.type === 'textarea' ? (
+                  <textarea
+                    value={row[col.name] || ''}
+                    onChange={(e) => onRowChange(rowIdx, col.name, e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-primary-500 resize-none"
+                    rows={2}
+                    placeholder={col.placeholder}
+                  />
+                ) : (
+                  <input
+                    type={col.type || 'text'}
+                    value={row[col.name] || ''}
+                    onChange={(e) => onRowChange(rowIdx, col.name, e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-primary-500"
+                    placeholder={col.placeholder}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+
+    {rows.length < maxRows && (
+      <button
+        type="button"
+        onClick={onAddRow}
+        className="mt-3 flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700 font-medium"
+      >
+        <Plus className="w-4 h-4" />
+        Add Row
+      </button>
+    )}
+  </div>
+);
+
+/**
+ * Comprehensive WDC Monthly Report Form
+ */
+const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo }) => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [submitError, setSubmitError] = useState(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [voiceNotes, setVoiceNotes] = useState({});
+  const [attendancePictures, setAttendancePictures] = useState([]);
+  const [groupPhotos, setGroupPhotos] = useState([]);
+  const [reportMonth, setReportMonth] = useState('');
+  const [draftId, setDraftId] = useState(null);
+  const [draftSavedAt, setDraftSavedAt] = useState(null);
+  const [isLoadingDraft, setIsLoadingDraft] = useState(true);
+  const [showDraftModal, setShowDraftModal] = useState(false);
+  const [pendingDraft, setPendingDraft] = useState(null);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [localDraftStatus, setLocalDraftStatus] = useState('idle'); // idle | saving | saved | error
+  const [localLastSavedAt, setLocalLastSavedAt] = useState(null);
+
+  // Calculate report month on mount
+  useEffect(() => {
+    const targetMonth = submissionInfo?.target_month || getTargetReportMonth();
+    setReportMonth(targetMonth);
+  }, [submissionInfo]);
+
+  // Form state
+  const [formData, setFormData] = useState({
+    // Header
+    state: 'Kaduna State',
+    lga_id: userLGA?.id || '',
+    ward_id: userWard?.id || '',
+    report_date: new Date().toISOString().split('T')[0],
+    report_time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+
+    // Section 1: Agenda & Governance
+    meeting_type: 'Monthly',
+    agenda_opening_prayer: true,
+    agenda_minutes: true,
+    agenda_action_tracker: true,
+    agenda_reports: true,
+    agenda_action_plan: true,
+    agenda_aob: true,
+    agenda_closing: true,
+
+    // Section 2: Action Tracker
+    action_tracker: [
+      { action_point: '', status: '', challenges: '', timeline: '', responsible_person: '' },
+    ],
+
+    // Section 3A: General Attendance (Health Data)
+    // OPD Immunization
+    health_opd_total: '',
+    health_penta1: '',
+    health_bcg: '',
+    health_penta3: '',
+    health_measles: '',
+    // OPD Under 5
+    health_opd_under5_total: '',
+    health_malaria_under5: '',
+    health_diarrhea_under5: '',
+    // ANC
+    health_anc_total: '',
+    health_anc_first_visit: '',
+    health_anc_fourth_visit: '',
+    health_anc_eighth_visit: '',
+    // Labour and Deliveries
+    health_deliveries: '',
+    health_postnatal: '',
+    // Family Planning
+    health_fp_counselling: '',
+    health_fp_new_acceptors: '',
+    // Hep B
+    health_hepb_tested: '',
+    health_hepb_positive: '',
+    // TB
+    health_tb_presumptive: '',
+    health_tb_on_treatment: '',
+
+    // Section 3B: Health Facility Support
+    facilities_renovated_govt: '',
+    facilities_renovated_partners: '',
+    facilities_renovated_wdc: '',
+    items_donated_count: '',
+    items_donated_types: [],
+    items_donated_govt_count: '',
+    items_donated_govt_types: [],
+    items_repaired_count: '',
+    items_repaired_types: [],
+
+    // Section 3C: Transportation & Emergency
+    women_transported_anc: '',
+    women_transported_delivery: '',
+    children_transported_danger: '',
+    women_supported_delivery_items: '',
+
+    // Section 3D: cMPDSR
+    maternal_deaths: '',
+    perinatal_deaths: '',
+    maternal_death_causes: ['', '', ''],
+    perinatal_death_causes: ['', '', ''],
+
+    // Section 4: Community Feedback
+    town_hall_conducted: '',
+    community_feedback: [
+      { indicator: 'Health Workers\' Attitude', feedback: '', action_required: '' },
+      { indicator: 'Waiting Time', feedback: '', action_required: '' },
+      { indicator: 'Service Charges / Fees', feedback: '', action_required: '' },
+      { indicator: 'Client Satisfaction', feedback: '', action_required: '' },
+      { indicator: 'Others', feedback: '', action_required: '' },
+    ],
+
+    // Section 5: VDC Reports
+    vdc_reports: [
+      { vdc_name: '', issues: '', action_taken: '' },
+    ],
+
+    // Section 6: Community Mobilization
+    awareness_theme: '',
+    traditional_leaders_support: '',
+    religious_leaders_support: '',
+
+    // Section 7: Community Action Plan
+    action_plan: [
+      { issue: '', action: '', timeline: '', responsible_person: '' },
+    ],
+
+    // Section 8: Support & Conclusion
+    support_required: '',
+    aob: '',
+    attendance_total: '',
+    attendance_male: '',
+    attendance_female: '',
+    next_meeting_date: '',
+    chairman_signature: '',
+    secretary_signature: '',
+  });
+
+  // Generate draft key for localStorage
+  const getDraftKey = useCallback(() => {
+    if (!user?.id || !userWard?.id || !reportMonth) return null;
+    return `wdc_draft:${user.id}:${userWard.id}:${reportMonth}`;
+  }, [user?.id, userWard?.id, reportMonth]);
+
+  // Save draft to localStorage
+  const saveDraftToLocal = useCallback((data, instant = false) => {
+    const key = getDraftKey();
+    if (!key) return false;
+
+    try {
+      const draftPayload = {
+        formData: data,
+        savedAt: new Date().toISOString(),
+        version: 1,
+      };
+      localStorage.setItem(key, JSON.stringify(draftPayload));
+      setLocalLastSavedAt(new Date());
+      setLocalDraftStatus('saved');
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[WDCReportForm] Draft saved to localStorage', { key, instant });
+      }
+      return true;
+    } catch (error) {
+      setLocalDraftStatus('error');
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[WDCReportForm] Failed to save draft:', error);
+      }
+      return false;
+    }
+  }, [getDraftKey]);
+
+  // Load draft from localStorage
+  const loadDraftFromLocal = useCallback(() => {
+    const key = getDraftKey();
+    if (!key) return null;
+
+    try {
+      const stored = localStorage.getItem(key);
+      if (!stored) return null;
+      const parsed = JSON.parse(stored);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[WDCReportForm] Draft loaded from localStorage', { key, savedAt: parsed.savedAt });
+      }
+      return parsed;
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[WDCReportForm] Failed to load draft:', error);
+      }
+      return null;
+    }
+  }, [getDraftKey]);
+
+  // Debounce ref for auto-save
+  const debounceRef = React.useRef(null);
+  const formDataRef = React.useRef(formData);
+
+  // Keep ref in sync
+  useEffect(() => {
+    formDataRef.current = formData;
+  }, [formData]);
+
+  // Debounced auto-save on form changes
+  useEffect(() => {
+    if (!getDraftKey() || isLoadingDraft) return;
+
+    setLocalDraftStatus('saving');
+
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    debounceRef.current = setTimeout(() => {
+      saveDraftToLocal(formData);
+    }, 1000); // 1 second debounce
+
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, [formData, getDraftKey, saveDraftToLocal, isLoadingDraft]);
+
+  // Save on visibility change (tab blur / app background)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden' && getDraftKey()) {
+        if (debounceRef.current) {
+          clearTimeout(debounceRef.current);
+        }
+        saveDraftToLocal(formDataRef.current, true);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [saveDraftToLocal, getDraftKey]);
+
+  // Save on beforeunload (page close/refresh)
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (getDraftKey()) {
+        if (debounceRef.current) {
+          clearTimeout(debounceRef.current);
+        }
+        saveDraftToLocal(formDataRef.current, true);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [saveDraftToLocal, getDraftKey]);
+
+  // Online/offline event handlers
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[WDCReportForm] Back online');
+      }
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[WDCReportForm] Went offline');
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Load draft on mount - localStorage first, then server fallback
+  useEffect(() => {
+    const loadDraft = async () => {
+      if (!reportMonth || !user?.id || !userWard?.id) return;
+
+      try {
+        setIsLoadingDraft(true);
+
+        // 1. Check localStorage first
+        const localDraft = loadDraftFromLocal();
+
+        // 2. Try to get server draft if online
+        let serverDraft = null;
+        if (isOnline) {
+          try {
+            const response = await getExistingDraft(reportMonth);
+            if (response.has_draft && response.report_data) {
+              serverDraft = {
+                formData: response.report_data,
+                savedAt: response.saved_at,
+                draftId: response.draft_id,
+              };
+            }
+          } catch (error) {
+            if (process.env.NODE_ENV === 'development') {
+              console.warn('[WDCReportForm] Server draft fetch failed (offline?):', error.message);
+            }
+          }
+        }
+
+        // 3. Determine which draft to use
+        if (localDraft && serverDraft) {
+          // Both exist - use the more recent one or ask user
+          const localTime = new Date(localDraft.savedAt).getTime();
+          const serverTime = new Date(serverDraft.savedAt).getTime();
+
+          if (localTime > serverTime) {
+            // Local is newer - use it
+            applyDraftData(localDraft.formData);
+            setLocalLastSavedAt(new Date(localDraft.savedAt));
+          } else {
+            // Server is newer - use it
+            applyDraftData(serverDraft.formData);
+            setDraftId(serverDraft.draftId);
+            setDraftSavedAt(serverDraft.savedAt);
+          }
+        } else if (localDraft) {
+          // Only local exists
+          applyDraftData(localDraft.formData);
+          setLocalLastSavedAt(new Date(localDraft.savedAt));
+        } else if (serverDraft) {
+          // Only server exists
+          applyDraftData(serverDraft.formData);
+          setDraftId(serverDraft.draftId);
+          setDraftSavedAt(serverDraft.savedAt);
+        }
+        // else: no draft found, use initial form state
+
+      } catch (error) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('[WDCReportForm] Error loading draft:', error);
+        }
+      } finally {
+        setIsLoadingDraft(false);
+      }
+    };
+
+    // Helper to apply draft data to form
+    const applyDraftData = (draftData) => {
+      setFormData(prev => ({
+        ...prev,
+        ...draftData,
+        // Ensure arrays are properly set
+        action_tracker: draftData.action_tracker || prev.action_tracker,
+        community_feedback: draftData.community_feedback || prev.community_feedback,
+        vdc_reports: draftData.vdc_reports || prev.vdc_reports,
+        action_plan: draftData.action_plan || prev.action_plan,
+        maternal_death_causes: draftData.maternal_death_causes || prev.maternal_death_causes,
+        perinatal_death_causes: draftData.perinatal_death_causes || prev.perinatal_death_causes,
+        items_donated_types: draftData.items_donated_types || prev.items_donated_types,
+        items_donated_govt_types: draftData.items_donated_govt_types || prev.items_donated_govt_types,
+        items_repaired_types: draftData.items_repaired_types || prev.items_repaired_types,
+      }));
+      setLocalDraftStatus('saved');
+    };
+
+    loadDraft();
+  }, [reportMonth, user?.id, userWard?.id, isOnline, loadDraftFromLocal]);
+
+  // Handle per-field voice note recording
+  const handleVoiceNote = (fieldName, file) => {
+    setVoiceNotes(prev => ({
+      ...prev,
+      [fieldName]: file,
+    }));
+  };
+
+  // Handle input changes
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
+  };
+
+  // Handle action tracker changes
+  const handleActionTrackerChange = (index, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      action_tracker: prev.action_tracker.map((item, i) =>
+        i === index ? { ...item, [field]: value } : item
+      ),
+    }));
+  };
+
+  const addActionTrackerRow = () => {
+    if (formData.action_tracker.length < 10) {
+      setFormData(prev => ({
+        ...prev,
+        action_tracker: [
+          ...prev.action_tracker,
+          { action_point: '', status: '', challenges: '', timeline: '', responsible_person: '' },
+        ],
+      }));
+    }
+  };
+
+  const removeActionTrackerRow = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      action_tracker: prev.action_tracker.filter((_, i) => i !== index),
+    }));
+  };
+
+  // Handle community feedback changes
+  const handleFeedbackChange = (index, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      community_feedback: prev.community_feedback.map((item, i) =>
+        i === index ? { ...item, [field]: value } : item
+      ),
+    }));
+  };
+
+  // Handle VDC reports changes
+  const handleVDCChange = (index, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      vdc_reports: prev.vdc_reports.map((item, i) =>
+        i === index ? { ...item, [field]: value } : item
+      ),
+    }));
+  };
+
+  const addVDCRow = () => {
+    if (formData.vdc_reports.length < 10) {
+      setFormData(prev => ({
+        ...prev,
+        vdc_reports: [...prev.vdc_reports, { vdc_name: '', issues: '', action_taken: '' }],
+      }));
+    }
+  };
+
+  const removeVDCRow = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      vdc_reports: prev.vdc_reports.filter((_, i) => i !== index),
+    }));
+  };
+
+  // Handle action plan changes
+  const handleActionPlanChange = (index, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      action_plan: prev.action_plan.map((item, i) =>
+        i === index ? { ...item, [field]: value } : item
+      ),
+    }));
+  };
+
+  const addActionPlanRow = () => {
+    if (formData.action_plan.length < 10) {
+      setFormData(prev => ({
+        ...prev,
+        action_plan: [
+          ...prev.action_plan,
+          { issue: '', action: '', timeline: '', responsible_person: '' },
+        ],
+      }));
+    }
+  };
+
+  const removeActionPlanRow = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      action_plan: prev.action_plan.filter((_, i) => i !== index),
+    }));
+  };
+
+  // Handle multi-select for donation/repair types
+  const handleMultiSelect = (field, value) => {
+    setFormData(prev => {
+      const currentValues = prev[field] || [];
+      const newValues = currentValues.includes(value)
+        ? currentValues.filter(v => v !== value)
+        : [...currentValues, value];
+      return { ...prev, [field]: newValues };
+    });
+  };
+
+  // Handle picture upload for attendance
+  const handlePictureUpload = (e) => {
+    const files = Array.from(e.target.files);
+    const newPictures = files.map(file => ({
+      file,
+      preview: URL.createObjectURL(file),
+      name: file.name,
+    }));
+    setAttendancePictures(prev => [...prev, ...newPictures]);
+  };
+
+  // Handle picture removal
+  const handleRemovePicture = (index) => {
+    setAttendancePictures(prev => {
+      const updated = [...prev];
+      URL.revokeObjectURL(updated[index].preview);
+      updated.splice(index, 1);
+      return updated;
+    });
+  };
+
+  // Handle group photo upload
+  const handleGroupPhotoUpload = (e) => {
+    const files = Array.from(e.target.files);
+    const newPhotos = files.map(file => ({
+      file,
+      preview: URL.createObjectURL(file),
+      name: file.name,
+    }));
+    setGroupPhotos(prev => [...prev, ...newPhotos]);
+  };
+
+  // Handle group photo removal
+  const handleRemoveGroupPhoto = (index) => {
+    setGroupPhotos(prev => {
+      const updated = [...prev];
+      URL.revokeObjectURL(updated[index].preview);
+      updated.splice(index, 1);
+      return updated;
+    });
+  };
+
+  // Submit mutation
+  const submitMutation = useMutation({
+    mutationFn: async (data) => {
+      const formPayload = new FormData();
+      formPayload.append('report_month', reportMonth);
+      formPayload.append('report_data', JSON.stringify(data));
+
+      Object.entries(voiceNotes).forEach(([fieldName, file]) => {
+        if (file) {
+          formPayload.append(`voice_${fieldName}`, file);
+        }
+      });
+
+      // Add attendance pictures
+      attendancePictures.forEach((pic, index) => {
+        formPayload.append(`attendance_picture_${index}`, pic.file);
+      });
+
+      // Add group photos
+      groupPhotos.forEach((pic, index) => {
+        formPayload.append(`group_photo_${index}`, pic.file);
+      });
+
+      const response = await apiClient.post('/reports', formPayload, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response;
+    },
+    onSuccess: () => {
+      setSubmitSuccess(true);
+      toast.success('Your monthly report has been submitted successfully!', {
+        title: 'Report Submitted',
+        duration: 6000,
+      });
+      setTimeout(() => {
+        onSuccess?.();
+      }, 2000);
+    },
+    onError: (error) => {
+      const msg = error.message || 'Failed to submit report. Please try again.';
+      setSubmitError(msg);
+      // Also emit a toast so it's visible regardless of scroll position
+      toast.error(msg, { title: 'Submission Failed' });
+      // Scroll to top of form to show the inline error
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+  });
+
+  // Draft save mutation
+  const draftMutation = useMutation({
+    mutationFn: async (data) => {
+      const formPayload = new FormData();
+      formPayload.append('report_month', reportMonth);
+      formPayload.append('report_data', JSON.stringify(data));
+
+      // Add first voice note if exists
+      const firstVoiceNote = Object.values(voiceNotes)[0];
+      if (firstVoiceNote) {
+        formPayload.append('voice_note', firstVoiceNote);
+      }
+
+      return saveDraft(formPayload);
+    },
+    onSuccess: (response) => {
+      setDraftId(response.id);
+      setDraftSavedAt(new Date().toISOString());
+      setSubmitError(null);
+      toast.success('Draft saved to server successfully.');
+    },
+    onError: (error) => {
+      const msg = error.message || 'Failed to save draft to server';
+      setSubmitError(msg);
+      // If it's a network error, data is still saved locally — emit a softer warning
+      if (error.isNetworkError) {
+        toast.warning('Draft saved locally (offline). Will sync when reconnected.');
+      } else {
+        toast.error(msg, { title: 'Draft Save Failed' });
+      }
+    },
+  });
+
+  const validateForm = () => {
+    const errors = [];
+
+    // Meeting type required
+    if (!formData.meeting_type) {
+      errors.push('Meeting type is required');
+    }
+
+    // Attendance validation
+    const attendanceTotal = formData.attendance_total || 0;
+    const attendanceMale = formData.attendance_male || 0;
+    const attendanceFemale = formData.attendance_female || 0;
+
+    if (attendanceTotal < (attendanceMale + attendanceFemale)) {
+      errors.push(`Attendance total (${attendanceTotal}) must be >= sum of male (${attendanceMale}) and female (${attendanceFemale})`);
+    }
+
+    // Health data validation - Hepatitis B
+    const hepbTested = formData.health_hepb_tested || 0;
+    const hepbPositive = formData.health_hepb_positive || 0;
+
+    if (hepbPositive > hepbTested) {
+      errors.push(`Hepatitis B positive cases (${hepbPositive}) cannot exceed tested cases (${hepbTested})`);
+    }
+
+    // Array size validation
+    if (formData.action_tracker && formData.action_tracker.length > 10) {
+      errors.push('Action tracker cannot have more than 10 items');
+    }
+
+    if (formData.vdc_reports && formData.vdc_reports.length > 10) {
+      errors.push('VDC reports cannot have more than 10 items');
+    }
+
+    if (formData.action_plan && formData.action_plan.length > 10) {
+      errors.push('Action plan cannot have more than 10 items');
+    }
+
+    if (formData.community_feedback && formData.community_feedback.length !== 5) {
+      errors.push('Community feedback must have exactly 5 items');
+    }
+
+    // Date validation - next meeting date
+    if (formData.next_meeting_date) {
+      const nextMeeting = new Date(formData.next_meeting_date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (nextMeeting < today) {
+        errors.push('Next meeting date must be in the future');
+      }
+    }
+
+    // Numeric constraints (>= 0)
+    const numericFields = [
+      'attendees_count', 'health_penta1', 'health_bcg',
+      'health_penta3', 'health_measles', 'health_malaria_under5',
+      'health_diarrhea_under5', 'health_anc_first_visit', 'health_anc_fourth_visit',
+      'health_anc_eighth_visit', 'health_deliveries', 'health_postnatal',
+      'health_fp_counselling', 'health_fp_new_acceptors', 'health_hepb_tested',
+      'health_hepb_positive', 'health_tb_presumptive', 'health_tb_on_treatment',
+      'facilities_renovated_govt', 'facilities_renovated_partners',
+      'facilities_renovated_wdc', 'items_donated_count', 'items_repaired_count',
+      'women_transported_anc', 'women_transported_delivery',
+      'children_transported_danger', 'women_supported_delivery_items',
+      'maternal_deaths', 'perinatal_deaths'
+    ];
+
+    numericFields.forEach(field => {
+      if (formData[field] !== undefined && formData[field] !== null && formData[field] < 0) {
+        errors.push(`${field.replace(/_/g, ' ')} must be >= 0`);
+      }
+    });
+
+    return errors;
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setSubmitError(null);
+
+    // Validate user assignment first
+    if (!userLGA?.id || !userWard?.id) {
+      setSubmitError('Your account is missing State/LGA/Ward assignment. Contact admin to complete your profile.');
+      return;
+    }
+
+    // Validate form
+    const validationErrors = validateForm();
+    if (validationErrors.length > 0) {
+      const errMsg = validationErrors.join('; ');
+      setSubmitError(errMsg);
+      toast.error(
+        `Please fix ${validationErrors.length} validation error${validationErrors.length > 1 ? 's' : ''} before submitting.`,
+        { title: 'Validation Error', duration: 7000 }
+      );
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    // Ensure LGA and Ward are set from user profile (not editable)
+    const submissionData = {
+      ...formData,
+      state: 'Kaduna State',
+      lga_id: userLGA?.id,
+      ward_id: userWard?.id,
+    };
+
+    if (isOnline) {
+      // Online: Direct submit
+      submitMutation.mutate(submissionData);
+    } else {
+      // Offline: Add to queue
+      try {
+        addToQueue({
+          formData: submissionData,
+          reportMonth: reportMonth
+        });
+
+        // Show offline queued confirmation
+        setSubmitSuccess(true);
+        toast.warning(
+          'You are offline. Your report has been saved and will be submitted automatically when you reconnect.',
+          { title: 'Saved Offline', duration: 8000 }
+        );
+      } catch (error) {
+        const msg = `Failed to queue offline submission: ${error.message}`;
+        setSubmitError(msg);
+        toast.error(msg, { title: 'Queue Failed' });
+      }
+    }
+  };
+
+  // Offline queue hook
+  const { addToQueue, syncQueue, getQueueStats, retryFailed, clearFailed, isSyncing, queue } = useOfflineQueue({
+    submitFn: async (data, month, headers) => {
+      // Create FormData compatible with submitMutation
+      const formPayload = new FormData();
+      formPayload.append('report_month', month);
+      formPayload.append('report_data', JSON.stringify(data));
+
+      // Note: Voice notes and images would need careful handling for offline queue
+      // For MVP, we pass minimal FormData. In prod, we'd store blobs in IndexedDB.
+
+      const response = await apiClient.post('/reports', formPayload, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          ...headers
+        },
+      });
+      return response;
+    }
+  });
+
+  const handleManualSaveDraft = async () => {
+    setSubmitError(null);
+
+    // Force local save immediately
+    const saved = saveDraftToLocal(formData, true);
+
+    if (saved) {
+      if (isOnline) {
+        // If online, also try to sync to server
+        draftMutation.mutate(formData);
+      } else {
+        // If offline, just show success from local save
+        // DraftStatusBar handles the "Saved" indicator
+      }
+    } else {
+      setSubmitError('Failed to save draft locally');
+    }
+  };
+
+  if (submitSuccess) {
+    return (
+      <div className="text-center py-12">
+        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <CheckCircle className="w-8 h-8 text-green-600" />
+        </div>
+        <h3 className="text-xl font-semibold text-neutral-900 mb-2">Report Submitted Successfully!</h3>
+        <p className="text-neutral-600">Your WDC monthly report has been recorded.</p>
+        {Object.values(voiceNotes).some(Boolean) && (
+          <p className="text-sm text-blue-600 mt-2">
+            Your voice notes are being transcribed and will fill in the corresponding fields.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // Show loading state while loading draft
+  if (isLoadingDraft) {
+    return (
+      <div className="text-center py-12">
+        <div className="w-12 h-12 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-neutral-600">Loading your saved draft...</p>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+      {/* Header Alert */}
+      <Alert
+        type="info"
+        title="WDC Monthly Report Form"
+        message="Complete all sections. Use the microphone icon next to text fields to record voice notes â€” they will be transcribed automatically."
+      />
+
+      {/* Draft & Offline Status */}
+      <DraftStatusBar
+        draftStatus={localDraftStatus}
+        lastSavedAt={localLastSavedAt}
+        isOnline={isOnline}
+        queueStats={getQueueStats()}
+        isSyncing={isSyncing}
+        onForceSave={() => saveDraftToLocal(formData, true)}
+        onRetryFailed={retryFailed}
+      />
+
+      {/* Submission Period Banner */}
+      {reportMonth && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <h4 className="font-semibold text-blue-900 mb-1">Submission Period</h4>
+              <p className="text-sm text-blue-700">{getSubmissionPeriodDescription()}</p>
+              <p className="text-sm text-blue-800 font-medium mt-2">
+                Report Month: <span className="font-bold">{formatMonthDisplay(reportMonth)}</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {submitError && (
+        <Alert
+          type="error"
+          message={submitError}
+          onClose={() => setSubmitError(null)}
+        />
+      )}
+
+      {/* Draft Saved Success Alert */}
+      {draftMutation.isSuccess && (
+        <Alert
+          type="success"
+          title="Draft Saved"
+          message="Your progress has been saved. You can continue editing and submit when ready."
+          onClose={() => draftMutation.reset()}
+        />
+      )}
+
+      {/* Header Section */}
+      <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white p-4 sm:p-6 rounded-xl shadow-lg">
+        <h2 className="text-lg sm:text-2xl font-bold mb-4">KADUNA STATE WDC MONTHLY REPORT</h2>
+
+        {/* User Assignment Display - Auto-assigned, Read-only */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4">
+          <div className="bg-white/10 rounded-lg p-3 border border-white/20">
+            <label className="block text-xs font-medium text-primary-200 mb-1">State (Auto-assigned)</label>
+            <div className="flex items-center gap-2">
+              <Building className="w-4 h-4 text-primary-200" />
+              <span className="font-semibold text-sm">Kaduna State</span>
+            </div>
+          </div>
+          <div className="bg-white/10 rounded-lg p-3 border border-white/20">
+            <label className="block text-xs font-medium text-primary-200 mb-1">LGA (Auto-assigned)</label>
+            <div className="flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-primary-200" />
+              <span className="font-semibold text-sm">{userLGA?.name || 'Not assigned'}</span>
+            </div>
+          </div>
+          <div className="bg-white/10 rounded-lg p-3 border border-white/20">
+            <label className="block text-xs font-medium text-primary-200 mb-1">Ward (Auto-assigned)</label>
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-primary-200" />
+              <span className="font-semibold text-sm">{userWard?.name || 'Not assigned'}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Error if user assignment is missing */}
+        {(!userLGA?.id || !userWard?.id) && (
+          <div className="bg-amber-500/10 border border-amber-400/30 rounded-lg p-4 mb-4 backdrop-blur-sm">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-5 h-5 text-amber-200" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-sm text-amber-100 mb-1">Account Assignment Incomplete</h3>
+                <p className="text-xs text-amber-200/80 mb-2">
+                  To report, your account must be assigned to both an LGA and a Ward.
+                </p>
+                <div className="text-xs text-amber-200/60 mb-2 pb-2 border-b border-amber-500/20 font-mono">
+                  User: {user?.email || 'Unknown'}<br />
+                  Role: {user?.role || 'Unknown'}
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className={`p-2 rounded ${userLGA?.id ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-100' : 'bg-red-500/20 border border-red-500/30 text-red-100'}`}>
+                    <span className="font-bold block mb-0.5">LGA</span>
+                    {userLGA?.id ? userLGA.name : 'Missing'}
+                  </div>
+                  <div className={`p-2 rounded ${userWard?.id ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-100' : 'bg-red-500/20 border border-red-500/30 text-red-100'}`}>
+                    <span className="font-bold block mb-0.5">Ward</span>
+                    {userWard?.id ? userWard.name : 'Missing'}
+                  </div>
+                </div>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="mt-3 text-xs font-semibold text-amber-200 hover:text-white underline decoration-dashed underline-offset-4"
+                >
+                  Refresh Profile
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          <div>
+            <label className="block text-xs font-medium text-primary-100 mb-1">Report Date</label>
+            <input
+              type="date"
+              name="report_date"
+              value={formData.report_date}
+              onChange={handleChange}
+              className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-primary-100 mb-1">Report Time</label>
+            <input
+              type="time"
+              name="report_time"
+              value={formData.report_time}
+              onChange={handleChange}
+              className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Section 1: Agenda & Governance */}
+      <FormSection title="AGENDA & GOVERNANCE" number="1" icon={FileText} defaultOpen={true}>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-2">
+              Meeting Type <span className="text-red-500">*</span>
+            </label>
+            <div className="flex flex-wrap gap-3 sm:gap-4">
+              {['Monthly', 'Emergency', 'Quarterly Town Hall'].map(type => (
+                <label key={type} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="meeting_type"
+                    value={type}
+                    checked={formData.meeting_type === type}
+                    onChange={handleChange}
+                    className="w-4 h-4 text-primary-600 border-neutral-300 focus:ring-primary-500"
+                  />
+                  <span className="text-xs sm:text-sm text-neutral-700">{type}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-2">
+              Standard Agenda (Check items covered)
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+              {[
+                { name: 'agenda_opening_prayer', label: 'Opening Prayer / Remarks' },
+                { name: 'agenda_minutes', label: 'Minutes of the last meeting' },
+                { name: 'agenda_action_tracker', label: 'Action Tracker / Matters arising' },
+                { name: 'agenda_reports', label: 'Reports: Health services & Village areas' },
+                { name: 'agenda_action_plan', label: 'Update On Action Plan' },
+                { name: 'agenda_aob', label: 'Any Other Business (AOB)' },
+                { name: 'agenda_closing', label: 'Closing' },
+              ].map(item => (
+                <label key={item.name} className="flex items-center gap-2 p-2 sm:p-3 rounded-lg bg-neutral-50 hover:bg-neutral-100 cursor-pointer transition-colors">
+                  <input
+                    type="checkbox"
+                    name={item.name}
+                    checked={formData[item.name]}
+                    onChange={handleChange}
+                    className="w-4 h-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+                  />
+                  <span className="text-xs sm:text-sm text-neutral-700">{item.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+      </FormSection>
+
+      {/* Section 2: Action Tracker */}
+      <FormSection title="ACTION TRACKER (Feedback from last meeting)" number="2" icon={CheckCircle}>
+        <DynamicTable
+          tableId="action_tracker"
+          columns={[
+            { name: 'action_point', label: 'Agreed Action Point', type: 'textarea', placeholder: 'Enter action...' },
+            { name: 'status', label: 'Status (Completed/On-going/Not Started)', type: 'select', options: ['Completed', 'On-going', 'Not Started'] },
+            { name: 'challenges', label: 'Challenges', type: 'textarea', placeholder: 'Any challenges...' },
+            { name: 'timeline', label: 'Timeline', type: 'text', placeholder: 'e.g., 2 weeks' },
+            { name: 'responsible_person', label: 'Responsible Person', type: 'text', placeholder: 'Name...' },
+          ]}
+          rows={formData.action_tracker}
+          onRowChange={handleActionTrackerChange}
+          onAddRow={addActionTrackerRow}
+          onRemoveRow={removeActionTrackerRow}
+        />
+      </FormSection>
+
+      {/* Section 3: Report on Health System */}
+      <FormSection title="REPORT ON HEALTH SYSTEM" number="3" icon={Heart}>
+        <div className="space-y-6">
+          {/* 3A: General Attendance */}
+          <div>
+            <h4 className="text-sm sm:text-md font-semibold text-neutral-800 mb-4 pb-2 border-b border-neutral-200">
+              3A. GENERAL ATTENDANCE
+            </h4>
+
+            <h5 className="text-xs sm:text-sm font-semibold text-neutral-700 mb-3">OPD Immunization</h5>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4">
+              <NumberInput label="OPD Total" name="health_opd_total" value={formData.health_opd_total} onChange={handleChange} />
+              <NumberInput label="PENTA1" name="health_penta1" value={formData.health_penta1} onChange={handleChange} />
+              <NumberInput label="BCG" name="health_bcg" value={formData.health_bcg} onChange={handleChange} />
+              <NumberInput label="PENTA3" name="health_penta3" value={formData.health_penta3} onChange={handleChange} />
+              <NumberInput label="MEASLES" name="health_measles" value={formData.health_measles} onChange={handleChange} />
+            </div>
+
+            <h5 className="text-xs sm:text-sm font-semibold text-neutral-700 mt-6 mb-3">OPD Under 5</h5>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+              <NumberInput label="OPD Under 5 Total" name="health_opd_under5_total" value={formData.health_opd_under5_total} onChange={handleChange} />
+              <NumberInput label="MALARIA UNDER 5" name="health_malaria_under5" value={formData.health_malaria_under5} onChange={handleChange} />
+              <NumberInput label="DIARRHEA UNDER 5" name="health_diarrhea_under5" value={formData.health_diarrhea_under5} onChange={handleChange} />
+            </div>
+
+            <h5 className="text-xs sm:text-sm font-semibold text-neutral-700 mt-6 mb-3">ANC</h5>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              <NumberInput label="ANC Total" name="health_anc_total" value={formData.health_anc_total} onChange={handleChange} />
+              <NumberInput label="FIRST VISIT" name="health_anc_first_visit" value={formData.health_anc_first_visit} onChange={handleChange} />
+              <NumberInput label="FOURTH VISIT" name="health_anc_fourth_visit" value={formData.health_anc_fourth_visit} onChange={handleChange} />
+              <NumberInput label="EIGHTH VISIT" name="health_anc_eighth_visit" value={formData.health_anc_eighth_visit} onChange={handleChange} />
+            </div>
+
+            <h5 className="text-xs sm:text-sm font-semibold text-neutral-700 mt-6 mb-3">Labour, Deliveries & Post-Natal</h5>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              <NumberInput label="Deliveries" name="health_deliveries" value={formData.health_deliveries} onChange={handleChange} />
+              <NumberInput label="Post-Natal" name="health_postnatal" value={formData.health_postnatal} onChange={handleChange} />
+            </div>
+
+            <h5 className="text-xs sm:text-sm font-semibold text-neutral-700 mt-6 mb-3">Family Planning</h5>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              <NumberInput label="Counselling" name="health_fp_counselling" value={formData.health_fp_counselling} onChange={handleChange} />
+              <NumberInput label="New Acceptors" name="health_fp_new_acceptors" value={formData.health_fp_new_acceptors} onChange={handleChange} />
+            </div>
+
+            <h5 className="text-xs sm:text-sm font-semibold text-neutral-700 mt-6 mb-3">HEP B</h5>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              <NumberInput label="Person Tested" name="health_hepb_tested" value={formData.health_hepb_tested} onChange={handleChange} />
+              <NumberInput label="Person Tested Positive" name="health_hepb_positive" value={formData.health_hepb_positive} onChange={handleChange} />
+            </div>
+
+            <h5 className="text-xs sm:text-sm font-semibold text-neutral-700 mt-6 mb-3">TB</h5>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              <NumberInput label="Total Presumptive" name="health_tb_presumptive" value={formData.health_tb_presumptive} onChange={handleChange} />
+              <NumberInput label="Total on Treatment" name="health_tb_on_treatment" value={formData.health_tb_on_treatment} onChange={handleChange} />
+            </div>
+          </div>
+
+          {/* 3B: Health Facility Support */}
+          <div>
+            <h4 className="text-sm sm:text-md font-semibold text-neutral-800 mb-4 pb-2 border-b border-neutral-200">
+              3B. Health Facility Support
+            </h4>
+            <div className="space-y-4">
+              <p className="text-xs sm:text-sm text-neutral-600">Facilities renovated (last month):</p>
+              <div className="grid grid-cols-3 gap-3 sm:gap-4">
+                <NumberInput label="By Govt" name="facilities_renovated_govt" value={formData.facilities_renovated_govt} onChange={handleChange} />
+                <NumberInput label="By Partners" name="facilities_renovated_partners" value={formData.facilities_renovated_partners} onChange={handleChange} />
+                <NumberInput label="By WDC" name="facilities_renovated_wdc" value={formData.facilities_renovated_wdc} onChange={handleChange} />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <NumberInput label="Number of items donated to health facilities by WDC" name="items_donated_count" value={formData.items_donated_count} onChange={handleChange} />
+                  <div className="mt-2">
+                    <label className="block text-xs text-neutral-600 mb-1">Type of items donated:</label>
+                    <div className="flex flex-wrap gap-1 sm:gap-2">
+                      {DONATION_ITEMS.slice(0, 6).map(item => (
+                        <button
+                          key={item}
+                          type="button"
+                          onClick={() => handleMultiSelect('items_donated_types', item)}
+                          className={`px-2 py-1 text-xs rounded-full border transition-colors ${formData.items_donated_types.includes(item)
+                            ? 'bg-primary-100 border-primary-500 text-primary-700'
+                            : 'bg-neutral-50 border-neutral-200 text-neutral-600'
+                            }`}
+                        >
+                          {item}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <NumberInput label="Number of items donated to health facilities by Government" name="items_donated_govt_count" value={formData.items_donated_govt_count} onChange={handleChange} />
+                    <div className="mt-2">
+                      <label className="block text-xs text-neutral-600 mb-1">Type of items donated:</label>
+                      <div className="flex flex-wrap gap-1 sm:gap-2">
+                        {DONATION_ITEMS.slice(0, 6).map(item => (
+                          <button
+                            key={item}
+                            type="button"
+                            onClick={() => handleMultiSelect('items_donated_govt_types', item)}
+                            className={`px-2 py-1 text-xs rounded-full border transition-colors ${formData.items_donated_govt_types.includes(item)
+                              ? 'bg-primary-100 border-primary-500 text-primary-700'
+                              : 'bg-neutral-50 border-neutral-200 text-neutral-600'
+                              }`}
+                          >
+                            {item}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <NumberInput label="Number of items repaired in health facilities through WDC/Government/Partners" name="items_repaired_count" value={formData.items_repaired_count} onChange={handleChange} />
+                  <div className="mt-2">
+                    <label className="block text-xs text-neutral-600 mb-1">Type of items repaired:</label>
+                    <div className="flex flex-wrap gap-1 sm:gap-2">
+                      {REPAIR_ITEMS.slice(0, 6).map(item => (
+                        <button
+                          key={item}
+                          type="button"
+                          onClick={() => handleMultiSelect('items_repaired_types', item)}
+                          className={`px-2 py-1 text-xs rounded-full border transition-colors ${formData.items_repaired_types.includes(item)
+                            ? 'bg-primary-100 border-primary-500 text-primary-700'
+                            : 'bg-neutral-50 border-neutral-200 text-neutral-600'
+                            }`}
+                        >
+                          {item}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 3C: Transportation */}
+          <div>
+            <h4 className="text-sm sm:text-md font-semibold text-neutral-800 mb-4 pb-2 border-b border-neutral-200">
+              3C. Transportation & Emergency
+            </h4>
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <NumberInput label="Number of women transported to facility for ANC by WDC/VDC" name="women_transported_anc" value={formData.women_transported_anc} onChange={handleChange} />
+              <NumberInput label="Number of women transported to facility for delivery by WDC/VDC" name="women_transported_delivery" value={formData.women_transported_delivery} onChange={handleChange} />
+              <NumberInput label="Number of children under 5 with danger signs transported" name="children_transported_danger" value={formData.children_transported_danger} onChange={handleChange} />
+              <NumberInput label="Number of women supported with delivery items through WDC efforts" name="women_supported_delivery_items" value={formData.women_supported_delivery_items} onChange={handleChange} />
+            </div>
+          </div>
+
+          {/* 3D: cMPDSR */}
+          <div>
+            <h4 className="text-sm sm:text-md font-semibold text-neutral-800 mb-4 pb-2 border-b border-neutral-200">
+              3D. cMPDSR (Community Maternal and Perinatal Death Surveillance and Response)
+            </h4>
+            <div className="grid grid-cols-2 gap-4 sm:gap-6 mb-4">
+              <div>
+                <NumberInput label="Number of Maternal Deaths (last month)" name="maternal_deaths" value={formData.maternal_deaths} onChange={handleChange} />
+              </div>
+              <div>
+                <NumberInput label="Number of Perinatal Deaths (last month)" name="perinatal_deaths" value={formData.perinatal_deaths} onChange={handleChange} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <h5 className="text-xs sm:text-sm font-semibold text-neutral-700 mb-3">Causes of maternal deaths identified by community:</h5>
+                <div className="space-y-2">
+                  <TextInput
+                    label="Cause 1"
+                    name="maternal_death_cause_1"
+                    value={formData.maternal_death_causes[0] || ''}
+                    onChange={(e) => {
+                      const newCauses = [...formData.maternal_death_causes];
+                      newCauses[0] = e.target.value;
+                      setFormData(prev => ({ ...prev, maternal_death_causes: newCauses }));
+                    }}
+                    placeholder="Enter cause..."
+                  />
+                  <TextInput
+                    label="Cause 2"
+                    name="maternal_death_cause_2"
+                    value={formData.maternal_death_causes[1] || ''}
+                    onChange={(e) => {
+                      const newCauses = [...formData.maternal_death_causes];
+                      newCauses[1] = e.target.value;
+                      setFormData(prev => ({ ...prev, maternal_death_causes: newCauses }));
+                    }}
+                    placeholder="Enter cause..."
+                  />
+                  <TextInput
+                    label="Cause 3"
+                    name="maternal_death_cause_3"
+                    value={formData.maternal_death_causes[2] || ''}
+                    onChange={(e) => {
+                      const newCauses = [...formData.maternal_death_causes];
+                      newCauses[2] = e.target.value;
+                      setFormData(prev => ({ ...prev, maternal_death_causes: newCauses }));
+                    }}
+                    placeholder="Enter cause..."
+                  />
+                </div>
+              </div>
+
+              <div>
+                <h5 className="text-xs sm:text-sm font-semibold text-neutral-700 mb-3">Causes of perinatal deaths identified by community:</h5>
+                <div className="space-y-2">
+                  <TextInput
+                    label="Cause 1"
+                    name="perinatal_death_cause_1"
+                    value={formData.perinatal_death_causes[0] || ''}
+                    onChange={(e) => {
+                      const newCauses = [...formData.perinatal_death_causes];
+                      newCauses[0] = e.target.value;
+                      setFormData(prev => ({ ...prev, perinatal_death_causes: newCauses }));
+                    }}
+                    placeholder="Enter cause..."
+                  />
+                  <TextInput
+                    label="Cause 2"
+                    name="perinatal_death_cause_2"
+                    value={formData.perinatal_death_causes[1] || ''}
+                    onChange={(e) => {
+                      const newCauses = [...formData.perinatal_death_causes];
+                      newCauses[1] = e.target.value;
+                      setFormData(prev => ({ ...prev, perinatal_death_causes: newCauses }));
+                    }}
+                    placeholder="Enter cause..."
+                  />
+                  <TextInput
+                    label="Cause 3"
+                    name="perinatal_death_cause_3"
+                    value={formData.perinatal_death_causes[2] || ''}
+                    onChange={(e) => {
+                      const newCauses = [...formData.perinatal_death_causes];
+                      newCauses[2] = e.target.value;
+                      setFormData(prev => ({ ...prev, perinatal_death_causes: newCauses }));
+                    }}
+                    placeholder="Enter cause..."
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </FormSection>
+
+      {/* Section 4: Community Involvement & Town Hall Feedback (Quarterly only) */}
+      {formData.meeting_type === 'Quarterly Town Hall' && (
+        <FormSection title="COMMUNITY INVOLVEMENT & TOWN HALL FEEDBACK" number="4" icon={MessageSquare} defaultOpen={true}>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-2">
+                Quarterly Town Hall Conducted?
+              </label>
+              <div className="flex gap-4">
+                {['Yes', 'No'].map(opt => (
+                  <label key={opt} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="town_hall_conducted"
+                      value={opt}
+                      checked={formData.town_hall_conducted === opt}
+                      onChange={handleChange}
+                      className="w-4 h-4 text-primary-600 border-neutral-300 focus:ring-primary-500"
+                    />
+                    <span className="text-sm text-neutral-700">{opt}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {formData.community_feedback.map((item, idx) => (
+                <div key={idx} className="p-3 bg-neutral-50 rounded-lg">
+                  <p className="text-xs sm:text-sm font-medium text-neutral-700 mb-2">{item.indicator}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-neutral-600 mb-1">Feedback / Observation</label>
+                      <textarea
+                        value={item.feedback}
+                        onChange={(e) => handleFeedbackChange(idx, 'feedback', e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg resize-none"
+                        rows={2}
+                        placeholder="Feedback..."
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-neutral-600 mb-1">Action Required</label>
+                      <textarea
+                        value={item.action_required}
+                        onChange={(e) => handleFeedbackChange(idx, 'action_required', e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg resize-none"
+                        rows={2}
+                        placeholder="Action required..."
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </FormSection>
+      )}
+
+      {/* Section 5: Reports from Village Development Committees (VDCs) */}
+      <FormSection title="REPORTS FROM VILLAGE DEVELOPMENT COMMITTEES (VDCs)" number="5" icon={MapPin}>
+        <DynamicTable
+          tableId="vdc_reports"
+          columns={[
+            { name: 'vdc_name', label: 'VDC (Settlement)', type: 'text', placeholder: 'VDC name...' },
+            { name: 'issues', label: 'Issues (CHIPS agents, CVs, disease outbreaks, education, WASH, sanitation, roads, etc.)', type: 'textarea', placeholder: 'Describe issues...' },
+            { name: 'action_taken', label: 'Action Taken / Action Required', type: 'textarea', placeholder: 'Actions...' },
+          ]}
+          rows={formData.vdc_reports}
+          onRowChange={handleVDCChange}
+          onAddRow={addVDCRow}
+          onRemoveRow={removeVDCRow}
+        />
+      </FormSection>
+
+      {/* Section 6: Community Mobilization Activities */}
+      <FormSection title="COMMUNITY MOBILIZATION ACTIVITIES" number="6" icon={Users}>
+        <div className="space-y-4">
+          <TextInput
+            label="Awareness Creation Theme"
+            name="awareness_theme"
+            value={formData.awareness_theme}
+            onChange={handleChange}
+            onVoiceNote={(file) => handleVoiceNote('awareness_theme', file)}
+            placeholder="Enter theme..."
+          />
+          <TextInput
+            label="Traditional Leaders Support Needed"
+            name="traditional_leaders_support"
+            type="textarea"
+            value={formData.traditional_leaders_support}
+            onChange={handleChange}
+            onVoiceNote={(file) => handleVoiceNote('traditional_leaders_support', file)}
+            placeholder="Describe support needed..."
+            rows={2}
+          />
+          <TextInput
+            label="Religious Leaders Support Needed"
+            name="religious_leaders_support"
+            type="textarea"
+            value={formData.religious_leaders_support}
+            onChange={handleChange}
+            onVoiceNote={(file) => handleVoiceNote('religious_leaders_support', file)}
+            placeholder="Describe support needed..."
+            rows={2}
+          />
+        </div>
+      </FormSection>
+
+      {/* Section 7: Community Action Plan */}
+      <FormSection title="COMMUNITY ACTION PLAN" number="7" icon={Calendar}>
+        <DynamicTable
+          tableId="action_plan"
+          columns={[
+            { name: 'issue', label: 'Issues Identified', type: 'textarea', placeholder: 'Issue...' },
+            { name: 'action', label: 'Actions Agreed', type: 'textarea', placeholder: 'Action...' },
+            { name: 'timeline', label: 'Timeline', type: 'text', placeholder: 'Timeline' },
+            { name: 'responsible_person', label: 'Responsible Person', type: 'text', placeholder: 'Name' },
+          ]}
+          rows={formData.action_plan}
+          onRowChange={handleActionPlanChange}
+          onAddRow={addActionPlanRow}
+          onRemoveRow={removeActionPlanRow}
+        />
+      </FormSection>
+
+      {/* Section 8: Support Required & Conclusion */}
+      <FormSection title="SUPPORT REQUIRED & CONCLUSION" number="8" icon={AlertTriangle}>
+        <div className="space-y-4">
+          <TextInput
+            label="Support Required (LEMCHIC / Government / Partners / Others)"
+            name="support_required"
+            type="textarea"
+            value={formData.support_required}
+            onChange={handleChange}
+            onVoiceNote={(file) => handleVoiceNote('support_required', file)}
+            placeholder="List support required..."
+            rows={3}
+          />
+          <TextInput
+            label="Any Other Business (AOB)"
+            name="aob"
+            type="textarea"
+            value={formData.aob}
+            onChange={handleChange}
+            onVoiceNote={(file) => handleVoiceNote('aob', file)}
+            placeholder="Other business..."
+            rows={3}
+          />
+
+          {/* ─── Attendance Summary ─────────────────────────────── */}
+          <div
+            className="bg-primary-50 p-4 rounded-lg border border-primary-200"
+            role="group"
+            aria-labelledby="attendance-summary-heading"
+          >
+            <h5
+              id="attendance-summary-heading"
+              className="text-xs sm:text-sm font-semibold text-primary-800 mb-1 flex items-center gap-2"
+            >
+              Attendance Summary
+              <Tooltip
+                text="Enter the total number of WDC members who attended this meeting, broken down by gender. The total must equal or exceed the sum of male and female counts."
+                position="right"
+              />
+            </h5>
+            <p className="text-xs text-primary-600 mb-3">
+              Step 1 of 2: Count attendees &rarr; Step 2: Upload signed attendance list below.
+            </p>
+
+            <div className="grid grid-cols-3 gap-3 sm:gap-4">
+              {/* Total */}
+              <div className="space-y-1">
+                <label
+                  htmlFor="attendance_total"
+                  className="block text-xs sm:text-sm font-medium text-neutral-700"
+                >
+                  Total
+                  <Tooltip text="Total people present at the meeting (must equal Male + Female)." position="top" />
+                </label>
+                <input
+                  id="attendance_total"
+                  type="number"
+                  name="attendance_total"
+                  value={formData.attendance_total}
+                  onChange={handleChange}
+                  min={0}
+                  aria-describedby="attendance-hint"
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              {/* Male */}
+              <div className="space-y-1">
+                <label
+                  htmlFor="attendance_male"
+                  className="block text-xs sm:text-sm font-medium text-neutral-700"
+                >
+                  Male
+                  <Tooltip text="Number of male attendees." position="top" />
+                </label>
+                <input
+                  id="attendance_male"
+                  type="number"
+                  name="attendance_male"
+                  value={formData.attendance_male}
+                  onChange={handleChange}
+                  min={0}
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              {/* Female */}
+              <div className="space-y-1">
+                <label
+                  htmlFor="attendance_female"
+                  className="block text-xs sm:text-sm font-medium text-neutral-700"
+                >
+                  Female
+                  <Tooltip text="Number of female attendees." position="top" />
+                </label>
+                <input
+                  id="attendance_female"
+                  type="number"
+                  name="attendance_female"
+                  value={formData.attendance_female}
+                  onChange={handleChange}
+                  min={0}
+                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            {/* Live gender-balance indicator */}
+            {(() => {
+              const total = parseInt(formData.attendance_total) || 0;
+              const male = parseInt(formData.attendance_male) || 0;
+              const female = parseInt(formData.attendance_female) || 0;
+              const genSum = male + female;
+              const hasValues = total > 0 || genSum > 0;
+              if (!hasValues) return null;
+              const isValid = total >= genSum;
+              return (
+                <div
+                  id="attendance-hint"
+                  className={`mt-3 px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 ${
+                    isValid ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+                  }`}
+                  role="status"
+                  aria-live="polite"
+                >
+                  {isValid ? (
+                    <>
+                      <span aria-hidden="true">✓</span>
+                      Total ({total}) equals Male ({male}) + Female ({female}) = {genSum}
+                      {total > genSum && ` — ${total - genSum} additional attendee(s) counted`}
+                    </>
+                  ) : (
+                    <>
+                      <AlertTriangle className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
+                      Total ({total}) is less than Male ({male}) + Female ({female}) = {genSum}.
+                      Please correct the numbers.
+                    </>
+                  )}
+                </div>
+              );
+            })()}
+
+            <p className="text-xs text-primary-600 mt-3">
+              Attach attendance list with signatures and phone numbers along with pictures.
+            </p>
+          </div>
+
+          {/* Attendance Picture Upload */}
+          <div className="bg-neutral-50 p-4 rounded-lg border border-neutral-200" role="group" aria-labelledby="attendance-photo-heading">
+            <h5
+              id="attendance-photo-heading"
+              className="text-xs sm:text-sm font-semibold text-neutral-800 mb-1 flex items-center gap-2"
+            >
+              <Image className="w-4 h-4" aria-hidden="true" />
+              Upload Attendance Pictures
+              <Tooltip
+                text="Take or upload photos of the attendance sheet showing participant signatures. Supported formats: JPG, PNG (max 10MB each)."
+                position="right"
+              />
+            </h5>
+            <p className="text-xs text-neutral-500 mb-3">
+              Step 2 of 2: Photograph the signed attendance list and upload it here.
+              If photos are unavailable, note the reason in the Support Required field below.
+            </p>
+            <div className="space-y-3">
+              <label
+                className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-neutral-300 rounded-lg cursor-pointer hover:bg-neutral-100 transition-colors focus-within:ring-2 focus-within:ring-primary-500"
+                aria-label="Upload attendance picture files"
+              >
+                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                  <Upload className="w-8 h-8 text-neutral-400 mb-2" aria-hidden="true" />
+                  <p className="text-sm text-neutral-600">Click to upload attendance pictures</p>
+                  <p className="text-xs text-neutral-500">PNG, JPG up to 10MB each</p>
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handlePictureUpload}
+                  className="hidden"
+                />
+              </label>
+
+              {attendancePictures.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {attendancePictures.map((pic, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={pic.preview}
+                        alt={`Attendance ${index + 1}`}
+                        className="w-full h-24 object-cover rounded-lg border border-neutral-200"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePicture(index)}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                      <p className="text-xs text-neutral-500 mt-1 truncate">{pic.name}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Group Photo Upload */}
+          <div className="bg-neutral-50 p-4 rounded-lg border border-neutral-200 mt-4">
+            <h5 className="text-xs sm:text-sm font-semibold text-neutral-800 mb-3 flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              Upload Group Photo
+            </h5>
+            <div className="space-y-3">
+              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-neutral-300 rounded-lg cursor-pointer hover:bg-neutral-100 transition-colors">
+                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                  <Upload className="w-8 h-8 text-neutral-400 mb-2" />
+                  <p className="text-sm text-neutral-600">Click to upload group photo</p>
+                  <p className="text-xs text-neutral-500">PNG, JPG up to 10MB</p>
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleGroupPhotoUpload}
+                  className="hidden"
+                />
+              </label>
+
+              {groupPhotos.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {groupPhotos.map((pic, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={pic.preview}
+                        alt={`Group Photo ${index + 1}`}
+                        className="w-full h-24 object-cover rounded-lg border border-neutral-200"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveGroupPhoto(index)}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                      <p className="text-xs text-neutral-500 mt-1 truncate">{pic.name}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-1">
+              Adjournment - Date of Next Meeting
+            </label>
+            <input
+              type="date"
+              name="next_meeting_date"
+              value={formData.next_meeting_date}
+              onChange={handleChange}
+              className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-primary-500"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-neutral-200">
+            <TextInput
+              label="WDC Chairman Signature"
+              name="chairman_signature"
+              value={formData.chairman_signature}
+              onChange={handleChange}
+              placeholder="Chairman's name..."
+            />
+            <TextInput
+              label="WDC Secretary Signature"
+              name="secretary_signature"
+              value={formData.secretary_signature}
+              onChange={handleChange}
+              placeholder="Secretary's name..."
+            />
+          </div>
+        </div>
+      </FormSection>
+
+      {/* Form Actions */}
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-6 border-t border-neutral-200 sticky bottom-0 bg-white pb-4">
+        <Button
+          type="button"
+          variant="secondary"
+          size="lg"
+          onClick={onCancel}
+          className="flex-1 sm:flex-none"
+        >
+          Cancel
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="lg"
+          icon={Save}
+          loading={localDraftStatus === 'saving'}
+          onClick={handleManualSaveDraft}
+          disabled={!userLGA?.id || !userWard?.id}
+          className="flex-1 sm:flex-none"
+        >
+          {localDraftStatus === 'saving' ? 'Saving...' : 'Save Draft'}
+        </Button>
+        <Button
+          type="submit"
+          variant="primary"
+          size="lg"
+          icon={Send}
+          loading={submitMutation.isPending}
+          disabled={!userLGA?.id || !userWard?.id}
+          className="flex-1"
+        >
+          {isOnline ? 'Submit Report' : 'Queue Submission'}
+        </Button>
+      </div>
+    </form>
+  );
+};
+
+export default WDCReportForm;

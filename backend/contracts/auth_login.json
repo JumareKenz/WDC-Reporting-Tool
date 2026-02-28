@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "POST /api/auth/login — 200 response",
+  "description": "JWT token envelope returned on successful authentication. The nested user object mirrors GET /api/auth/me.",
+  "type": "object",
+  "required": ["access_token", "token_type", "user"],
+  "properties": {
+    "access_token": {
+      "type": "string",
+      "minLength": 1
+    },
+    "token_type": {
+      "type": "string",
+      "enum": ["bearer"]
+    },
+    "user": {
+      "type": "object",
+      "required": ["id", "email", "role", "full_name", "is_active"],
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["WDC_SECRETARY", "LGA_COORDINATOR", "STATE_OFFICIAL"]
+        },
+        "full_name": {
+          "type": "string"
+        },
+        "phone": {
+          "type": ["string", "null"]
+        },
+        "is_active": {
+          "type": "boolean"
+        },
+        "ward": {
+          "type": ["object", "null"]
+        },
+        "lga": {
+          "type": ["object", "null"]
+        }
+      }
+    }
+  }
+}

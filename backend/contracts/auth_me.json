@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GET /api/auth/me — 200 response",
+  "description": "Current-user profile.  ward is populated for WDC_SECRETARY; lga is populated for LGA_COORDINATOR.",
+  "type": "object",
+  "required": ["id", "email", "role", "full_name", "is_active"],
+  "properties": {
+    "id": {
+      "type": "integer"
+    },
+    "email": {
+      "type": "string",
+      "format": "email"
+    },
+    "role": {
+      "type": "string",
+      "enum": ["WDC_SECRETARY", "LGA_COORDINATOR", "STATE_OFFICIAL"]
+    },
+    "full_name": {
+      "type": "string"
+    },
+    "phone": {
+      "type": ["string", "null"]
+    },
+    "is_active": {
+      "type": "boolean"
+    },
+    "ward": {
+      "type": ["object", "null"],
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "lga_id": {
+          "type": "integer"
+        },
+        "lga_name": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "lga": {
+      "type": ["object", "null"],
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
