@@ -161,6 +161,8 @@ const StateDashboard = () => {
   const [updatingLGAsWards, setUpdatingLGAsWards] = useState(false);
   const [showMonthlyReport, setShowMonthlyReport] = useState(false);
   const [monthlyReportData, setMonthlyReportData] = useState(null);
+  const [showMonthSelector, setShowMonthSelector] = useState(false);
+  const [selectedReportMonth, setSelectedReportMonth] = useState(currentMonth);
 
   // Chart type & timeframe for trends
   const [chartType, setChartType] = useState('area'); // 'area' | 'line' | 'bar'
@@ -248,10 +250,28 @@ const StateDashboard = () => {
     { name: 'Critical (<50%)', value: performanceCategories.critical, color: '#ef4444' },
   ].filter(item => item.value > 0), [performanceCategories]);
 
+  // Generate month options for selector (last 12 months)
+  const monthOptions = useMemo(() => {
+    const options = [];
+    const now = new Date();
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const value = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+      const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      options.push({ value, label });
+    }
+    return options;
+  }, []);
+
   const handleGenerateMonthlyReport = async () => {
+    setShowMonthSelector(true);
+  };
+
+  const handleConfirmGenerateReport = async () => {
     try {
-      const result = await generateMonthlyMutation.mutateAsync({ month: currentMonth });
+      const result = await generateMonthlyMutation.mutateAsync({ month: selectedReportMonth });
       setMonthlyReportData(result?.data || result);
+      setShowMonthSelector(false);
       setShowMonthlyReport(true);
     } catch (error) {
       setAlertMessage({ type: 'error', text: error.message || 'Failed to generate monthly report' });
@@ -482,63 +502,176 @@ const StateDashboard = () => {
           )}
         </AnimatePresence>
 
-        {/* ROW 1: Overview Stats */}
+        {/* ROW 1: Overview Stats - Professional Stat Cards */}
         <motion.div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8" variants={itemVariants}>
-          <IconCard
-            icon={Building}
-            iconColor="primary"
-            title="Total LGAs"
-            value={totalLGAs}
-            className="transform hover:scale-105 transition-transform"
-          />
-          <IconCard
-            icon={MapPin}
-            iconColor="info"
-            title="Total Wards"
-            value={formatNumber(totalWards)}
-            className="transform hover:scale-105 transition-transform"
-          />
-          <div
-            className="cursor-pointer"
+          {/* Total LGAs */}
+          <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-primary-100 rounded-lg">
+                <Building className="w-5 h-5 text-primary-600" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Total LGAs</p>
+                <p className="text-2xl font-bold text-neutral-900">
+                  {loadingOverview ? '-' : formatNumber(totalLGAs)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Total Wards */}
+          <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-blue-100 rounded-lg">
+                <MapPin className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Total Wards</p>
+                <p className="text-2xl font-bold text-neutral-900">
+                  {loadingOverview ? '-' : formatNumber(totalWards)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Submitted - Clickable */}
+          <div 
+            className="bg-white rounded-xl border border-neutral-200 shadow-sm p-4 hover:shadow-md transition-all cursor-pointer hover:border-green-300 hover:ring-2 hover:ring-green-100"
             onClick={() => navigate('/state/submissions')}
           >
-            <IconCard
-              icon={CheckCircle}
-              iconColor="success"
-              title="Submitted"
-              value={formatNumber(totalSubmitted)}
-              subtitle={`${submissionRate}% rate`}
-              trend={
-                submissionRate >= 80 ? (
-                  <span className="text-green-600 flex items-center gap-1">
-                    <TrendingUp className="w-3 h-3" />
-                  </span>
-                ) : null
-              }
-              className="transform hover:scale-105 transition-transform ring-2 ring-transparent hover:ring-primary-300"
-            />
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-green-100 rounded-lg">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Submitted</p>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-2xl font-bold text-neutral-900">
+                    {loadingOverview ? '-' : formatNumber(totalSubmitted)}
+                  </p>
+                  {!loadingOverview && (
+                    <span className="text-xs font-medium text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
+                      {submissionRate}%
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            {/* Progress bar */}
+            {!loadingOverview && totalWards > 0 && (
+              <div className="mt-3">
+                <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-green-500 rounded-full transition-all duration-500"
+                    style={{ width: `${submissionRate}%` }}
+                  />
+                </div>
+                <p className="text-xs text-neutral-400 mt-1">{totalSubmitted} of {totalWards} wards</p>
+              </div>
+            )}
           </div>
-          <IconCard
-            icon={AlertTriangle}
-            iconColor="warning"
-            title="Missing"
-            value={formatNumber(totalMissing)}
-            className="transform hover:scale-105 transition-transform"
-          />
-          <IconCard
-            icon={Activity}
-            iconColor="neutral"
-            title="Reviewed"
-            value={formatNumber(totalReviewed)}
-            className="transform hover:scale-105 transition-transform"
-          />
-          <IconCard
-            icon={FileText}
-            iconColor="error"
-            title="Flagged"
-            value={formatNumber(totalFlagged)}
-            className="transform hover:scale-105 transition-transform"
-          />
+
+          {/* Missing */}
+          <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-amber-100 rounded-lg">
+                <AlertTriangle className="w-5 h-5 text-amber-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Missing</p>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-2xl font-bold text-neutral-900">
+                    {loadingOverview ? '-' : formatNumber(totalMissing)}
+                  </p>
+                  {!loadingOverview && totalWards > 0 && (
+                    <span className="text-xs font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+                      {Math.round((totalMissing / totalWards) * 100)}%
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            {/* Progress bar */}
+            {!loadingOverview && totalWards > 0 && (
+              <div className="mt-3">
+                <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-amber-500 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.round((totalMissing / totalWards) * 100)}%` }}
+                  />
+                </div>
+                <p className="text-xs text-neutral-400 mt-1">Pending submissions</p>
+              </div>
+            )}
+          </div>
+
+          {/* Reviewed */}
+          <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-purple-100 rounded-lg">
+                <Activity className="w-5 h-5 text-purple-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Reviewed</p>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-2xl font-bold text-neutral-900">
+                    {loadingOverview ? '-' : formatNumber(totalReviewed)}
+                  </p>
+                  {!loadingOverview && totalSubmitted > 0 && (
+                    <span className="text-xs font-medium text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">
+                      {Math.round((totalReviewed / totalSubmitted) * 100)}%
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            {/* Progress bar */}
+            {!loadingOverview && totalSubmitted > 0 && (
+              <div className="mt-3">
+                <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-purple-500 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.round((totalReviewed / totalSubmitted) * 100)}%` }}
+                  />
+                </div>
+                <p className="text-xs text-neutral-400 mt-1">Of submitted reports</p>
+              </div>
+            )}
+          </div>
+
+          {/* Flagged */}
+          <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-red-100 rounded-lg">
+                <FileText className="w-5 h-5 text-red-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Flagged</p>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-2xl font-bold text-neutral-900">
+                    {loadingOverview ? '-' : formatNumber(totalFlagged)}
+                  </p>
+                  {!loadingOverview && totalSubmitted > 0 && totalFlagged > 0 && (
+                    <span className="text-xs font-medium text-red-600 bg-red-50 px-1.5 py-0.5 rounded">
+                      {Math.round((totalFlagged / totalSubmitted) * 100)}%
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            {/* Progress bar */}
+            {!loadingOverview && totalSubmitted > 0 && (
+              <div className="mt-3">
+                <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-red-500 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.round((totalFlagged / totalSubmitted) * 100)}%` }}
+                  />
+                </div>
+                <p className="text-xs text-neutral-400 mt-1">Require attention</p>
+              </div>
+            )}
+          </div>
         </motion.div>
 
         {/* ROW 2: Analytics Metric Cards */}
@@ -1386,12 +1519,61 @@ const StateDashboard = () => {
         </Modal>
       )}
 
+      {/* Month Selector Modal */}
+      <Modal
+        isOpen={showMonthSelector}
+        onClose={() => setShowMonthSelector(false)}
+        title="Generate AI Monthly Report"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-neutral-600">
+            Select the month for which you want to generate the AI analysis report.
+          </p>
+          
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-2">
+              Select Month
+            </label>
+            <select
+              value={selectedReportMonth}
+              onChange={(e) => setSelectedReportMonth(e.target.value)}
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            >
+              {monthOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <Button
+              variant="ghost"
+              onClick={() => setShowMonthSelector(false)}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmGenerateReport}
+              loading={generateMonthlyMutation.isPending}
+              className="flex-1"
+              icon={Sparkles}
+            >
+              Generate Report
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
       {/* Monthly Report Modal */}
       <MonthlyReportModal
         isOpen={showMonthlyReport}
         onClose={() => setShowMonthlyReport(false)}
         reportData={monthlyReportData}
-        month={currentMonth}
+        month={selectedReportMonth}
       />
     </div>
   );
