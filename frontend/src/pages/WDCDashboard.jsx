@@ -199,15 +199,13 @@ const WDCDashboard = () => {
               </div>
             </div>
             {/* Submit Button - Always Active */}
-            <Button
-              icon={PlusCircle}
+            <button
               onClick={handleSubmitReport}
-              size="lg"
-              variant="primary"
-              className="bg-white text-primary-700 hover:bg-emerald-50 shadow-lg shadow-black/20 hover:shadow-xl font-semibold"
+              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-yellow-400 hover:bg-yellow-300 active:bg-yellow-500 text-neutral-900 font-bold text-base shadow-lg shadow-yellow-500/30 hover:shadow-xl hover:shadow-yellow-400/40 transition-all duration-200 border-2 border-yellow-300"
             >
+              <PlusCircle className="w-5 h-5" />
               Submit New Report
-            </Button>
+            </button>
           </div>
         </div>
       </div>
