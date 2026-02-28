@@ -53,7 +53,9 @@ const ReportDetails = () => {
 
   const downloadMutation = useDownloadVoiceNote();
 
-  const report = reportData?.data;
+  // The API client interceptor already unwraps response.data,
+  // so reportData IS the report object directly
+  const report = reportData?.data || reportData;
 
   const toggleSection = (section) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -124,10 +126,7 @@ const ReportDetails = () => {
     });
   };
 
-  const formatNumber = (num) => {
-    if (num === null || num === undefined || num === '') return '—';
-    return Number(num).toLocaleString();
-  };
+  // formatNumber is defined at module level below
 
   // Section Header Component
   const SectionHeader = ({ title, icon: Icon, section, count }) => (
@@ -744,6 +743,13 @@ const ReportDetails = () => {
       </div>
     </div>
   );
+};
+
+// Helper Functions
+
+const formatNumber = (num) => {
+  if (num === null || num === undefined || num === '') return '—';
+  return Number(num).toLocaleString();
 };
 
 // Helper Components
