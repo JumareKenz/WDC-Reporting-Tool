@@ -26,6 +26,7 @@ import StateInvestigationsPage from './pages/StateInvestigationsPage';
 import StateFormsPage from './pages/StateFormsPage';
 import StateSubmissionsPage from './pages/StateSubmissionsPage';
 import StateUsersPage from './pages/StateUsersPage';
+import ReportDetails from './pages/ReportDetails';
 
 // Components
 import Layout from './components/common/Layout';
@@ -294,6 +295,14 @@ const AppRoutes = () => {
       />
 
       {/* ==================== Shared Routes ==================== */}
+      <Route
+        path="/reports/:id"
+        element={
+          <ProtectedRoute>
+            <ReportDetails />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/settings"
         element={
