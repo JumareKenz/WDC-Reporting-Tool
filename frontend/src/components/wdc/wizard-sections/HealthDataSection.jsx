@@ -2,7 +2,7 @@ import React from 'react';
 import { NumberInput } from './shared';
 
 /**
- * Section 3A: General Attendance — Health Data (OPD, ANC, deliveries, FP, HEP B, TB)
+ * Section 3A: Health Data
  */
 const HealthDataSection = ({ formData, onChange, errors }) => {
   const handleChange = (e) => {
@@ -12,32 +12,17 @@ const HealthDataSection = ({ formData, onChange, errors }) => {
 
   return (
     <div className="space-y-8">
-      {/* General Attendance Total */}
+      {/* OPD & Immunization */}
       <div>
-        <h4 className="text-sm font-semibold text-gray-800 mb-1">General Attendance</h4>
+        <h4 className="text-sm font-semibold text-gray-800 mb-1">OPD & Immunization</h4>
+        <p className="text-xs text-gray-500 mb-3">Enter attendance and immunization figures for the reporting period.</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <NumberInput label="General Attendance Total" name="health_general_attendance_total" value={formData.health_general_attendance_total} onChange={handleChange} required />
-        </div>
-      </div>
-
-      {/* OPD Immunization */}
-      <div>
-        <h4 className="text-sm font-semibold text-gray-800 mb-1">OPD Immunization</h4>
-        <p className="text-xs text-gray-500 mb-3">Enter total immunization figures for the reporting period.</p>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          <NumberInput label="OPD Total" name="health_opd_total" value={formData.health_opd_total} onChange={handleChange} required />
+          <NumberInput label="OPD General Attendance Total" name="health_general_attendance_total" value={formData.health_general_attendance_total} onChange={handleChange} required />
           <NumberInput label="Routine Immunization Total" name="health_routine_immunization_total" value={formData.health_routine_immunization_total} onChange={handleChange} required />
           <NumberInput label="PENTA1" name="health_penta1" value={formData.health_penta1} onChange={handleChange} required />
           <NumberInput label="BCG" name="health_bcg" value={formData.health_bcg} onChange={handleChange} required />
           <NumberInput label="PENTA3" name="health_penta3" value={formData.health_penta3} onChange={handleChange} required />
           <NumberInput label="MEASLES" name="health_measles" value={formData.health_measles} onChange={handleChange} required />
-        </div>
-      </div>
-
-      {/* OPD Under 5 */}
-      <div>
-        <h4 className="text-sm font-semibold text-gray-800 mb-1">OPD Under 5</h4>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <NumberInput label="MALARIA UNDER 5" name="health_malaria_under5" value={formData.health_malaria_under5} onChange={handleChange} required />
           <NumberInput label="DIARRHEA UNDER 5" name="health_diarrhea_under5" value={formData.health_diarrhea_under5} onChange={handleChange} required />
         </div>

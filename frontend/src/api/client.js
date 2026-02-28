@@ -169,13 +169,28 @@ apiClient.interceptors.response.use(
         data?.detail ||
         getDefaultErrorMessage(status);
 
+      // Handle string detail (FastAPI HTTPException)
+      if (typeof data?.detail === 'string') {
+        errorMessage = data.detail;
+      }
+
       // Handle Pydantic validation errors (422)
       if (status === 422 && data?.detail && Array.isArray(data.detail)) {
         const validationErrors = data.detail.map(err => {
           const field = err.loc?.slice(1).join('.') || 'field';
-          return `${field}: ${err.msg}`;
-        }).join(', ');
-        errorMessage = `Validation errors: ${validationErrors}`;
+          const msg = err.msg?.replace('Value error, ', '') || err.msg;
+          return `${field}: ${msg}`;
+        });
+        if (validationErrors.length === 1) {
+          errorMessage = validationErrors[0];
+        } else {
+          errorMessage = `Please fix the following:\n${validationErrors.map(e => `• ${e}`).join('\n')}`;
+        }
+      }
+
+      // Handle 400 bad request with detail
+      if (status === 400 && data?.detail) {
+        errorMessage = typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail);
       }
 
       // Handle conflict errors (409) with specific message
@@ -192,9 +207,14 @@ apiClient.interceptors.response.use(
       return Promise.reject(enhancedError);
     } else if (error.request) {
       // Request made but no response received (network / server-down error)
-      const networkError = new Error(
-        'Network error. Please check your internet connection.'
-      );
+      let networkMessage = 'Unable to reach the server. Please check your internet connection and try again.';
+
+      // Detect possible CORS issue
+      if (error.message?.includes('Network Error')) {
+        networkMessage = 'Unable to connect to the server. This may be a connectivity issue or the server may be temporarily unavailable. Please try again shortly.';
+      }
+
+      const networkError = new Error(networkMessage);
       networkError.isNetworkError = true;
 
       // Only show the draft-save toast when the user is already authenticated.

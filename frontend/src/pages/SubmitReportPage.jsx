@@ -43,7 +43,6 @@ const buildInitialFormData = (userWard, userLGA) => ({
 
   // Section 3A: Health Data
   health_general_attendance_total: '',
-  health_opd_total: '',
   health_routine_immunization_total: '',
   health_penta1: '',
   health_bcg: '',

@@ -233,7 +233,7 @@ const WDCDashboard = () => {
         )}
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
           <IconCard
             icon={FileText}
             iconColor={isSubmitted ? 'success' : 'warning'}
@@ -255,15 +255,6 @@ const WDCDashboard = () => {
                 {reviewedCount} reviewed
               </span>
             }
-            variant="glass"
-            className="card-lift"
-          />
-          <IconCard
-            icon={Users}
-            iconColor="info"
-            title="Total Attendees"
-            value={totalAttendees}
-            subtitle="Across all reports"
             variant="glass"
             className="card-lift"
           />
@@ -293,8 +284,8 @@ const WDCDashboard = () => {
               </div>
               <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl">
                 <BarChart3 className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-blue-700">{Math.round(totalAttendees / Math.max(totalReports, 1))}</p>
-                <p className="text-xs text-blue-600">Avg. Attendees</p>
+                <p className="text-2xl font-bold text-blue-700">{reports.filter(r => r.status === 'SUBMITTED').length + reviewedCount}</p>
+                <p className="text-xs text-blue-600">Total Submitted</p>
               </div>
               <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl">
                 <Clock className="w-8 h-8 text-purple-600 mx-auto mb-2" />

@@ -349,26 +349,69 @@ const ReportDetails = () => {
 
             {/* Health Data */}
             <Card>
-              <SectionHeader title="Health Data (OPD & Immunization)" icon={HeartPulse} section="health" />
+              <SectionHeader title="Health Data" icon={HeartPulse} section="health" />
               {expandedSections.health && (
-                <div className="p-4">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <HealthStat label="Total OPD" value={report.health_opd_total} color="blue" />
-                    <HealthStat label="Penta 1" value={report.health_penta1} color="green" />
-                    <HealthStat label="BCG" value={report.health_bcg} color="teal" />
-                    <HealthStat label="Penta 3" value={report.health_penta3} color="cyan" />
-                    <HealthStat label="Measles" value={report.health_measles} color="indigo" />
-                    <HealthStat label="Malaria U5" value={report.health_malaria_under5} color="red" />
-                    <HealthStat label="Diarrhea U5" value={report.health_diarrhea_under5} color="orange" />
-                    <HealthStat label="ANC Total" value={report.health_anc_total} color="pink" />
-                    <HealthStat label="ANC 1st Visit" value={report.health_anc_first_visit} color="rose" />
-                    <HealthStat label="ANC 4th Visit" value={report.health_anc_fourth_visit} color="fuchsia" />
-                    <HealthStat label="Deliveries" value={report.health_deliveries} color="violet" />
-                    <HealthStat label="Postnatal" value={report.health_postnatal} color="purple" />
-                    <HealthStat label="FP Counselling" value={report.health_fp_counselling} color="amber" />
-                    <HealthStat label="FP New Acceptors" value={report.health_fp_new_acceptors} color="yellow" />
-                    <HealthStat label="Hep B Tested" value={report.health_hepb_tested} color="lime" />
-                    <HealthStat label="Hep B Positive" value={report.health_hepb_positive} color="emerald" />
+                <div className="p-4 space-y-6">
+                  {/* OPD & Immunization */}
+                  <div>
+                    <h4 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">OPD & Immunization</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <HealthStat label="OPD General Attendance" value={report.health_general_attendance_total} color="blue" />
+                      <HealthStat label="Routine Immunization" value={report.health_routine_immunization_total} color="green" />
+                      <HealthStat label="PENTA1" value={report.health_penta1} color="teal" />
+                      <HealthStat label="BCG" value={report.health_bcg} color="cyan" />
+                      <HealthStat label="PENTA3" value={report.health_penta3} color="indigo" />
+                      <HealthStat label="MEASLES" value={report.health_measles} color="violet" />
+                      <HealthStat label="Malaria Under 5" value={report.health_malaria_under5} color="red" />
+                      <HealthStat label="Diarrhea Under 5" value={report.health_diarrhea_under5} color="orange" />
+                    </div>
+                  </div>
+
+                  {/* ANC */}
+                  <div>
+                    <h4 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">ANC (Antenatal Care)</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <HealthStat label="ANC Total" value={report.health_anc_total} color="pink" />
+                      <HealthStat label="1st Visit" value={report.health_anc_first_visit} color="rose" />
+                      <HealthStat label="4th Visit" value={report.health_anc_fourth_visit} color="fuchsia" />
+                      <HealthStat label="8th Visit" value={report.health_anc_eighth_visit} color="purple" />
+                    </div>
+                  </div>
+
+                  {/* Labour, Deliveries & Post-Natal */}
+                  <div>
+                    <h4 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">Labour, Deliveries & Post-Natal</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <HealthStat label="Deliveries" value={report.health_deliveries} color="violet" />
+                      <HealthStat label="Post-Natal" value={report.health_postnatal} color="purple" />
+                    </div>
+                  </div>
+
+                  {/* Family Planning */}
+                  <div>
+                    <h4 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">Family Planning</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <HealthStat label="Counselling" value={report.health_fp_counselling} color="amber" />
+                      <HealthStat label="New Acceptors" value={report.health_fp_new_acceptors} color="yellow" />
+                    </div>
+                  </div>
+
+                  {/* Hepatitis B */}
+                  <div>
+                    <h4 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">Hepatitis B</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <HealthStat label="Person Tested" value={report.health_hepb_tested} color="lime" />
+                      <HealthStat label="Person Tested Positive" value={report.health_hepb_positive} color="emerald" />
+                    </div>
+                  </div>
+
+                  {/* TB */}
+                  <div>
+                    <h4 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">Tuberculosis (TB)</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <HealthStat label="Total Presumptive" value={report.health_tb_presumptive} color="sky" />
+                      <HealthStat label="Total on Treatment" value={report.health_tb_on_treatment} color="blue" />
+                    </div>
                   </div>
                 </div>
               )}

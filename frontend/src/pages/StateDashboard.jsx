@@ -569,7 +569,7 @@ Kaduna State WDC Digital Reporting System
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-neutral-600">OPD Attendance</span><span className="font-semibold">{formatNumber(serviceDelivery.health_data?.opd_total || 0)}</span></div>
+                <div className="flex justify-between"><span className="text-neutral-600">OPD General Attendance</span><span className="font-semibold">{formatNumber(serviceDelivery.health_data?.general_attendance || 0)}</span></div>
                 <div className="flex justify-between"><span className="text-neutral-600">Immunization</span><span className="font-semibold">{formatNumber(serviceDelivery.health_data?.routine_immunization || 0)}</span></div>
                 <div className="flex justify-between"><span className="text-neutral-600">ANC Total</span><span className="font-semibold">{formatNumber(serviceDelivery.health_data?.anc_total || 0)}</span></div>
                 <div className="flex justify-between"><span className="text-neutral-600">Deliveries</span><span className="font-semibold">{formatNumber(serviceDelivery.health_data?.deliveries || 0)}</span></div>
@@ -1258,31 +1258,28 @@ Kaduna State WDC Digital Reporting System
 
             {/* Section 3A: Health Data */}
             <div>
-              <h4 className="font-bold text-neutral-800 border-b pb-2 mb-3">3A. Health Data (General Attendance)</h4>
+              <h4 className="font-bold text-neutral-800 border-b pb-2 mb-3">3A. Health Data</h4>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
                 <div>
-                  <p className="font-medium text-primary-700">OPD Immunization</p>
-                  <p>Total: {selectedReport.health_opd_total}</p>
+                  <p className="font-medium text-primary-700">OPD & Immunization</p>
+                  <p>OPD General Attendance: {selectedReport.health_general_attendance_total}</p>
+                  <p>Routine Immunization: {selectedReport.health_routine_immunization_total}</p>
                   <p>PENTA1: {selectedReport.health_penta1}</p>
                   <p>BCG: {selectedReport.health_bcg}</p>
                   <p>PENTA3: {selectedReport.health_penta3}</p>
-                  <p>Measles: {selectedReport.health_measles}</p>
+                  <p>MEASLES: {selectedReport.health_measles}</p>
+                  <p>Malaria Under 5: {selectedReport.health_malaria_under5}</p>
+                  <p>Diarrhea Under 5: {selectedReport.health_diarrhea_under5}</p>
                 </div>
                 <div>
-                  <p className="font-medium text-primary-700">OPD Under 5</p>
-                  <p>Total: {selectedReport.health_opd_under5_total}</p>
-                  <p>Malaria: {selectedReport.health_malaria_under5}</p>
-                  <p>Diarrhea: {selectedReport.health_diarrhea_under5}</p>
-                </div>
-                <div>
-                  <p className="font-medium text-primary-700">ANC</p>
-                  <p>Total: {selectedReport.health_anc_total}</p>
+                  <p className="font-medium text-primary-700">ANC (Antenatal Care)</p>
+                  <p>ANC Total: {selectedReport.health_anc_total}</p>
                   <p>1st Visit: {selectedReport.health_anc_first_visit}</p>
                   <p>4th Visit: {selectedReport.health_anc_fourth_visit}</p>
                   <p>8th Visit: {selectedReport.health_anc_eighth_visit}</p>
                 </div>
                 <div>
-                  <p className="font-medium text-primary-700">Deliveries</p>
+                  <p className="font-medium text-primary-700">Labour, Deliveries & Post-Natal</p>
                   <p>Deliveries: {selectedReport.health_deliveries}</p>
                   <p>Post-Natal: {selectedReport.health_postnatal}</p>
                 </div>
@@ -1292,11 +1289,14 @@ Kaduna State WDC Digital Reporting System
                   <p>New Acceptors: {selectedReport.health_fp_new_acceptors}</p>
                 </div>
                 <div>
-                  <p className="font-medium text-primary-700">Others</p>
-                  <p>HepB Tested: {selectedReport.health_hepb_tested}</p>
-                  <p>HepB Positive: {selectedReport.health_hepb_positive}</p>
-                  <p>TB Presumptive: {selectedReport.health_tb_presumptive}</p>
-                  <p>TB On Treatment: {selectedReport.health_tb_on_treatment}</p>
+                  <p className="font-medium text-primary-700">Hepatitis B</p>
+                  <p>Person Tested: {selectedReport.health_hepb_tested}</p>
+                  <p>Person Tested Positive: {selectedReport.health_hepb_positive}</p>
+                </div>
+                <div>
+                  <p className="font-medium text-primary-700">Tuberculosis (TB)</p>
+                  <p>Total Presumptive: {selectedReport.health_tb_presumptive}</p>
+                  <p>Total on Treatment: {selectedReport.health_tb_on_treatment}</p>
                 </div>
               </div>
             </div>

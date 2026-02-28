@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   FileText,
   Calendar,
@@ -11,21 +12,18 @@ import {
   Filter,
   PlusCircle,
   Mic,
-  Users,
-  BarChart3,
 } from 'lucide-react';
 import Card, { IconCard, EmptyCard } from '../components/common/Card';
 import Button from '../components/common/Button';
 import LoadingSpinner from '../components/common/LoadingSpinner';
-import Modal from '../components/common/Modal';
 import { useMySubmissions } from '../hooks/useWDCData';
 import { formatDate, formatMonth, getCurrentMonth } from '../utils/formatters';
 import { REPORT_STATUS, STATUS_LABELS } from '../utils/constants';
 
 const MyReportsPage = () => {
+  const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedReport, setSelectedReport] = useState(null);
   const currentMonth = getCurrentMonth();
 
   const { data: submissionsData, isLoading } = useMySubmissions();
@@ -56,11 +54,9 @@ const MyReportsPage = () => {
   const submittedCount = reports.filter(r => r.status === REPORT_STATUS.SUBMITTED).length;
   const reviewedCount = reports.filter(r => r.status === REPORT_STATUS.REVIEWED).length;
   const flaggedCount = reports.filter(r => r.status === REPORT_STATUS.FLAGGED).length;
-  const totalMeetings = reports.reduce((sum, r) => sum + (r.meetings_held || 0), 0);
-  const totalAttendees = reports.reduce((sum, r) => sum + (r.attendees_count || 0), 0);
 
   const handleSelectReport = (report) => {
-    setSelectedReport(report);
+    navigate(`/reports/${report.id}`);
   };
 
   const getStatusBadge = (status) => {
@@ -107,7 +103,7 @@ const MyReportsPage = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <IconCard
           icon={FileText}
           iconColor="primary"
@@ -123,17 +119,10 @@ const MyReportsPage = () => {
           className="transform hover:scale-105 transition-transform"
         />
         <IconCard
-          icon={Users}
-          iconColor="info"
-          title="Total Meetings"
-          value={totalMeetings}
-          className="transform hover:scale-105 transition-transform"
-        />
-        <IconCard
-          icon={BarChart3}
+          icon={Flag}
           iconColor="warning"
-          title="Total Attendees"
-          value={totalAttendees}
+          title="Flagged"
+          value={flaggedCount}
           className="transform hover:scale-105 transition-transform"
         />
       </div>
@@ -178,8 +167,6 @@ const MyReportsPage = () => {
               <thead>
                 <tr className="border-b border-neutral-200 bg-neutral-50">
                   <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Month</th>
-                  <th className="text-center py-3 px-4 text-sm font-semibold text-neutral-700">Meetings</th>
-                  <th className="text-center py-3 px-4 text-sm font-semibold text-neutral-700">Attendees</th>
                   <th className="text-center py-3 px-4 text-sm font-semibold text-neutral-700">Voice Notes</th>
                   <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Status</th>
                   <th className="text-left py-3 px-4 text-sm font-semibold text-neutral-700">Submitted</th>
@@ -196,16 +183,6 @@ const MyReportsPage = () => {
                           {formatMonth(report.report_month)}
                         </span>
                       </div>
-                    </td>
-                    <td className="py-4 px-4 text-center">
-                      <span className="inline-flex items-center justify-center w-10 h-8 rounded-full bg-green-100 text-green-700 font-medium">
-                        {report.meetings_held || 0}
-                      </span>
-                    </td>
-                    <td className="py-4 px-4 text-center">
-                      <span className="inline-flex items-center justify-center w-12 h-8 rounded-full bg-blue-100 text-blue-700 font-medium">
-                        {report.attendees_count || 0}
-                      </span>
                     </td>
                     <td className="py-4 px-4 text-center">
                       {report.has_voice_note || report.voice_notes_count > 0 ? (
@@ -252,100 +229,6 @@ const MyReportsPage = () => {
         )}
       </Card>
 
-      {/* Report Details Modal */}
-      <Modal
-        isOpen={!!selectedReport}
-        onClose={() => setSelectedReport(null)}
-        title={`Report: ${formatMonth(selectedReport?.report_month)}`}
-        size="lg"
-      >
-        {selectedReport && (
-          <div className="space-y-6">
-            {/* Status Banner */}
-            <div className={`p-4 rounded-xl ${
-              selectedReport.status === REPORT_STATUS.REVIEWED
-                ? 'bg-green-50 border border-green-200'
-                : selectedReport.status === REPORT_STATUS.FLAGGED
-                ? 'bg-yellow-50 border border-yellow-200'
-                : 'bg-blue-50 border border-blue-200'
-            }`}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-semibold text-neutral-900">Report Status</p>
-                  {getStatusBadge(selectedReport.status)}
-                </div>
-                <p className="text-sm text-neutral-600">
-                  Submitted: {formatDate(selectedReport.submitted_at, true)}
-                </p>
-              </div>
-            </div>
-
-            {/* Report Summary */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="p-4 bg-green-50 rounded-xl text-center">
-                <p className="text-2xl font-bold text-green-700">{selectedReport.meetings_held || 0}</p>
-                <p className="text-xs text-green-600">Meetings Held</p>
-              </div>
-              <div className="p-4 bg-blue-50 rounded-xl text-center">
-                <p className="text-2xl font-bold text-blue-700">{selectedReport.attendees_count || 0}</p>
-                <p className="text-xs text-blue-600">Total Attendees</p>
-              </div>
-              <div className="p-4 bg-purple-50 rounded-xl text-center">
-                <p className="text-2xl font-bold text-purple-700">{selectedReport.voice_notes_count || 0}</p>
-                <p className="text-xs text-purple-600">Voice Notes</p>
-              </div>
-              <div className="p-4 bg-yellow-50 rounded-xl text-center">
-                <p className="text-2xl font-bold text-yellow-700">{selectedReport.issues_count || 0}</p>
-                <p className="text-xs text-yellow-600">Issues Reported</p>
-              </div>
-            </div>
-
-            {/* Details */}
-            {selectedReport.issues_identified && (
-              <div>
-                <h4 className="text-sm font-semibold text-neutral-700 mb-2">Issues Identified</h4>
-                <p className="text-sm text-neutral-600 bg-neutral-50 p-3 rounded-lg">
-                  {selectedReport.issues_identified}
-                </p>
-              </div>
-            )}
-
-            {selectedReport.actions_taken && (
-              <div>
-                <h4 className="text-sm font-semibold text-neutral-700 mb-2">Actions Taken</h4>
-                <p className="text-sm text-neutral-600 bg-neutral-50 p-3 rounded-lg">
-                  {selectedReport.actions_taken}
-                </p>
-              </div>
-            )}
-
-            {selectedReport.challenges && (
-              <div>
-                <h4 className="text-sm font-semibold text-neutral-700 mb-2">Challenges</h4>
-                <p className="text-sm text-yellow-800 bg-yellow-50 p-3 rounded-lg">
-                  {selectedReport.challenges}
-                </p>
-              </div>
-            )}
-
-            {selectedReport.reviewer_notes && (
-              <div>
-                <h4 className="text-sm font-semibold text-neutral-700 mb-2">Reviewer Notes</h4>
-                <p className="text-sm text-primary-800 bg-primary-50 p-3 rounded-lg border border-primary-200">
-                  {selectedReport.reviewer_notes}
-                </p>
-              </div>
-            )}
-
-            {/* Actions */}
-            <div className="flex justify-end gap-3 pt-4 border-t border-neutral-200">
-              <Button variant="outline" onClick={() => setSelectedReport(null)}>
-                Close
-              </Button>
-            </div>
-          </div>
-        )}
-      </Modal>
     </div>
   );
 };
