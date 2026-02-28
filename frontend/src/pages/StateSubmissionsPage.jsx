@@ -10,14 +10,11 @@ import {
   Eye,
   Activity,
   Users,
-  Mic,
   TrendingUp,
   Download,
   ArrowUpDown,
   CheckCircle,
   XCircle,
-  AlertTriangle,
-  MessageSquare,
 } from 'lucide-react';
 import Card, { IconCard, EmptyCard } from '../components/common/Card';
 import Button from '../components/common/Button';
@@ -81,7 +78,6 @@ const StateSubmissionsPage = () => {
   const totalReports = data?.total_reports || 0;
   const totalWardsReported = data?.total_wards_reported || 0;
   const totalWards = data?.total_wards || 0;
-  const totalVoiceNotes = data?.total_voice_notes || 0;
   const submissionRate = totalWards > 0 ? ((totalWardsReported / totalWards) * 100).toFixed(1) : 0;
 
   // Expand all LGAs when data changes
@@ -191,13 +187,22 @@ const StateSubmissionsPage = () => {
 
   const handleReviewSubmit = async (action) => {
     if (!selectedReport) return;
+    // Map frontend status values to backend-expected action strings
+    const actionMap = { REVIEWED: 'approve', DECLINED: 'decline' };
+    const backendAction = actionMap[action];
+    if (!backendAction) return;
     try {
-      await reviewMutation.mutateAsync({
+      const payload = {
         reportId: selectedReport.id,
-        action,
-        notes: reviewNotes || undefined,
-      });
-      const labels = { REVIEWED: 'approved', DECLINED: 'declined', FLAGGED: 'flagged' };
+        action: backendAction,
+      };
+      if (backendAction === 'decline' && reviewNotes) {
+        payload.decline_reason = reviewNotes;
+      } else if (reviewNotes) {
+        payload.notes = reviewNotes;
+      }
+      await reviewMutation.mutateAsync(payload);
+      const labels = { REVIEWED: 'approved', DECLINED: 'declined' };
       toast.success(`Report ${labels[action] || 'reviewed'} successfully.`);
       // Update local selected report status for immediate UI feedback
       setSelectedReport((prev) => prev ? { ...prev, status: action } : prev);
@@ -258,7 +263,7 @@ const StateSubmissionsPage = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <IconCard
           icon={FileText}
           iconColor="primary"
@@ -272,13 +277,6 @@ const StateSubmissionsPage = () => {
           title="Wards Reported"
           value={`${totalWardsReported} / ${totalWards}`}
           subtitle={`${submissionRate}% coverage`}
-        />
-        <IconCard
-          icon={Mic}
-          iconColor="success"
-          title="Voice Notes"
-          value={totalVoiceNotes}
-          subtitle="Audio recordings"
         />
         <IconCard
           icon={TrendingUp}
@@ -435,9 +433,6 @@ const StateSubmissionsPage = () => {
                               )}
                             </button>
                           </th>
-                          <th className="text-center py-2.5 px-4 text-xs font-semibold text-neutral-600 uppercase tracking-wider">
-                            Audio
-                          </th>
                           <th className="text-right py-2.5 px-4 text-xs font-semibold text-neutral-600 uppercase tracking-wider">
                             Action
                           </th>
@@ -487,16 +482,6 @@ const StateSubmissionsPage = () => {
                             </td>
                             <td className="py-3 px-4 text-sm text-neutral-600 hidden sm:table-cell">
                               {formatDate(report.submitted_at)}
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              {report.voice_notes_count > 0 ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
-                                  <Mic className="w-3 h-3" />
-                                  {report.voice_notes_count}
-                                </span>
-                              ) : (
-                                <span className="text-neutral-400 text-xs">&mdash;</span>
-                              )}
                             </td>
                             <td className="py-3 px-4 text-right">
                               <button
@@ -629,12 +614,12 @@ const StateSubmissionsPage = () => {
             {showReviewNotes && (
               <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 space-y-3">
                 <p className="text-sm font-medium text-neutral-700">
-                  Add review notes{reviewAction === 'FLAGGED' ? ' (required for flagging)' : ' (optional)'}:
+                  {reviewAction === 'DECLINED' ? 'Reason for declining (optional):' : 'Add review notes (optional):'}
                 </p>
                 <textarea
                   value={reviewNotes}
                   onChange={(e) => setReviewNotes(e.target.value)}
-                  placeholder="Enter feedback or reason for this decision…"
+                  placeholder={reviewAction === 'DECLINED' ? 'Enter reason for declining…' : 'Enter feedback…'}
                   rows={3}
                   className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500 resize-none"
                   aria-label="Review notes"
@@ -642,13 +627,11 @@ const StateSubmissionsPage = () => {
                 <div className="flex gap-2">
                   <Button
                     size="sm"
-                    variant={reviewAction === 'REVIEWED' ? 'primary' : reviewAction === 'DECLINED' ? 'danger' : 'outline'}
+                    variant={reviewAction === 'REVIEWED' ? 'primary' : 'danger'}
                     onClick={() => handleReviewSubmit(reviewAction)}
                     loading={reviewMutation.isPending}
-                    disabled={reviewAction === 'FLAGGED' && !reviewNotes.trim()}
-                    className={reviewAction === 'FLAGGED' ? 'border-amber-500 text-amber-700' : ''}
                   >
-                    Confirm {reviewAction === 'REVIEWED' ? 'Approval' : reviewAction === 'DECLINED' ? 'Decline' : 'Flag'}
+                    Confirm {reviewAction === 'REVIEWED' ? 'Approval' : 'Decline'}
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => { setShowReviewNotes(false); setReviewAction(null); }}>
                     Cancel
@@ -675,16 +658,6 @@ const StateSubmissionsPage = () => {
                     disabled={reviewMutation.isPending}
                   >
                     Approve
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    icon={AlertTriangle}
-                    className="border-amber-400 text-amber-700 hover:bg-amber-50"
-                    onClick={() => { setReviewAction('FLAGGED'); setShowReviewNotes(true); }}
-                    disabled={reviewMutation.isPending}
-                  >
-                    Flag
                   </Button>
                   {selectedReport.status !== REPORT_STATUS.DECLINED && (
                     <Button

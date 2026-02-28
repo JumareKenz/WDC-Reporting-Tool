@@ -7,9 +7,6 @@ import {
   getServiceDelivery,
   generateMonthlyReport,
   getLGAs,
-  getInvestigations,
-  createInvestigation,
-  updateInvestigation,
   getStateSubmissions,
 } from '../api/analytics';
 import apiClient from '../api/client';
@@ -34,7 +31,6 @@ export const STATE_QUERY_KEYS = {
   lgaComparison: 'state-lga-comparison',
   trends: 'state-trends',
   lgas: 'state-lgas',
-  investigations: 'state-investigations',
   forms: 'state-forms',
   serviceDelivery: 'state-service-delivery',
   stateSubmissions: 'state-submissions',
@@ -100,34 +96,6 @@ export const useLGAs = () => {
     queryKey: [STATE_QUERY_KEYS.lgas],
     queryFn: getLGAs,
     staleTime: 300000, // 5 minutes
-  });
-};
-
-export const useInvestigations = (params = {}) => {
-  return useQuery({
-    queryKey: [STATE_QUERY_KEYS.investigations, params],
-    queryFn: () => getInvestigations(params),
-    staleTime: 30000,
-  });
-};
-
-export const useCreateInvestigation = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: createInvestigation,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [STATE_QUERY_KEYS.investigations] });
-    },
-  });
-};
-
-export const useUpdateInvestigation = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ investigationId, data }) => updateInvestigation(investigationId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [STATE_QUERY_KEYS.investigations] });
-    },
   });
 };
 
@@ -251,8 +219,8 @@ export const useAssignUser = () => {
 export const useReviewReport = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ reportId, action, notes }) =>
-      apiClient.patch(`/reports/${reportId}/review`, { action, notes }),
+    mutationFn: ({ reportId, action, notes, decline_reason }) =>
+      apiClient.patch(`/reports/${reportId}/review`, { action, notes, decline_reason }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [STATE_QUERY_KEYS.stateSubmissions] });
       queryClient.invalidateQueries({ queryKey: [STATE_QUERY_KEYS.overview] });

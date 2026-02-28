@@ -20,9 +20,6 @@ import MyReportsPage from './pages/MyReportsPage';
 import SubmitReportPage from './pages/SubmitReportPage';
 import LGAWardsPage from './pages/LGAWardsPage';
 import LGAReportsPage from './pages/LGAReportsPage';
-import StateAnalyticsPage from './pages/StateAnalyticsPage';
-import StateLGAsPage from './pages/StateLGAsPage';
-import StateInvestigationsPage from './pages/StateInvestigationsPage';
 import StateFormsPage from './pages/StateFormsPage';
 import StateSubmissionsPage from './pages/StateSubmissionsPage';
 import StateUsersPage from './pages/StateUsersPage';
@@ -238,34 +235,10 @@ const AppRoutes = () => {
         }
       />
       <Route
-        path="/state/analytics"
-        element={
-          <ProtectedRoute allowedRoles={[USER_ROLES.STATE_OFFICIAL]}>
-            <StateAnalyticsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
         path="/state/submissions"
         element={
           <ProtectedRoute allowedRoles={[USER_ROLES.STATE_OFFICIAL]}>
             <StateSubmissionsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/state/lgas"
-        element={
-          <ProtectedRoute allowedRoles={[USER_ROLES.STATE_OFFICIAL]}>
-            <StateLGAsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/state/investigations"
-        element={
-          <ProtectedRoute allowedRoles={[USER_ROLES.STATE_OFFICIAL]}>
-            <StateInvestigationsPage />
           </ProtectedRoute>
         }
       />

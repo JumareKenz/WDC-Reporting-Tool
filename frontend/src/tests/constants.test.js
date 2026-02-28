@@ -7,10 +7,6 @@ import {
   ROLE_LABELS,
   REPORT_STATUS,
   STATUS_LABELS,
-  INVESTIGATION_STATUS,
-  INVESTIGATION_LABELS,
-  INVESTIGATION_PRIORITY,
-  PRIORITY_LABELS,
   API_ENDPOINTS,
   STORAGE_KEYS,
   PAGINATION,
@@ -54,36 +50,7 @@ describe('REPORT_STATUS and STATUS_LABELS', () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Investigation status / priority completeness
-// ---------------------------------------------------------------------------
-describe('INVESTIGATION_STATUS and INVESTIGATION_LABELS', () => {
-  it('every status has a label', () => {
-    for (const status of Object.values(INVESTIGATION_STATUS)) {
-      expect(INVESTIGATION_LABELS[status]).toBeDefined();
-    }
-  });
-
-  it('contains OPEN, IN_PROGRESS, CLOSED', () => {
-    expect(Object.values(INVESTIGATION_STATUS)).toEqual(
-      expect.arrayContaining(['OPEN', 'IN_PROGRESS', 'CLOSED'])
-    );
-  });
-});
-
-describe('INVESTIGATION_PRIORITY and PRIORITY_LABELS', () => {
-  it('every priority has a label', () => {
-    for (const priority of Object.values(INVESTIGATION_PRIORITY)) {
-      expect(PRIORITY_LABELS[priority]).toBeDefined();
-    }
-  });
-
-  it('contains LOW, MEDIUM, HIGH, URGENT', () => {
-    expect(Object.values(INVESTIGATION_PRIORITY)).toEqual(
-      expect.arrayContaining(['LOW', 'MEDIUM', 'HIGH', 'URGENT'])
-    );
-  });
-});
+// Investigation constants removed - feature deprecated
 
 // ---------------------------------------------------------------------------
 // API_ENDPOINTS shape
@@ -94,7 +61,7 @@ describe('API_ENDPOINTS', () => {
       'NOTIFICATIONS', 'FEEDBACK', 'STATE_SUBMISSIONS',
       'ANALYTICS_OVERVIEW', 'ANALYTICS_LGA_COMPARISON',
       'ANALYTICS_TRENDS', 'ANALYTICS_AI_REPORT',
-      'INVESTIGATIONS', 'FORMS', 'FORMS_ACTIVE', 'HEALTH'];
+      'FORMS', 'FORMS_ACTIVE', 'HEALTH'];
 
     for (const key of staticKeys) {
       expect(typeof API_ENDPOINTS[key]).toBe('string');
@@ -104,7 +71,7 @@ describe('API_ENDPOINTS', () => {
 
   it('parameterized endpoints are functions that return strings', () => {
     const funcKeys = ['REPORT_BY_ID', 'REVIEW_REPORT', 'LGA_WARDS', 'LGA_REPORTS',
-      'LGA_BY_ID', 'NOTIFICATION_READ', 'INVESTIGATION_BY_ID', 'FORM_BY_ID'];
+      'LGA_BY_ID', 'NOTIFICATION_READ', 'FORM_BY_ID'];
 
     for (const key of funcKeys) {
       expect(typeof API_ENDPOINTS[key]).toBe('function');

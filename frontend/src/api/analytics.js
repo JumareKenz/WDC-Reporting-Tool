@@ -62,31 +62,6 @@ export const getLGAs = async () => {
 };
 
 /**
- * Get investigations
- */
-export const getInvestigations = async (params = {}) => {
-  const queryString = buildQueryString(params);
-  const response = await apiClient.get(`${API_ENDPOINTS.INVESTIGATIONS}${queryString}`);
-  return response;
-};
-
-/**
- * Create investigation
- */
-export const createInvestigation = async (data) => {
-  const response = await apiClient.post(API_ENDPOINTS.INVESTIGATIONS, data);
-  return response;
-};
-
-/**
- * Update investigation
- */
-export const updateInvestigation = async (investigationId, data) => {
-  const response = await apiClient.patch(API_ENDPOINTS.INVESTIGATION_BY_ID(investigationId), data);
-  return response;
-};
-
-/**
  * Get all submissions across all wards grouped by LGA
  */
 export const getStateSubmissions = async (params = {}) => {

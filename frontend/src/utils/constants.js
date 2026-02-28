@@ -36,50 +36,6 @@ export const STATUS_COLORS = {
   [REPORT_STATUS.DECLINED]: 'error',
 };
 
-// Investigation Statuses
-export const INVESTIGATION_STATUS = {
-  OPEN: 'OPEN',
-  IN_PROGRESS: 'IN_PROGRESS',
-  CLOSED: 'CLOSED',
-};
-
-export const INVESTIGATION_LABELS = {
-  [INVESTIGATION_STATUS.OPEN]: 'Open',
-  [INVESTIGATION_STATUS.IN_PROGRESS]: 'In Progress',
-  [INVESTIGATION_STATUS.CLOSED]: 'Closed',
-};
-
-// Investigation Priorities
-export const INVESTIGATION_PRIORITY = {
-  LOW: 'LOW',
-  MEDIUM: 'MEDIUM',
-  HIGH: 'HIGH',
-  URGENT: 'URGENT',
-};
-
-export const PRIORITY_LABELS = {
-  [INVESTIGATION_PRIORITY.LOW]: 'Low',
-  [INVESTIGATION_PRIORITY.MEDIUM]: 'Medium',
-  [INVESTIGATION_PRIORITY.HIGH]: 'High',
-  [INVESTIGATION_PRIORITY.URGENT]: 'Urgent',
-};
-
-export const PRIORITY_COLORS = {
-  [INVESTIGATION_PRIORITY.LOW]: 'neutral',
-  [INVESTIGATION_PRIORITY.MEDIUM]: 'info',
-  [INVESTIGATION_PRIORITY.HIGH]: 'warning',
-  [INVESTIGATION_PRIORITY.URGENT]: 'error',
-};
-
-// Investigation Types
-export const INVESTIGATION_TYPES = {
-  PERFORMANCE: 'PERFORMANCE',
-  FINANCIAL: 'FINANCIAL',
-  COMPLAINT: 'COMPLAINT',
-  AUDIT: 'AUDIT',
-  OTHER: 'OTHER',
-};
-
 // Notification Types
 export const NOTIFICATION_TYPES = {
   REPORT_MISSING: 'REPORT_MISSING',
@@ -138,10 +94,6 @@ export const API_ENDPOINTS = {
   ANALYTICS_AI_REPORT: '/analytics/ai-report',
   ANALYTICS_SERVICE_DELIVERY: '/analytics/service-delivery',
   ANALYTICS_MONTHLY_REPORT: '/analytics/monthly-report',
-
-  // Investigations
-  INVESTIGATIONS: '/investigations',
-  INVESTIGATION_BY_ID: (id) => `/investigations/${id}`,
 
   // Forms
   FORMS: '/forms',

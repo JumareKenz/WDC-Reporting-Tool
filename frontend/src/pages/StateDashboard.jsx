@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react';
+import { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   BarChart,
@@ -13,7 +14,6 @@ import {
   PieChart,
   Pie,
   Cell,
-  Legend,
   AreaChart,
   Area,
 } from 'recharts';
@@ -27,28 +27,25 @@ import {
   CheckCircle,
   Users,
   Download,
-  Copy,
   Sparkles,
   Search,
-  Filter,
   ChevronDown,
   ChevronUp,
   RefreshCw,
-  PlusCircle,
   Eye,
-  Clock,
   Activity,
   Building,
   Globe,
   Calendar,
-  Clipboard,
-  X,
   FormInput,
   Shield,
   Heart,
   Truck,
   Hammer,
   Stethoscope,
+  Award,
+  Target,
+  Info,
 } from 'lucide-react';
 import Card, { IconCard, EmptyCard } from '../components/common/Card';
 import Button from '../components/common/Button';
@@ -60,66 +57,119 @@ import {
   useOverview,
   useLGAComparison,
   useTrends,
-  useGenerateAIReport,
   useServiceDelivery,
   useGenerateMonthlyReport,
-  useInvestigations,
-  useCreateInvestigation,
-  useUpdateInvestigation,
 } from '../hooks/useStateData';
 import {
   formatDate,
   formatNumber,
-  formatPercentage,
   formatMonth,
   getCurrentMonth,
   getSubmissionRateColor,
-  getPriorityColor,
 } from '../utils/formatters';
-import {
-  INVESTIGATION_STATUS,
-  INVESTIGATION_LABELS,
-  INVESTIGATION_PRIORITY,
-  PRIORITY_LABELS,
-} from '../utils/constants';
 import MonthlyReportModal from '../components/state/MonthlyReportModal';
 import apiClient from '../api/client';
 
 const COLORS = ['#16a34a', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
-// No demo data - use only live data from API
+// Animation variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
+      delayChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: 'spring',
+      stiffness: 100,
+      damping: 15,
+    },
+  },
+};
+
+const expandVariants = {
+  hidden: { opacity: 0, height: 0 },
+  visible: {
+    opacity: 1,
+    height: 'auto',
+    transition: {
+      type: 'spring',
+      stiffness: 200,
+      damping: 20,
+    },
+  },
+  exit: {
+    opacity: 0,
+    height: 0,
+    transition: {
+      duration: 0.2,
+    },
+  },
+};
+
+// Custom tooltip component for UI elements
+const InfoTooltip = ({ children, text }) => {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative inline-flex items-center">
+      <div
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+        className="cursor-help"
+      >
+        {children}
+      </div>
+      <AnimatePresence>
+        {show && (
+          <motion.div
+            initial={{ opacity: 0, y: 5, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 5, scale: 0.95 }}
+            transition={{ duration: 0.15 }}
+            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-neutral-800 text-white text-xs rounded-lg whitespace-nowrap z-50 pointer-events-none"
+          >
+            {text}
+            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-neutral-800" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
 
 const StateDashboard = () => {
   const navigate = useNavigate();
   const currentMonth = getCurrentMonth();
-  const reportRef = useRef(null);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('submission_rate');
   const [sortOrder, setSortOrder] = useState('desc');
-  const [showAIReport, setShowAIReport] = useState(false);
-  const [aiReportContent, setAIReportContent] = useState(null);
-  const [showInvestigationModal, setShowInvestigationModal] = useState(false);
-  const [newInvestigation, setNewInvestigation] = useState({
-    title: '',
-    description: '',
-    priority: 'MEDIUM',
-    lga_id: '',
-  });
   const [alertMessage, setAlertMessage] = useState(null);
   const [expandedLGA, setExpandedLGA] = useState(null);
   const [selectedReport, setSelectedReport] = useState(null);
-  const [copiedReport, setCopiedReport] = useState(false);
   const [updatingExecutive, setUpdatingExecutive] = useState(false);
   const [updatingLGAsWards, setUpdatingLGAsWards] = useState(false);
   const [showMonthlyReport, setShowMonthlyReport] = useState(false);
   const [monthlyReportData, setMonthlyReportData] = useState(null);
 
+  // Chart type & timeframe for trends
+  const [chartType, setChartType] = useState('area'); // 'area' | 'line' | 'bar'
+  const [trendMonths, setTrendMonths] = useState(6); // 3 | 6 | 12
+
   // Data fetching
   const { data: overviewData, isLoading: loadingOverview, refetch: refetchOverview, dataUpdatedAt: overviewUpdatedAt, isRefetching: isRefetchingOverview } = useOverview({ month: currentMonth });
   const { data: comparisonData, isLoading: loadingComparison, refetch: refetchComparison, isRefetching: isRefetchingComparison } = useLGAComparison({ month: currentMonth });
-  const { data: trendsData, isLoading: loadingTrends, refetch: refetchTrends } = useTrends({ months: 6 });
-  const { data: investigationsData, isLoading: loadingInvestigations } = useInvestigations({ limit: 20 });
+  const { data: trendsData, isLoading: loadingTrends, refetch: refetchTrends } = useTrends({ months: trendMonths });
   const { data: serviceDeliveryData, isLoading: loadingServiceDelivery } = useServiceDelivery({ month: currentMonth });
 
   // Combine refetching state for DataFreshness
@@ -131,35 +181,31 @@ const StateDashboard = () => {
   };
 
   // Mutations
-  const generateAIMutation = useGenerateAIReport();
   const generateMonthlyMutation = useGenerateMonthlyReport();
-  const createInvestigationMutation = useCreateInvestigation();
-  const updateInvestigationMutation = useUpdateInvestigation();
 
-  // Extract data - NO FALLBACKS, only real data
+  // Extract data
   const overview = overviewData?.data || overviewData || {};
   const lgaComparison = comparisonData?.data?.lgas || comparisonData?.lgas || [];
   const trends = trendsData?.data?.trends || trendsData?.trends || [];
-  const investigations = investigationsData?.data?.investigations || investigationsData?.investigations || [];
   const serviceDelivery = serviceDeliveryData?.data || {};
 
-  // Calculate overview stats - from real data only
+  // Calculate overview stats
   const totalLGAs = overview.total_lgas || lgaComparison.length;
   const totalWards = overview.total_wards || lgaComparison.reduce((sum, lga) => sum + (lga.total_wards || 0), 0);
-  const totalSubmitted = overview.total_submitted || lgaComparison.reduce((sum, lga) => sum + (lga.submitted_count || 0), 0);
+  const totalSubmitted = (overview.total_submitted > 0) ? overview.total_submitted : lgaComparison.reduce((sum, lga) => sum + (lga.submitted_count || 0), 0);
   const totalMissing = overview.total_missing || (totalWards - totalSubmitted);
   const totalReviewed = overview.total_reviewed || lgaComparison.reduce((sum, lga) => sum + (lga.reviewed_count || 0), 0);
   const totalFlagged = overview.total_flagged || 0;
   const submissionRate = totalWards > 0 ? Math.round((totalSubmitted / totalWards) * 100) : 0;
 
   // Sort and filter LGAs
-  const sortedLGAs = [...lgaComparison]
+  const sortedLGAs = useMemo(() => [...lgaComparison]
     .filter(lga => lga.name?.toLowerCase().includes(searchTerm.toLowerCase()))
     .sort((a, b) => {
       const aVal = a[sortBy] || 0;
       const bVal = b[sortBy] || 0;
       return sortOrder === 'desc' ? bVal - aVal : aVal - bVal;
-    });
+    }), [lgaComparison, searchTerm, sortBy, sortOrder]);
 
   // Chart data
   const submissionChartData = sortedLGAs.slice(0, 10).map(lga => ({
@@ -177,36 +223,30 @@ const StateDashboard = () => {
   ].filter(item => item.value > 0);
 
   // Performance categories
-  const performanceCategories = {
+  const performanceCategories = useMemo(() => ({
     excellent: lgaComparison.filter(l => l.submission_rate >= 90).length,
     good: lgaComparison.filter(l => l.submission_rate >= 70 && l.submission_rate < 90).length,
     needsAttention: lgaComparison.filter(l => l.submission_rate >= 50 && l.submission_rate < 70).length,
     critical: lgaComparison.filter(l => l.submission_rate < 50).length,
-  };
+  }), [lgaComparison]);
 
-  const handleGenerateAIReport = async () => {
-    try {
-      const result = await generateAIMutation.mutateAsync({ month: currentMonth });
-      setAIReportContent(result?.data || {
-        summary: `State-wide submission rate for ${formatMonth(currentMonth)} stands at ${submissionRate}%. ${performanceCategories.excellent} LGAs achieved excellent performance (≥90%), while ${performanceCategories.critical} LGAs require immediate attention (<50%).`,
-        insights: [
-          `Overall submission rate improved by 3% compared to last month`,
-          `Top performing LGAs: Jaba (100%), Kaduna North (100%), Zaria (92%)`,
-          `LGAs requiring attention: Sanga (70%), Kauru (70%), Lere (73%)`,
-          `Total of ${totalReviewed} reports reviewed, ${totalFlagged} flagged for quality issues`,
-        ],
-        recommendations: [
-          'Deploy additional support to low-performing LGAs',
-          'Recognize top-performing wards with certificates of excellence',
-          'Schedule capacity building workshops for flagged report areas',
-          'Consider introducing mobile reporting to improve accessibility',
-        ],
-      });
-      setShowAIReport(true);
-    } catch (error) {
-      setAlertMessage({ type: 'error', text: error.message || 'Failed to generate AI report' });
-    }
-  };
+  // Analytics: Top 5 / Bottom 5 performers
+  const top5 = useMemo(() => [...lgaComparison].sort((a, b) => (b.submission_rate || 0) - (a.submission_rate || 0)).slice(0, 5), [lgaComparison]);
+  const bottom5 = useMemo(() => [...lgaComparison].sort((a, b) => (a.submission_rate || 0) - (b.submission_rate || 0)).slice(0, 5), [lgaComparison]);
+
+  // Analytics summary
+  const avgRate = useMemo(() => {
+    if (lgaComparison.length === 0) return 0;
+    return Math.round(lgaComparison.reduce((sum, l) => sum + (l.submission_rate || 0), 0) / lgaComparison.length);
+  }, [lgaComparison]);
+
+  // Performance distribution for donut
+  const performanceDistribution = useMemo(() => [
+    { name: 'Excellent (≥90%)', value: performanceCategories.excellent, color: '#16a34a' },
+    { name: 'Good (70-89%)', value: performanceCategories.good, color: '#3b82f6' },
+    { name: 'Needs Attention (50-69%)', value: performanceCategories.needsAttention, color: '#f59e0b' },
+    { name: 'Critical (<50%)', value: performanceCategories.critical, color: '#ef4444' },
+  ].filter(item => item.value > 0), [performanceCategories]);
 
   const handleGenerateMonthlyReport = async () => {
     try {
@@ -216,51 +256,6 @@ const StateDashboard = () => {
     } catch (error) {
       setAlertMessage({ type: 'error', text: error.message || 'Failed to generate monthly report' });
     }
-  };
-
-  const handleCopyReport = () => {
-    if (!aiReportContent) return;
-    const text = `
-KADUNA STATE WDC MONTHLY REPORT - ${formatMonth(currentMonth)}
-${'='.repeat(50)}
-
-EXECUTIVE SUMMARY
-${'-'.repeat(30)}
-${aiReportContent.summary || 'No summary available'}
-
-KEY METRICS
-${'-'.repeat(30)}
-• Total LGAs: ${totalLGAs}
-• Total Wards: ${totalWards}
-• Reports Submitted: ${totalSubmitted} (${submissionRate}%)
-• Reports Reviewed: ${totalReviewed}
-• Reports Flagged: ${totalFlagged}
-• Missing Reports: ${totalMissing}
-
-KEY INSIGHTS
-${'-'.repeat(30)}
-${(aiReportContent.insights || []).map((i, idx) => `${idx + 1}. ${i}`).join('\n')}
-
-RECOMMENDATIONS
-${'-'.repeat(30)}
-${(aiReportContent.recommendations || []).map((r, idx) => `${idx + 1}. ${r}`).join('\n')}
-
-LGA PERFORMANCE SUMMARY
-${'-'.repeat(30)}
-• Excellent (≥90%): ${performanceCategories.excellent} LGAs
-• Good (70-89%): ${performanceCategories.good} LGAs
-• Needs Attention (50-69%): ${performanceCategories.needsAttention} LGAs
-• Critical (<50%): ${performanceCategories.critical} LGAs
-
-${'='.repeat(50)}
-Generated on: ${formatDate(new Date(), true)}
-Kaduna State WDC Digital Reporting System
-    `.trim();
-
-    navigator.clipboard.writeText(text);
-    setCopiedReport(true);
-    setTimeout(() => setCopiedReport(false), 2000);
-    setAlertMessage({ type: 'success', text: 'Report copied to clipboard!' });
   };
 
   const handleExportCSV = () => {
@@ -275,7 +270,6 @@ Kaduna State WDC Digital Reporting System
       lga.submission_rate,
     ]);
 
-    // Add summary row
     rows.push([]);
     rows.push(['TOTAL', totalWards, totalSubmitted, totalMissing, totalReviewed, totalFlagged, submissionRate]);
 
@@ -288,31 +282,6 @@ Kaduna State WDC Digital Reporting System
     a.click();
     URL.revokeObjectURL(url);
     setAlertMessage({ type: 'success', text: 'CSV exported successfully!' });
-  };
-
-  const handleCreateInvestigation = async () => {
-    if (!newInvestigation.title) return;
-
-    try {
-      await createInvestigationMutation.mutateAsync(newInvestigation);
-      setAlertMessage({ type: 'success', text: 'Investigation created successfully!' });
-      setShowInvestigationModal(false);
-      setNewInvestigation({ title: '', description: '', priority: 'MEDIUM', lga_id: '' });
-    } catch (error) {
-      setAlertMessage({ type: 'error', text: error.message || 'Failed to create investigation' });
-    }
-  };
-
-  const handleUpdateInvestigationStatus = async (investigationId, status) => {
-    try {
-      await updateInvestigationMutation.mutateAsync({
-        investigationId,
-        data: { status },
-      });
-      setAlertMessage({ type: 'success', text: 'Investigation updated!' });
-    } catch (error) {
-      setAlertMessage({ type: 'error', text: error.message || 'Failed to update investigation' });
-    }
   };
 
   const handleUpdateStateExecutiveName = async () => {
@@ -349,7 +318,6 @@ Kaduna State WDC Digital Reporting System
         type: 'success',
         text: `Database updated successfully! ${response.lgas.total} LGAs and ${response.wards.total} wards updated.`,
       });
-      // Refresh the page to show updated data
       setTimeout(() => {
         refetchOverview();
       }, 1000);
@@ -370,6 +338,54 @@ Kaduna State WDC Digital Reporting System
       setSortBy(field);
       setSortOrder('desc');
     }
+  };
+
+  // Render trend chart based on selected chart type
+  const renderTrendChart = () => {
+    const commonProps = {
+      data: trends,
+    };
+
+    if (chartType === 'bar') {
+      return (
+        <BarChart {...commonProps}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+          <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+          <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} tickFormatter={(v) => `${v}%`} />
+          <Tooltip formatter={(value) => [`${value}%`, 'Submission Rate']} />
+          <Bar dataKey="submission_rate" fill="#16a34a" radius={[4, 4, 0, 0]} name="Submission Rate" />
+        </BarChart>
+      );
+    }
+
+    if (chartType === 'line') {
+      return (
+        <LineChart {...commonProps}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+          <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+          <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} tickFormatter={(v) => `${v}%`} />
+          <Tooltip formatter={(value) => [`${value}%`, 'Submission Rate']} />
+          <Line type="monotone" dataKey="submission_rate" stroke="#16a34a" strokeWidth={3} dot={{ fill: '#16a34a', r: 4 }} />
+        </LineChart>
+      );
+    }
+
+    // Default: area
+    return (
+      <AreaChart {...commonProps}>
+        <defs>
+          <linearGradient id="colorRate" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#16a34a" stopOpacity={0.3} />
+            <stop offset="95%" stopColor="#16a34a" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+        <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+        <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} tickFormatter={(v) => `${v}%`} />
+        <Tooltip formatter={(value) => [`${value}%`, 'Submission Rate']} />
+        <Area type="monotone" dataKey="submission_rate" stroke="#16a34a" strokeWidth={3} fill="url(#colorRate)" />
+      </AreaChart>
+    );
   };
 
   if (loadingOverview && loadingComparison) {
@@ -397,7 +413,7 @@ Kaduna State WDC Digital Reporting System
                   </h1>
                   <div className="flex items-center gap-3 mt-1">
                     <p className="text-sm text-neutral-600">
-                      Kaduna State Overview • {formatMonth(currentMonth)}
+                      Kaduna State Overview &bull; {formatMonth(currentMonth)}
                     </p>
                     <DataFreshness
                       dataUpdatedAt={overviewUpdatedAt}
@@ -409,55 +425,65 @@ Kaduna State WDC Digital Reporting System
               </div>
             </div>
             <div className="flex flex-wrap gap-3">
-              <Button
-                variant="outline"
-                icon={RefreshCw}
-                onClick={handleRefreshAll}
-              >
-                Refresh
-              </Button>
-              <Button
-                variant="outline"
-                icon={Download}
-                onClick={handleExportCSV}
-              >
-                Export CSV
-              </Button>
-              <Button
-                variant="outline"
-                icon={FileText}
-                onClick={handleGenerateMonthlyReport}
-                loading={generateMonthlyMutation.isPending}
-              >
-                Monthly Report
-              </Button>
-              <Button
-                icon={Sparkles}
-                onClick={handleGenerateAIReport}
-                loading={generateAIMutation.isPending}
-                className="shadow-md bg-gradient-to-r from-primary-600 to-primary-700"
-              >
-                Generate AI Report
-              </Button>
+              <InfoTooltip text="Refresh all dashboard data">
+                <Button
+                  variant="outline"
+                  icon={RefreshCw}
+                  onClick={handleRefreshAll}
+                >
+                  Refresh
+                </Button>
+              </InfoTooltip>
+              <InfoTooltip text="Download LGA performance data as CSV">
+                <Button
+                  variant="outline"
+                  icon={Download}
+                  onClick={handleExportCSV}
+                >
+                  Export CSV
+                </Button>
+              </InfoTooltip>
+              <InfoTooltip text="Generate comprehensive AI analysis report">
+                <Button
+                  icon={Sparkles}
+                  onClick={handleGenerateMonthlyReport}
+                  loading={generateMonthlyMutation.isPending}
+                  className="shadow-md bg-gradient-to-r from-primary-600 to-primary-700"
+                >
+                  Generate AI Monthly Report
+                </Button>
+              </InfoTooltip>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <motion.div
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
         {/* Alert */}
-        {alertMessage && (
-          <div className="mb-6">
-            <Alert
-              type={alertMessage.type}
-              message={alertMessage.text}
-              onClose={() => setAlertMessage(null)}
-            />
-          </div>
-        )}
+        <AnimatePresence>
+          {alertMessage && (
+            <motion.div
+              className="mb-6"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+            >
+              <Alert
+                type={alertMessage.type}
+                message={alertMessage.text}
+                onClose={() => setAlertMessage(null)}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        {/* Overview Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+        {/* ROW 1: Overview Stats */}
+        <motion.div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8" variants={itemVariants}>
           <IconCard
             icon={Building}
             iconColor="primary"
@@ -472,21 +498,26 @@ Kaduna State WDC Digital Reporting System
             value={formatNumber(totalWards)}
             className="transform hover:scale-105 transition-transform"
           />
-          <IconCard
-            icon={CheckCircle}
-            iconColor="success"
-            title="Submitted"
-            value={formatNumber(totalSubmitted)}
-            subtitle={`${submissionRate}% rate`}
-            trend={
-              submissionRate >= 80 ? (
-                <span className="text-green-600 flex items-center gap-1">
-                  <TrendingUp className="w-3 h-3" />
-                </span>
-              ) : null
-            }
-            className="transform hover:scale-105 transition-transform"
-          />
+          <div
+            className="cursor-pointer"
+            onClick={() => navigate('/state/submissions')}
+          >
+            <IconCard
+              icon={CheckCircle}
+              iconColor="success"
+              title="Submitted"
+              value={formatNumber(totalSubmitted)}
+              subtitle={`${submissionRate}% rate`}
+              trend={
+                submissionRate >= 80 ? (
+                  <span className="text-green-600 flex items-center gap-1">
+                    <TrendingUp className="w-3 h-3" />
+                  </span>
+                ) : null
+              }
+              className="transform hover:scale-105 transition-transform ring-2 ring-transparent hover:ring-primary-300"
+            />
+          </div>
           <IconCard
             icon={AlertTriangle}
             iconColor="warning"
@@ -508,9 +539,49 @@ Kaduna State WDC Digital Reporting System
             value={formatNumber(totalFlagged)}
             className="transform hover:scale-105 transition-transform"
           />
+        </motion.div>
+
+        {/* ROW 2: Analytics Metric Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="p-4 bg-white rounded-xl border border-neutral-200 shadow-sm">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm font-medium text-neutral-600">Current Rate</span>
+              {submissionRate >= avgRate ? (
+                <TrendingUp className="w-4 h-4 text-green-500" />
+              ) : (
+                <TrendingDown className="w-4 h-4 text-red-500" />
+              )}
+            </div>
+            <p className="text-3xl font-bold text-neutral-900">{submissionRate}%</p>
+            <p className="text-xs text-neutral-500 mt-1">This month&apos;s submission rate</p>
+          </div>
+          <div className="p-4 bg-white rounded-xl border border-neutral-200 shadow-sm">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm font-medium text-neutral-600">Average Rate</span>
+              <Target className="w-4 h-4 text-blue-500" />
+            </div>
+            <p className="text-3xl font-bold text-neutral-900">{avgRate}%</p>
+            <p className="text-xs text-neutral-500 mt-1">Across all {totalLGAs} LGAs</p>
+          </div>
+          <div className="p-4 bg-white rounded-xl border border-neutral-200 shadow-sm">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm font-medium text-neutral-600">Top Performers</span>
+              <Award className="w-4 h-4 text-green-500" />
+            </div>
+            <p className="text-3xl font-bold text-green-600">{performanceCategories.excellent + performanceCategories.good}</p>
+            <p className="text-xs text-neutral-500 mt-1">LGAs at ≥70% rate</p>
+          </div>
+          <div className="p-4 bg-white rounded-xl border border-neutral-200 shadow-sm">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm font-medium text-neutral-600">Needs Attention</span>
+              <AlertTriangle className="w-4 h-4 text-red-500" />
+            </div>
+            <p className="text-3xl font-bold text-red-600">{performanceCategories.needsAttention + performanceCategories.critical}</p>
+            <p className="text-xs text-neutral-500 mt-1">LGAs below 70% rate</p>
+          </div>
         </div>
 
-        {/* Performance Categories */}
+        {/* ROW 3: Performance Category Banners */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200">
             <div className="flex items-center justify-between">
@@ -518,7 +589,7 @@ Kaduna State WDC Digital Reporting System
               <span className="text-2xl font-bold text-green-600">{performanceCategories.excellent}</span>
             </div>
             <div className="mt-2 h-1 bg-green-200 rounded-full">
-              <div className="h-1 bg-green-500 rounded-full" style={{ width: `${(performanceCategories.excellent / totalLGAs) * 100}%` }} />
+              <div className="h-1 bg-green-500 rounded-full" style={{ width: `${totalLGAs > 0 ? (performanceCategories.excellent / totalLGAs) * 100 : 0}%` }} />
             </div>
           </div>
           <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200">
@@ -527,7 +598,7 @@ Kaduna State WDC Digital Reporting System
               <span className="text-2xl font-bold text-blue-600">{performanceCategories.good}</span>
             </div>
             <div className="mt-2 h-1 bg-blue-200 rounded-full">
-              <div className="h-1 bg-blue-500 rounded-full" style={{ width: `${(performanceCategories.good / totalLGAs) * 100}%` }} />
+              <div className="h-1 bg-blue-500 rounded-full" style={{ width: `${totalLGAs > 0 ? (performanceCategories.good / totalLGAs) * 100 : 0}%` }} />
             </div>
           </div>
           <div className="p-4 bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl border border-yellow-200">
@@ -536,7 +607,7 @@ Kaduna State WDC Digital Reporting System
               <span className="text-2xl font-bold text-yellow-600">{performanceCategories.needsAttention}</span>
             </div>
             <div className="mt-2 h-1 bg-yellow-200 rounded-full">
-              <div className="h-1 bg-yellow-500 rounded-full" style={{ width: `${(performanceCategories.needsAttention / totalLGAs) * 100}%` }} />
+              <div className="h-1 bg-yellow-500 rounded-full" style={{ width: `${totalLGAs > 0 ? (performanceCategories.needsAttention / totalLGAs) * 100 : 0}%` }} />
             </div>
           </div>
           <div className="p-4 bg-gradient-to-br from-red-50 to-red-100 rounded-xl border border-red-200">
@@ -545,14 +616,14 @@ Kaduna State WDC Digital Reporting System
               <span className="text-2xl font-bold text-red-600">{performanceCategories.critical}</span>
             </div>
             <div className="mt-2 h-1 bg-red-200 rounded-full">
-              <div className="h-1 bg-red-500 rounded-full" style={{ width: `${(performanceCategories.critical / totalLGAs) * 100}%` }} />
+              <div className="h-1 bg-red-500 rounded-full" style={{ width: `${totalLGAs > 0 ? (performanceCategories.critical / totalLGAs) * 100 : 0}%` }} />
             </div>
           </div>
         </div>
 
-        {/* Service Delivery Cards (Section 3) */}
+        {/* ROW 4: Service Delivery Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          {/* Health Services (3A) */}
+          {/* Health Services */}
           <div className="p-5 bg-white rounded-xl border border-neutral-200 shadow-sm">
             <div className="flex items-center gap-2 mb-4">
               <div className="p-2 bg-blue-100 rounded-lg">
@@ -581,7 +652,7 @@ Kaduna State WDC Digital Reporting System
             )}
           </div>
 
-          {/* Facility Support (3B) */}
+          {/* Facility Support */}
           <div className="p-5 bg-white rounded-xl border border-neutral-200 shadow-sm">
             <div className="flex items-center gap-2 mb-4">
               <div className="p-2 bg-green-100 rounded-lg">
@@ -618,7 +689,7 @@ Kaduna State WDC Digital Reporting System
             )}
           </div>
 
-          {/* Transportation (3C) */}
+          {/* Transportation */}
           <div className="p-5 bg-white rounded-xl border border-neutral-200 shadow-sm">
             <div className="flex items-center gap-2 mb-4">
               <div className="p-2 bg-purple-100 rounded-lg">
@@ -655,7 +726,7 @@ Kaduna State WDC Digital Reporting System
             )}
           </div>
 
-          {/* Maternal & Perinatal Deaths (3D) */}
+          {/* Maternal & Perinatal Deaths */}
           <div className="p-5 bg-white rounded-xl border border-red-200 shadow-sm bg-gradient-to-br from-white to-red-50">
             <div className="flex items-center gap-2 mb-4">
               <div className="p-2 bg-red-100 rounded-lg">
@@ -685,32 +756,50 @@ Kaduna State WDC Digital Reporting System
           </div>
         </div>
 
-        {/* Charts Row */}
+        {/* ROW 5: Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          {/* Submission Trends */}
-          <Card title="Submission Trends" subtitle="Last 6 months" className="lg:col-span-2">
+          {/* Submission Trends with switchable chart type and timeframe */}
+          <Card
+            title="Submission Trends"
+            subtitle={`Last ${trendMonths} months`}
+            className="lg:col-span-2"
+            action={
+              <div className="flex items-center gap-2">
+                <select
+                  value={trendMonths}
+                  onChange={(e) => setTrendMonths(Number(e.target.value))}
+                  className="px-2 py-1 text-xs border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+                >
+                  <option value={3}>3 months</option>
+                  <option value={6}>6 months</option>
+                  <option value={12}>12 months</option>
+                </select>
+                <div className="flex bg-neutral-100 rounded-lg p-0.5">
+                  {[
+                    { key: 'area', label: 'Area' },
+                    { key: 'line', label: 'Line' },
+                    { key: 'bar', label: 'Bar' },
+                  ].map(({ key, label }) => (
+                    <button
+                      key={key}
+                      onClick={() => setChartType(key)}
+                      className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                        chartType === key
+                          ? 'bg-white text-primary-700 shadow-sm font-medium'
+                          : 'text-neutral-500 hover:text-neutral-700'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            }
+          >
             {trends.length > 0 ? (
               <div className="h-72">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={trends}>
-                    <defs>
-                      <linearGradient id="colorRate" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#16a34a" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#16a34a" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
-                    <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                    <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} tickFormatter={(v) => `${v}%`} />
-                    <Tooltip formatter={(value) => [`${value}%`, 'Submission Rate']} />
-                    <Area
-                      type="monotone"
-                      dataKey="submission_rate"
-                      stroke="#16a34a"
-                      strokeWidth={3}
-                      fill="url(#colorRate)"
-                    />
-                  </AreaChart>
+                  {renderTrendChart()}
                 </ResponsiveContainer>
               </div>
             ) : (
@@ -755,9 +844,9 @@ Kaduna State WDC Digital Reporting System
           </Card>
         </div>
 
-        {/* Main Content */}
+        {/* ROW 6: Two-column layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left: LGA Comparison */}
+          {/* Left: LGA Charts & Tables */}
           <div className="lg:col-span-2 space-y-6">
             {/* LGA Performance Chart */}
             <Card title="LGA Performance Comparison" subtitle="Top 10 by submission rate">
@@ -777,6 +866,49 @@ Kaduna State WDC Digital Reporting System
                 <EmptyCard icon={BarChart3} title="No LGA data" />
               )}
             </Card>
+
+            {/* Top 5 / Bottom 5 Performers */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Top 5 */}
+              <div className="p-5 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200">
+                <h3 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4" />
+                  Top 5 Performers
+                </h3>
+                <div className="space-y-2">
+                  {top5.map((lga, idx) => (
+                    <div key={lga.id || idx} className="flex items-center gap-3 p-2 bg-white/70 rounded-lg">
+                      <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+                        idx === 0 ? 'bg-yellow-500' : idx === 1 ? 'bg-neutral-400' : idx === 2 ? 'bg-amber-600' : 'bg-green-500'
+                      }`}>
+                        {idx + 1}
+                      </span>
+                      <span className="flex-1 text-sm font-medium text-neutral-900">{lga.name}</span>
+                      <span className="text-sm font-bold text-green-700">{lga.submission_rate}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bottom 5 */}
+              <div className="p-5 bg-gradient-to-br from-red-50 to-orange-50 rounded-xl border border-red-200">
+                <h3 className="font-semibold text-red-800 mb-3 flex items-center gap-2">
+                  <TrendingDown className="w-4 h-4" />
+                  Bottom 5 Performers
+                </h3>
+                <div className="space-y-2">
+                  {bottom5.map((lga, idx) => (
+                    <div key={lga.id || idx} className="flex items-center gap-3 p-2 bg-white/70 rounded-lg">
+                      <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white bg-red-500">
+                        {lgaComparison.length - idx}
+                      </span>
+                      <span className="flex-1 text-sm font-medium text-neutral-900">{lga.name}</span>
+                      <span className="text-sm font-bold text-red-700">{lga.submission_rate}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
 
             {/* LGA Table */}
             <Card
@@ -829,9 +961,8 @@ Kaduna State WDC Digital Reporting System
                   </thead>
                   <tbody>
                     {sortedLGAs.map((lga) => (
-                      <>
+                      <React.Fragment key={lga.id}>
                         <tr
-                          key={lga.id}
                           className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors cursor-pointer"
                           onClick={() => setExpandedLGA(expandedLGA === lga.id ? null : lga.id)}
                         >
@@ -844,6 +975,11 @@ Kaduna State WDC Digital Reporting System
                                   }`}
                               />
                               <span className="font-medium text-neutral-900">{lga.name}</span>
+                              {expandedLGA === lga.id ? (
+                                <ChevronUp className="w-3 h-3 text-neutral-400" />
+                              ) : (
+                                <ChevronDown className="w-3 h-3 text-neutral-400" />
+                              )}
                             </div>
                           </td>
                           <td className="py-3 px-4 text-center">
@@ -882,41 +1018,51 @@ Kaduna State WDC Digital Reporting System
                             </span>
                           </td>
                         </tr>
-                        {expandedLGA === lga.id && (
-                          <tr className="bg-neutral-50 border-b border-neutral-200">
-                            <td colSpan="6" className="p-4">
-                              {lga.reports && lga.reports.length > 0 ? (
-                                <div className="bg-white rounded border border-neutral-200 p-4">
-                                  <h4 className="font-semibold mb-3 text-sm text-neutral-700 flex justify-between items-center">
-                                    <span>Submissions ({lga.reports.length})</span>
-                                    <span className="text-xs font-normal text-neutral-500">Click to view details</span>
-                                  </h4>
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                    {lga.reports.map(report => (
-                                      <div
-                                        key={report.id}
-                                        className="p-3 border rounded hover:bg-neutral-50 hover:border-primary-300 transition-colors cursor-pointer flex justify-between items-center bg-white"
-                                        onClick={(e) => { e.stopPropagation(); setSelectedReport(report); }}
-                                      >
-                                        <div className="overflow-hidden">
-                                          <p className="font-medium text-sm truncate">{report.ward_name}</p>
-                                          <p className="text-xs text-neutral-500 flex items-center gap-1">
-                                            <Calendar className="w-3 h-3" />
-                                            {formatDate(report.submitted_at)}
-                                          </p>
-                                        </div>
-                                        <Button size="xs" variant="ghost" className="text-primary-600">View</Button>
-                                      </div>
-                                    ))}
+                        <AnimatePresence>
+                          {expandedLGA === lga.id && (
+                            <motion.tr
+                              className="bg-neutral-50 border-b border-neutral-200"
+                              variants={expandVariants}
+                              initial="hidden"
+                              animate="visible"
+                              exit="exit"
+                            >
+                              <td colSpan="6" className="p-4">
+                                {lga.reports && lga.reports.length > 0 ? (
+                                  <div className="bg-white rounded border border-neutral-200 p-4">
+                                    <h4 className="font-semibold mb-3 text-sm text-neutral-700 flex justify-between items-center">
+                                      <span>Submissions ({lga.reports.length})</span>
+                                      <span className="text-xs font-normal text-neutral-500">Click to view details</span>
+                                    </h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                      {lga.reports.map(report => (
+                                        <motion.div
+                                          key={report.id}
+                                          className="p-3 border rounded hover:bg-neutral-50 hover:border-primary-300 transition-colors cursor-pointer flex justify-between items-center bg-white"
+                                          onClick={(e) => { e.stopPropagation(); setSelectedReport(report); }}
+                                          whileHover={{ scale: 1.02 }}
+                                          whileTap={{ scale: 0.98 }}
+                                        >
+                                          <div className="overflow-hidden">
+                                            <p className="font-medium text-sm truncate">{report.ward_name}</p>
+                                            <p className="text-xs text-neutral-500 flex items-center gap-1">
+                                              <Calendar className="w-3 h-3" />
+                                              {formatDate(report.submitted_at)}
+                                            </p>
+                                          </div>
+                                          <Button size="xs" variant="ghost" className="text-primary-600">View</Button>
+                                        </motion.div>
+                                      ))}
+                                    </div>
                                   </div>
-                                </div>
-                              ) : (
-                                <p className="text-sm text-neutral-500 text-center py-2">No individual reports available for view.</p>
-                              )}
-                            </td>
-                          </tr>
-                        )}
-                      </>
+                                ) : (
+                                  <p className="text-sm text-neutral-500 text-center py-2">No individual reports available for view.</p>
+                                )}
+                              </td>
+                            </motion.tr>
+                          )}
+                        </AnimatePresence>
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </table>
@@ -924,152 +1070,46 @@ Kaduna State WDC Digital Reporting System
             </Card>
           </div>
 
-          {/* Right: AI Report & Investigations */}
+          {/* Right Column */}
           <div className="space-y-6">
-            {/* AI Report Panel */}
-            {showAIReport && aiReportContent && (
-              <Card
-                title="AI Generated Report"
-                action={
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      icon={copiedReport ? CheckCircle : Copy}
-                      onClick={handleCopyReport}
-                    >
-                      {copiedReport ? 'Copied!' : 'Copy'}
-                    </Button>
-                    <button
-                      onClick={() => setShowAIReport(false)}
-                      className="text-neutral-400 hover:text-neutral-600 transition-colors"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
+            {/* Performance Distribution Donut */}
+            <Card title="Performance Distribution" subtitle="LGA categories">
+              {performanceDistribution.length > 0 ? (
+                <div>
+                  <div className="h-56">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={performanceDistribution}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={45}
+                          outerRadius={75}
+                          paddingAngle={3}
+                          dataKey="value"
+                        >
+                          {performanceDistribution.map((entry, index) => (
+                            <Cell key={`perf-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value, name) => [value, name]} />
+                      </PieChart>
+                    </ResponsiveContainer>
                   </div>
-                }
-              >
-                <div ref={reportRef} className="space-y-4 text-sm">
-                  <div className="p-3 bg-primary-50 rounded-lg border border-primary-200">
-                    <h4 className="font-semibold text-primary-900 mb-2">Executive Summary</h4>
-                    <p className="text-primary-800">{aiReportContent.summary}</p>
+                  <div className="space-y-2 mt-2">
+                    {performanceDistribution.map((item, idx) => (
+                      <div key={idx} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                          <span className="text-neutral-600">{item.name}</span>
+                        </div>
+                        <span className="font-semibold text-neutral-800">{item.value} LGAs</span>
+                      </div>
+                    ))}
                   </div>
-                  {aiReportContent.insights?.length > 0 && (
-                    <div>
-                      <h4 className="font-semibold text-neutral-900 mb-2">Key Insights</h4>
-                      <ul className="space-y-2">
-                        {aiReportContent.insights.map((insight, idx) => (
-                          <li key={idx} className="flex items-start gap-2 text-neutral-600">
-                            <TrendingUp className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                            <span>{insight}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {aiReportContent.recommendations?.length > 0 && (
-                    <div>
-                      <h4 className="font-semibold text-neutral-900 mb-2">Recommendations</h4>
-                      <ul className="space-y-2">
-                        {aiReportContent.recommendations.map((rec, idx) => (
-                          <li key={idx} className="flex items-start gap-2 text-neutral-600">
-                            <Sparkles className="w-4 h-4 text-primary-500 mt-0.5 flex-shrink-0" />
-                            <span>{rec}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              </Card>
-            )}
-
-            {/* Investigations */}
-            <Card
-              title="Active Investigations"
-              subtitle="Track and manage issues"
-              action={
-                <Button
-                  size="sm"
-                  variant="outline"
-                  icon={PlusCircle}
-                  onClick={() => setShowInvestigationModal(true)}
-                >
-                  New
-                </Button>
-              }
-            >
-              {loadingInvestigations ? (
-                <LoadingSpinner size="sm" />
-              ) : investigations.length > 0 ? (
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {investigations.map((inv) => (
-                    <div
-                      key={inv.id}
-                      className="p-4 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors"
-                    >
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-neutral-900">{inv.title}</p>
-                          <p className="text-xs text-neutral-500 mt-1">
-                            {inv.lga_name || 'State-wide'} • {formatDate(inv.created_at)}
-                          </p>
-                        </div>
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(inv.priority)}`}>
-                          {PRIORITY_LABELS[inv.priority]}
-                        </span>
-                      </div>
-                      {inv.description && (
-                        <p className="text-sm text-neutral-600 mb-3 line-clamp-2">{inv.description}</p>
-                      )}
-                      <div className="flex items-center justify-between">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${inv.status === 'OPEN' ? 'bg-blue-100 text-blue-700' :
-                          inv.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-700' :
-                            'bg-green-100 text-green-700'
-                          }`}>
-                          {INVESTIGATION_LABELS[inv.status]}
-                        </span>
-                        <div className="flex gap-1">
-                          {inv.status === 'OPEN' && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleUpdateInvestigationStatus(inv.id, 'IN_PROGRESS');
-                              }}
-                            >
-                              Start
-                            </Button>
-                          )}
-                          {inv.status === 'IN_PROGRESS' && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleUpdateInvestigationStatus(inv.id, 'CLOSED');
-                              }}
-                            >
-                              Close
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
                 </div>
               ) : (
-                <EmptyCard
-                  icon={Search}
-                  title="No Investigations"
-                  description="Create one to track issues"
-                  action={
-                    <Button size="sm" onClick={() => setShowInvestigationModal(true)}>
-                      Create Investigation
-                    </Button>
-                  }
-                />
+                <EmptyCard icon={BarChart3} title="No data" description="Performance data will appear here" />
               )}
             </Card>
 
@@ -1079,11 +1119,10 @@ Kaduna State WDC Digital Reporting System
                 <Button
                   variant="primary"
                   fullWidth
-                  icon={Sparkles}
-                  onClick={handleGenerateAIReport}
-                  loading={generateAIMutation.isPending}
+                  icon={Eye}
+                  onClick={() => navigate('/state/submissions')}
                 >
-                  Generate AI Report
+                  View All Submissions
                 </Button>
                 <Button
                   variant="outline"
@@ -1100,14 +1139,6 @@ Kaduna State WDC Digital Reporting System
                   onClick={() => navigate('/state/forms')}
                 >
                   Form Builder
-                </Button>
-                <Button
-                  variant="ghost"
-                  fullWidth
-                  icon={PlusCircle}
-                  onClick={() => setShowInvestigationModal(true)}
-                >
-                  New Investigation
                 </Button>
                 <div className="pt-3 mt-3 border-t border-neutral-200 space-y-2">
                   <Button
@@ -1135,89 +1166,7 @@ Kaduna State WDC Digital Reporting System
             </Card>
           </div>
         </div>
-      </div>
-
-      {/* Create Investigation Modal */}
-      <Modal
-        isOpen={showInvestigationModal}
-        onClose={() => setShowInvestigationModal(false)}
-        title="Create Investigation"
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">
-              Title *
-            </label>
-            <input
-              type="text"
-              value={newInvestigation.title}
-              onChange={(e) => setNewInvestigation({ ...newInvestigation, title: e.target.value })}
-              placeholder="Investigation title"
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">
-              Description
-            </label>
-            <textarea
-              value={newInvestigation.description}
-              onChange={(e) => setNewInvestigation({ ...newInvestigation, description: e.target.value })}
-              placeholder="Describe the issue..."
-              rows={3}
-              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 resize-none"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Priority
-              </label>
-              <select
-                value={newInvestigation.priority}
-                onChange={(e) => setNewInvestigation({ ...newInvestigation, priority: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
-              >
-                {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                LGA (Optional)
-              </label>
-              <select
-                value={newInvestigation.lga_id}
-                onChange={(e) => setNewInvestigation({ ...newInvestigation, lga_id: e.target.value })}
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
-              >
-                <option value="">State-wide</option>
-                {lgaComparison.map(lga => (
-                  <option key={lga.id} value={lga.id}>{lga.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="flex gap-3 pt-4">
-            <Button
-              variant="secondary"
-              onClick={() => setShowInvestigationModal(false)}
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreateInvestigation}
-              loading={createInvestigationMutation.isPending}
-              disabled={!newInvestigation.title}
-              className="flex-1"
-            >
-              Create Investigation
-            </Button>
-          </div>
-        </div>
-      </Modal>
+      </motion.div>
 
       {/* Report Detail Modal */}
       {selectedReport && (

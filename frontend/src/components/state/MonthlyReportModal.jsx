@@ -21,6 +21,7 @@ import {
   MapPin,
   FileText,
   AlertTriangle,
+  Download,
 } from 'lucide-react';
 import Modal from '../common/Modal';
 import Button from '../common/Button';
@@ -123,16 +124,98 @@ Kaduna State WDC Digital Reporting System
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleExportCSV = () => {
+    const rows = [
+      ['KADUNA STATE WDC AI MONTHLY REPORT', formatMonth(month)],
+      [],
+      ['STATE OVERVIEW'],
+      ['Total LGAs', state_overview.total_lgas],
+      ['Total Wards', state_overview.total_wards],
+      ['Reports Submitted', state_overview.reports_submitted],
+      ['Reports Missing', state_overview.reports_missing],
+      ['Submission Rate (%)', state_overview.submission_rate],
+      ['Previous Month Rate (%)', state_overview.prev_rate],
+      ['Rate Change (%)', state_overview.rate_change],
+      [],
+      ['SERVICE DELIVERY - HEALTH DATA'],
+      ['OPD Total', health_data.opd_total || 0],
+      ['Routine Immunization', health_data.routine_immunization || 0],
+      ['ANC Total', health_data.anc_total || 0],
+      ['Deliveries', health_data.deliveries || 0],
+      ['Postnatal', health_data.postnatal || 0],
+      ['FP Counselling', health_data.fp_counselling || 0],
+      ['HepB Tested', health_data.hepb_tested || 0],
+      ['TB Presumptive', health_data.tb_presumptive || 0],
+      [],
+      ['SERVICE DELIVERY - FACILITY SUPPORT'],
+      ['Facilities Renovated', facility_support.facilities_renovated || 0],
+      ['Items Donated (WDC)', facility_support.items_donated_wdc || 0],
+      ['Items Donated (Govt)', facility_support.items_donated_govt || 0],
+      ['Items Repaired', facility_support.items_repaired || 0],
+      [],
+      ['SERVICE DELIVERY - TRANSPORTATION'],
+      ['Women Transported (ANC)', transportation.women_transported_anc || 0],
+      ['Women Transported (Delivery)', transportation.women_transported_delivery || 0],
+      ['Children (Emergency)', transportation.children_transported_danger || 0],
+      ['Delivery Items Support', transportation.women_supported_delivery_items || 0],
+      [],
+      ['MATERNAL & PERINATAL DEATHS (cMPDSR)'],
+      ['Maternal Deaths', cmpdsr.maternal_deaths || 0],
+      ['Perinatal Deaths', cmpdsr.perinatal_deaths || 0],
+      [],
+      ['KEY ISSUES & CHALLENGES'],
+      ...(key_issues.length > 0 ? key_issues.map((issue, i) => [`${i + 1}. ${issue.word}`, issue.count]) : [['No issues reported', '']]),
+      [],
+      ['RECOMMENDATIONS'],
+      ...(recommendations.length > 0 ? recommendations.map((rec, i) => [`${i + 1}.`, rec]) : [['No recommendations available', '']]),
+      [],
+      ['LGA PERFORMANCE'],
+      ['LGA Name', 'Submission Rate (%)', 'Submitted', 'Total Wards'],
+      ...(charts.lga_rates || []).map(l => [l.name, l.rate, l.submitted, l.total]),
+      [],
+      ['SWOT ANALYSIS - STRENGTHS'],
+      ...(swot.strengths || []).map(s => ['', s]),
+      [],
+      ['SWOT ANALYSIS - WEAKNESSES'],
+      ...(swot.weaknesses || []).map(w => ['', w]),
+      [],
+      ['SWOT ANALYSIS - OPPORTUNITIES'],
+      ...(swot.opportunities || []).map(o => ['', o]),
+      [],
+      ['SWOT ANALYSIS - THREATS'],
+      ...(swot.threats || []).map(t => ['', t]),
+      [],
+      ['Generated on:', formatDate(new Date(), true)],
+      ['Kaduna State WDC Digital Reporting System'],
+    ];
+
+    const csvContent = rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `Kaduna_WDC_AI_Report_${month}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Monthly Report - ${formatMonth(month)}`}
+      title={`AI Monthly Report - ${formatMonth(month)}`}
       size="full"
     >
       <div className="space-y-8 max-h-[75vh] overflow-y-auto pr-2">
-        {/* Copy Button */}
-        <div className="flex justify-end sticky top-0 bg-white z-10 pb-2">
+        {/* Action Buttons */}
+        <div className="flex justify-end gap-2 sticky top-0 bg-white z-10 pb-2">
+          <Button
+            variant="outline"
+            icon={Download}
+            onClick={handleExportCSV}
+          >
+            Export CSV
+          </Button>
           <Button
             variant="outline"
             icon={copied ? CheckCircle : Copy}
