@@ -306,10 +306,14 @@ async def create_report(
         'next_meeting_date': get_value('next_meeting_date'),
         'chairman_signature': get_value('chairman_signature'),
         'secretary_signature': get_value('secretary_signature'),
-        
+
         'status': 'SUBMITTED',
         'submission_id': submission_id
     }
+
+    # Sync attendees_count from attendance_total if not explicitly provided
+    if not report_kwargs.get('attendees_count') or report_kwargs['attendees_count'] == 0:
+        report_kwargs['attendees_count'] = report_kwargs.get('attendance_total', 0) or 0
 
     # Collect any unknown keys from comprehensive_data into custom_fields JSON
     known_keys = set(report_kwargs.keys()) | {
@@ -555,6 +559,10 @@ async def update_report(
                   'attendance_male', 'attendance_female', 'next_meeting_date']:
         if field in comprehensive_data:
             setattr(existing_report, field, comprehensive_data[field])
+
+    # Sync attendees_count from attendance_total
+    if not existing_report.attendees_count and existing_report.attendance_total:
+        existing_report.attendees_count = existing_report.attendance_total
 
     existing_report.submitted_at = datetime.utcnow()
 
@@ -1306,9 +1314,13 @@ async def save_draft(
         'next_meeting_date': get_value('next_meeting_date'),
         'chairman_signature': get_value('chairman_signature'),
         'secretary_signature': get_value('secretary_signature'),
-        
+
         'status': 'DRAFT'
     }
+
+    # Sync attendees_count from attendance_total if not explicitly provided
+    if not report_kwargs.get('attendees_count') or report_kwargs['attendees_count'] == 0:
+        report_kwargs['attendees_count'] = report_kwargs.get('attendance_total', 0) or 0
 
     # Collect any unknown keys from comprehensive_data into custom_fields JSON
     known_keys = set(report_kwargs.keys()) | {

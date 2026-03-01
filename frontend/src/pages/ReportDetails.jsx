@@ -258,7 +258,7 @@ const ReportDetails = () => {
             icon={Users}
             color="green"
             label="Total Attendees"
-            value={report.attendees_count || 0}
+            value={report.attendees_count || report.attendance_total || 0}
           />
           <SummaryCard
             icon={HeartPulse}

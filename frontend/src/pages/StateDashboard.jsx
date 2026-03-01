@@ -1360,7 +1360,14 @@ const StateDashboard = () => {
               </div>
               <div>
                 <p className="text-sm text-neutral-500">Attendance</p>
-                <p className="font-medium">{selectedReport.attendees_count}</p>
+                <p className="font-medium">
+                  {selectedReport.attendance_total || selectedReport.attendees_count || 0}
+                  {(selectedReport.attendance_male > 0 || selectedReport.attendance_female > 0) && (
+                    <span className="text-neutral-500 text-sm ml-1">
+                      ({selectedReport.attendance_male || 0}M, {selectedReport.attendance_female || 0}F)
+                    </span>
+                  )}
+                </p>
               </div>
             </div>
 

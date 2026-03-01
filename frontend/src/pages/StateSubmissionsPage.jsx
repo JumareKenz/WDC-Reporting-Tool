@@ -468,7 +468,7 @@ const StateSubmissionsPage = () => {
                             </td>
                             <td className="py-3 px-4 text-center">
                               <span className="text-sm font-semibold text-neutral-700">
-                                {report.attendees_count}
+                                {report.attendees_count || report.attendance_total || 0}
                               </span>
                             </td>
                             <td className="py-3 px-4">

@@ -45,9 +45,10 @@ def get_analytics_overview(
     total_flagged = month_reports.filter(Report.status == "FLAGGED").count()
 
     # Get total meetings and attendees
+    # Use COALESCE to fall back to attendance_total when attendees_count is 0/NULL
     stats = db.query(
         func.sum(Report.meetings_held).label('total_meetings'),
-        func.sum(Report.attendees_count).label('total_attendees')
+        func.sum(func.coalesce(Report.attendees_count, Report.attendance_total, 0)).label('total_attendees')
     ).filter(Report.report_month == month).first()
 
     total_meetings = stats.total_meetings or 0
@@ -132,7 +133,7 @@ def get_lga_comparison(
         reviewed_count = sum(1 for r in reports if r.status == "REVIEWED")
 
         total_meetings = sum(r.meetings_held for r in reports)
-        total_attendees = sum(r.attendees_count for r in reports)
+        total_attendees = sum((r.attendees_count or r.attendance_total or 0) for r in reports)
 
         comparison_data.append({
             "lga_id": lga.id,
