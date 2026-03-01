@@ -3,7 +3,9 @@ import { STORAGE_KEYS } from '../utils/constants';
 import { emitToast } from '../hooks/useToast';
 
 // Base API URL - can be configured via environment variable
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+// Ensure the base URL always ends with /api
+const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+const BASE_URL = rawBaseUrl.endsWith('/api') ? rawBaseUrl : `${rawBaseUrl.replace(/\/+$/, '')}/api`;
 
 // Create axios instance
 const apiClient = axios.create({
