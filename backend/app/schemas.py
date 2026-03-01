@@ -310,16 +310,25 @@ class ReportBase(BaseModel):
     facilities_renovated_wdc: Optional[int] = Field(None, ge=0)
     
     # Section 3B: Items donated by WDC
+    items_donated_wdc_yn: Optional[str] = None  # Yes/No
+    items_donated_facility: Optional[str] = None
     items_donated_count: Optional[int] = Field(None, ge=0)
     items_donated_types: Optional[List[str]] = None
+    items_donated_other_specify: Optional[str] = None
     
     # Section 3B: Items donated by Government
+    items_donated_govt_yn: Optional[str] = None  # Yes/No
+    items_donated_govt_facility: Optional[str] = None
     items_donated_govt_count: Optional[int] = Field(None, ge=0)
     items_donated_govt_types: Optional[List[str]] = None
+    items_donated_govt_other_specify: Optional[str] = None
     
     # Section 3B: Items repaired
+    items_repaired_yn: Optional[str] = None  # "No" or JSON array string
+    items_repaired_facility: Optional[str] = None
     items_repaired_count: Optional[int] = Field(None, ge=0)
     items_repaired_types: Optional[List[str]] = None
+    items_repaired_other_specify: Optional[str] = None
     
     # Section 3C: Transportation & Emergency
     women_transported_anc: Optional[int] = Field(None, ge=0)

@@ -259,16 +259,25 @@ async def create_report(
         'facilities_renovated_wdc': get_value('facilities_renovated_wdc', 0),
         
         # Items donated by WDC
+        'items_donated_wdc_yn': get_value('items_donated_wdc_yn'),
+        'items_donated_facility': get_value('items_donated_facility'),
         'items_donated_count': get_value('items_donated_count', 0),
         'items_donated_types': json.dumps(get_value('items_donated_types', [])) if get_value('items_donated_types') else None,
+        'items_donated_other_specify': get_value('items_donated_other_specify'),
         
         # Items donated by Government
+        'items_donated_govt_yn': get_value('items_donated_govt_yn'),
+        'items_donated_govt_facility': get_value('items_donated_govt_facility'),
         'items_donated_govt_count': get_value('items_donated_govt_count', 0),
         'items_donated_govt_types': json.dumps(get_value('items_donated_govt_types', [])) if get_value('items_donated_govt_types') else None,
+        'items_donated_govt_other_specify': get_value('items_donated_govt_other_specify'),
         
         # Items repaired
+        'items_repaired_yn': json.dumps(get_value('items_repaired_yn')) if get_value('items_repaired_yn') else 'No',
+        'items_repaired_facility': get_value('items_repaired_facility'),
         'items_repaired_count': get_value('items_repaired_count', 0),
         'items_repaired_types': json.dumps(get_value('items_repaired_types', [])) if get_value('items_repaired_types') else None,
+        'items_repaired_other_specify': get_value('items_repaired_other_specify'),
         
         # Transportation & Emergency
         'women_transported_anc': get_value('women_transported_anc', 0),
@@ -553,10 +562,19 @@ async def update_report(
     existing_report.challenges = get_value('challenges', challenges)
     existing_report.recommendations = get_value('recommendations', recommendations)
     existing_report.additional_notes = get_value('additional_notes', additional_notes)
+    
+    # Update new facility support fields
+    existing_report.items_donated_count = get_value('items_donated_count', 0)
+    existing_report.items_donated_govt_count = get_value('items_donated_govt_count', 0)
+    existing_report.items_repaired_count = get_value('items_repaired_count', 0)
 
     # Update comprehensive fields
     for field in ['report_date', 'report_time', 'meeting_type', 'attendance_total',
-                  'attendance_male', 'attendance_female', 'next_meeting_date']:
+                  'attendance_male', 'attendance_female', 'next_meeting_date',
+                  'facility_renovated', 'facility_renovated_count', 'facility_renovations',
+                  'items_donated_wdc_yn', 'items_donated_facility', 'items_donated_types', 'items_donated_other_specify',
+                  'items_donated_govt_yn', 'items_donated_govt_facility', 'items_donated_govt_types', 'items_donated_govt_other_specify',
+                  'items_repaired_yn', 'items_repaired_facility', 'items_repaired_types', 'items_repaired_other_specify']:
         if field in comprehensive_data:
             setattr(existing_report, field, comprehensive_data[field])
 
@@ -818,12 +836,27 @@ def get_state_submissions(
                 "facilities_renovated_govt": report.facilities_renovated_govt or 0,
                 "facilities_renovated_partners": report.facilities_renovated_partners or 0,
                 "facilities_renovated_wdc": report.facilities_renovated_wdc or 0,
+                "facility_renovated": report.facility_renovated,
+                "facility_renovated_count": report.facility_renovated_count or 0,
+                "facility_renovations": json.loads(report.facility_renovations) if report.facility_renovations else [],
+                # WDC Donations
+                "items_donated_wdc_yn": report.items_donated_wdc_yn,
+                "items_donated_facility": report.items_donated_facility,
                 "items_donated_count": report.items_donated_count or 0,
                 "items_donated_types": json.loads(report.items_donated_types) if report.items_donated_types else [],
+                "items_donated_other_specify": report.items_donated_other_specify,
+                # Government Donations
+                "items_donated_govt_yn": report.items_donated_govt_yn,
+                "items_donated_govt_facility": report.items_donated_govt_facility,
                 "items_donated_govt_count": report.items_donated_govt_count or 0,
                 "items_donated_govt_types": json.loads(report.items_donated_govt_types) if report.items_donated_govt_types else [],
+                "items_donated_govt_other_specify": report.items_donated_govt_other_specify,
+                # Repairs
+                "items_repaired_yn": json.loads(report.items_repaired_yn) if report.items_repaired_yn and report.items_repaired_yn != 'No' else 'No',
+                "items_repaired_facility": report.items_repaired_facility,
                 "items_repaired_count": report.items_repaired_count or 0,
                 "items_repaired_types": json.loads(report.items_repaired_types) if report.items_repaired_types else [],
+                "items_repaired_other_specify": report.items_repaired_other_specify,
                 
                 # Section 3C: Transportation & Emergency
                 "women_transported_anc": report.women_transported_anc or 0,

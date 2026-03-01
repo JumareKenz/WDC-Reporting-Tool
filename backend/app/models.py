@@ -152,16 +152,22 @@ class Report(Base):
     facilities_renovated_wdc = Column(Integer, default=0)
 
     # Section 3B: Items donated by WDC
+    items_donated_wdc_yn = Column(String(3), nullable=True)  # Yes/No
+    items_donated_facility = Column(Text, nullable=True)
     items_donated_count = Column(Integer, default=0)
     items_donated_types = Column(Text, nullable=True)  # JSON array
     items_donated_other_specify = Column(Text, nullable=True)
 
     # Section 3B: Items donated by Government
+    items_donated_govt_yn = Column(String(3), nullable=True)  # Yes/No
+    items_donated_govt_facility = Column(Text, nullable=True)
     items_donated_govt_count = Column(Integer, default=0)
     items_donated_govt_types = Column(Text, nullable=True)  # JSON array
     items_donated_govt_other_specify = Column(Text, nullable=True)
 
     # Section 3B: Items repaired
+    items_repaired_yn = Column(Text, nullable=True)  # "No" or JSON array ["WDC","Government","Partners"]
+    items_repaired_facility = Column(Text, nullable=True)
     items_repaired_count = Column(Integer, default=0)
     items_repaired_types = Column(Text, nullable=True)  # JSON array
     items_repaired_other_specify = Column(Text, nullable=True)

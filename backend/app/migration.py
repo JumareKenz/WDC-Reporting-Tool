@@ -26,6 +26,13 @@ def run_migrations():
         ("items_donated_govt_other_specify", "TEXT"),
         ("items_repaired_other_specify", "TEXT"),
         ("awareness_topic", "TEXT"),
+        # New Y/N toggles and facility fields for donations/repairs
+        ("items_donated_wdc_yn", "VARCHAR(3)"),
+        ("items_donated_facility", "TEXT"),
+        ("items_donated_govt_yn", "VARCHAR(3)"),
+        ("items_donated_govt_facility", "TEXT"),
+        ("items_repaired_yn", "TEXT"),
+        ("items_repaired_facility", "TEXT"),
     ]
     
     try:

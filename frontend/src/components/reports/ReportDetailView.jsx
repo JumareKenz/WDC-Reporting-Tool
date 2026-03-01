@@ -359,51 +359,110 @@ const ReportDetailView = ({ report }) => {
       )}
 
       {/* Section 5: Health Facility Support */}
-      {(report.facilities_renovated_govt || report.facilities_renovated_partners ||
-        report.items_donated_count || report.items_repaired_count) && (
+      {(report.facility_renovated || report.facility_renovations?.length > 0 ||
+        report.items_donated_wdc_yn || report.items_donated_govt_yn ||
+        (Array.isArray(report.items_repaired_yn) ? report.items_repaired_yn.length > 0 : report.items_repaired_yn !== 'No')) && (
         <div className="bg-white rounded-lg border border-neutral-200 p-5">
           {renderSectionHeader('Health Facility Support', <Building2 className="w-5 h-5 text-primary-600" />)}
 
           {/* Renovations */}
-          {(report.facilities_renovated_govt || report.facilities_renovated_partners || report.facilities_renovated_wdc) && (
-            <div className="mb-4">
+          {report.facility_renovated === 'Yes' && (
+            <div className="mb-5">
               <h4 className="font-semibold text-neutral-900 text-sm mb-3">Facility Renovations</h4>
-              <div className="grid grid-cols-3 gap-3">
-                {report.facilities_renovated_govt !== null && renderField('By Government', report.facilities_renovated_govt)}
-                {report.facilities_renovated_partners !== null && renderField('By Partners', report.facilities_renovated_partners)}
-                {report.facilities_renovated_wdc !== null && renderField('By WDC', report.facilities_renovated_wdc)}
-              </div>
-            </div>
-          )}
-
-          {/* Donations */}
-          {report.items_donated_count !== null && (
-            <div className="mb-4">
-              {renderField('Items Donated', report.items_donated_count)}
-              {report.items_donated_types && report.items_donated_types.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {report.items_donated_types.map((type, idx) => (
-                    <span key={idx} className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                      {type}
-                    </span>
+              {renderField('Facilities Renovated', report.facility_renovated_count)}
+              {report.facility_renovations?.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  {report.facility_renovations.map((renovation, idx) => (
+                    renovation.facility_name?.trim() && (
+                      <div key={idx} className="bg-neutral-50 rounded-lg p-3 text-sm">
+                        <p className="font-medium text-neutral-900">{renovation.facility_name}</p>
+                        <p className="text-neutral-600">Renovated by: {renovation.partner || '—'}</p>
+                      </div>
+                    )
                   ))}
                 </div>
               )}
             </div>
           )}
 
+          {/* WDC Donations */}
+          {report.items_donated_wdc_yn === 'Yes' && (
+            <div className="mb-5">
+              <h4 className="font-semibold text-neutral-900 text-sm mb-3">Items Donated by WDC</h4>
+              {report.items_donated_facility && renderField('Facility Name', report.items_donated_facility)}
+              {renderField('Number of Items', report.items_donated_count)}
+              {report.items_donated_types?.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-sm text-neutral-600 mb-2">Types of Items:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {report.items_donated_types.map((type, idx) => (
+                      <span key={idx} className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                        {type}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {report.items_donated_other_specify && (
+                <p className="text-sm text-neutral-600 mt-2">Other: {report.items_donated_other_specify}</p>
+              )}
+            </div>
+          )}
+
+          {/* Government Donations */}
+          {report.items_donated_govt_yn === 'Yes' && (
+            <div className="mb-5">
+              <h4 className="font-semibold text-neutral-900 text-sm mb-3">Items Donated by Government</h4>
+              {report.items_donated_govt_facility && renderField('Facility Name', report.items_donated_govt_facility)}
+              {renderField('Number of Items', report.items_donated_govt_count)}
+              {report.items_donated_govt_types?.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-sm text-neutral-600 mb-2">Types of Items:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {report.items_donated_govt_types.map((type, idx) => (
+                      <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                        {type}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {report.items_donated_govt_other_specify && (
+                <p className="text-sm text-neutral-600 mt-2">Other: {report.items_donated_govt_other_specify}</p>
+              )}
+            </div>
+          )}
+
           {/* Repairs */}
-          {report.items_repaired_count !== null && (
+          {(Array.isArray(report.items_repaired_yn) ? report.items_repaired_yn.length > 0 : report.items_repaired_yn !== 'No') && (
             <div>
-              {renderField('Items Repaired', report.items_repaired_count)}
-              {report.items_repaired_types && report.items_repaired_types.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {report.items_repaired_types.map((type, idx) => (
-                    <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                      {type}
+              <h4 className="font-semibold text-neutral-900 text-sm mb-3">Items Repaired</h4>
+              <div className="mb-3">
+                <p className="text-sm text-neutral-600 mb-2">Repaired By:</p>
+                <div className="flex flex-wrap gap-2">
+                  {(Array.isArray(report.items_repaired_yn) ? report.items_repaired_yn : []).map((actor, idx) => (
+                    <span key={idx} className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full font-medium">
+                      {actor}
                     </span>
                   ))}
                 </div>
+              </div>
+              {report.items_repaired_facility && renderField('Facility Name', report.items_repaired_facility)}
+              {renderField('Number of Items', report.items_repaired_count)}
+              {report.items_repaired_types?.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-sm text-neutral-600 mb-2">Types of Items Repaired:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {report.items_repaired_types.map((type, idx) => (
+                      <span key={idx} className="px-2 py-1 bg-amber-100 text-amber-800 text-xs rounded-full">
+                        {type}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {report.items_repaired_other_specify && (
+                <p className="text-sm text-neutral-600 mt-2">Other: {report.items_repaired_other_specify}</p>
               )}
             </div>
           )}
