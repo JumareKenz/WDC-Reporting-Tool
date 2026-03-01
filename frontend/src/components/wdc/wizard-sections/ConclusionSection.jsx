@@ -1,6 +1,26 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Upload, X, Image, Users } from 'lucide-react';
 import { TextInput, NumberInput, inputClass } from './shared';
+
+/**
+ * Get a valid preview URL for a picture object.
+ * Blob URLs from a previous session become invalid on page reload.
+ * This recreates them from the file object when needed.
+ */
+function getPreviewUrl(pic, urlCache) {
+  // If we already created a URL for this file in this session, reuse it
+  if (pic.file && urlCache.has(pic.file)) {
+    return urlCache.get(pic.file);
+  }
+  // If the file object exists, create a fresh blob URL
+  if (pic.file) {
+    const url = URL.createObjectURL(pic.file);
+    urlCache.set(pic.file, url);
+    return url;
+  }
+  // Fallback to stored preview (may be stale)
+  return pic.preview || '';
+}
 
 /**
  * Section 8: Support Required, Attendance, Photos & Conclusion
@@ -12,6 +32,9 @@ import { TextInput, NumberInput, inputClass } from './shared';
 const ConclusionSection = ({ formData, onChange, onVoiceNote, errors }) => {
   const attendancePictures = formData._attendance_pictures || [];
   const groupPhotos = formData._group_photos || [];
+
+  // Cache blob URLs per session so we don't create duplicates
+  const urlCacheRef = useRef(new Map());
 
   const male = parseInt(formData.attendance_male) || 0;
   const female = parseInt(formData.attendance_female) || 0;
@@ -27,11 +50,11 @@ const ConclusionSection = ({ formData, onChange, onVoiceNote, errors }) => {
 
   // Clean up object URLs on unmount
   useEffect(() => {
+    const cache = urlCacheRef.current;
     return () => {
-      attendancePictures.forEach((pic) => URL.revokeObjectURL(pic.preview));
-      groupPhotos.forEach((pic) => URL.revokeObjectURL(pic.preview));
+      cache.forEach((url) => URL.revokeObjectURL(url));
+      cache.clear();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleChange = (e) => {
@@ -53,7 +76,11 @@ const ConclusionSection = ({ formData, onChange, onVoiceNote, errors }) => {
   };
 
   const handleRemovePicture = (index) => {
-    URL.revokeObjectURL(attendancePictures[index]?.preview);
+    const pic = attendancePictures[index];
+    if (pic?.file && urlCacheRef.current.has(pic.file)) {
+      URL.revokeObjectURL(urlCacheRef.current.get(pic.file));
+      urlCacheRef.current.delete(pic.file);
+    }
     onChange((prev) => ({
       ...prev,
       _attendance_pictures: (prev._attendance_pictures || []).filter((_, i) => i !== index),
@@ -74,7 +101,11 @@ const ConclusionSection = ({ formData, onChange, onVoiceNote, errors }) => {
   };
 
   const handleRemoveGroupPhoto = (index) => {
-    URL.revokeObjectURL(groupPhotos[index]?.preview);
+    const pic = groupPhotos[index];
+    if (pic?.file && urlCacheRef.current.has(pic.file)) {
+      URL.revokeObjectURL(urlCacheRef.current.get(pic.file));
+      urlCacheRef.current.delete(pic.file);
+    }
     onChange((prev) => ({
       ...prev,
       _group_photos: (prev._group_photos || []).filter((_, i) => i !== index),
@@ -147,7 +178,7 @@ const ConclusionSection = ({ formData, onChange, onVoiceNote, errors }) => {
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-3">
             {attendancePictures.map((pic, index) => (
               <div key={index} className="relative group">
-                <img src={pic.preview} alt={`Attendance ${index + 1}`} className="w-full h-20 object-cover rounded-lg border" />
+                <img src={getPreviewUrl(pic, urlCacheRef.current)} alt={`Attendance ${index + 1}`} className="w-full h-20 object-cover rounded-lg border" />
                 <button
                   type="button"
                   onClick={() => handleRemovePicture(index)}
@@ -177,7 +208,7 @@ const ConclusionSection = ({ formData, onChange, onVoiceNote, errors }) => {
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-3">
             {groupPhotos.map((pic, index) => (
               <div key={index} className="relative group">
-                <img src={pic.preview} alt={`Group ${index + 1}`} className="w-full h-20 object-cover rounded-lg border" />
+                <img src={getPreviewUrl(pic, urlCacheRef.current)} alt={`Group ${index + 1}`} className="w-full h-20 object-cover rounded-lg border" />
                 <button
                   type="button"
                   onClick={() => handleRemoveGroupPhoto(index)}

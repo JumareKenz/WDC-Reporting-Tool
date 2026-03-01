@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   FileText,
@@ -349,6 +349,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
   const [voiceNotes, setVoiceNotes] = useState({});
   const [attendancePictures, setAttendancePictures] = useState([]);
   const [groupPhotos, setGroupPhotos] = useState([]);
+  const picUrlCacheRef = useRef(new Map());
   const [reportMonth, setReportMonth] = useState('');
   const [draftId, setDraftId] = useState(null);
   const [draftSavedAt, setDraftSavedAt] = useState(null);
@@ -1930,7 +1931,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
                   {attendancePictures.map((pic, index) => (
                     <div key={index} className="relative group">
                       <img
-                        src={pic.preview}
+                        src={pic.file ? (picUrlCacheRef.current.get(pic.file) || (() => { const u = URL.createObjectURL(pic.file); picUrlCacheRef.current.set(pic.file, u); return u; })()) : pic.preview}
                         alt={`Attendance ${index + 1}`}
                         className="w-full h-24 object-cover rounded-lg border border-neutral-200"
                       />
@@ -1975,7 +1976,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
                   {groupPhotos.map((pic, index) => (
                     <div key={index} className="relative group">
                       <img
-                        src={pic.preview}
+                        src={pic.file ? (picUrlCacheRef.current.get(pic.file) || (() => { const u = URL.createObjectURL(pic.file); picUrlCacheRef.current.set(pic.file, u); return u; })()) : pic.preview}
                         alt={`Group Photo ${index + 1}`}
                         className="w-full h-24 object-cover rounded-lg border border-neutral-200"
                       />
