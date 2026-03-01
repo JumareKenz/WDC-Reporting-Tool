@@ -163,16 +163,17 @@ const StateDashboard = () => {
   const [monthlyReportData, setMonthlyReportData] = useState(null);
   const [showMonthSelector, setShowMonthSelector] = useState(false);
   const [selectedReportMonth, setSelectedReportMonth] = useState(currentMonth);
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
 
   // Chart type & timeframe for trends
   const [chartType, setChartType] = useState('area'); // 'area' | 'line' | 'bar'
   const [trendMonths, setTrendMonths] = useState(6); // 3 | 6 | 12
 
   // Data fetching
-  const { data: overviewData, isLoading: loadingOverview, refetch: refetchOverview, dataUpdatedAt: overviewUpdatedAt, isRefetching: isRefetchingOverview } = useOverview({ month: currentMonth });
-  const { data: comparisonData, isLoading: loadingComparison, refetch: refetchComparison, isRefetching: isRefetchingComparison } = useLGAComparison({ month: currentMonth });
+  const { data: overviewData, isLoading: loadingOverview, refetch: refetchOverview, dataUpdatedAt: overviewUpdatedAt, isRefetching: isRefetchingOverview } = useOverview({ month: selectedMonth });
+  const { data: comparisonData, isLoading: loadingComparison, refetch: refetchComparison, isRefetching: isRefetchingComparison } = useLGAComparison({ month: selectedMonth });
   const { data: trendsData, isLoading: loadingTrends, refetch: refetchTrends } = useTrends({ months: trendMonths });
-  const { data: serviceDeliveryData, isLoading: loadingServiceDelivery } = useServiceDelivery({ month: currentMonth });
+  const { data: serviceDeliveryData, isLoading: loadingServiceDelivery } = useServiceDelivery({ month: selectedMonth });
 
   // Combine refetching state for DataFreshness
   const isRefetchingAny = isRefetchingOverview || isRefetchingComparison;
@@ -264,6 +265,7 @@ const StateDashboard = () => {
   }, []);
 
   const handleGenerateMonthlyReport = async () => {
+    setSelectedReportMonth(selectedMonth);
     setShowMonthSelector(true);
   };
 
@@ -433,7 +435,7 @@ const StateDashboard = () => {
                   </h1>
                   <div className="flex items-center gap-3 mt-1">
                     <p className="text-sm text-neutral-600">
-                      Kaduna State Overview &bull; {formatMonth(currentMonth)}
+                      Kaduna State Overview
                     </p>
                     <DataFreshness
                       dataUpdatedAt={overviewUpdatedAt}
@@ -444,7 +446,22 @@ const StateDashboard = () => {
                 </div>
               </div>
             </div>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Month Selector */}
+              <div className="flex items-center gap-2 bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-1.5">
+                <Calendar className="w-4 h-4 text-neutral-500" />
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="bg-transparent text-sm font-medium text-neutral-700 border-none outline-none cursor-pointer pr-1"
+                >
+                  {monthOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <InfoTooltip text="Refresh all dashboard data">
                 <Button
                   variant="outline"
@@ -501,6 +518,24 @@ const StateDashboard = () => {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Month indicator */}
+        {selectedMonth !== currentMonth && (
+          <motion.div
+            className="flex items-center gap-2 mb-4 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <Calendar className="w-4 h-4" />
+            <span>Showing data for <strong>{monthOptions.find(m => m.value === selectedMonth)?.label}</strong></span>
+            <button
+              onClick={() => setSelectedMonth(currentMonth)}
+              className="ml-auto text-xs font-medium text-blue-600 hover:text-blue-800 underline"
+            >
+              Back to current month
+            </button>
+          </motion.div>
+        )}
 
         {/* ROW 1: Overview Stats - Professional Stat Cards */}
         <motion.div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8" variants={itemVariants}>
