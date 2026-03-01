@@ -34,10 +34,15 @@ def get_analytics_overview(
     total_wards = db.query(Ward).count()
 
     # Get reports for the month
-    reports_submitted = db.query(Report).filter(Report.report_month == month).count()
+    month_reports = db.query(Report).filter(Report.report_month == month)
+    reports_submitted = month_reports.count()
     reports_missing = total_wards - reports_submitted
 
     submission_rate = (reports_submitted / total_wards * 100) if total_wards > 0 else 0
+
+    # Reviewed and flagged counts
+    total_reviewed = month_reports.filter(Report.status == "REVIEWED").count()
+    total_flagged = month_reports.filter(Report.status == "FLAGGED").count()
 
     # Get total meetings and attendees
     stats = db.query(
@@ -79,15 +84,15 @@ def get_analytics_overview(
         "success": True,
         "data": {
             "month": month,
-            "state_summary": {
-                "total_lgas": total_lgas,
-                "total_wards": total_wards,
-                "reports_submitted": reports_submitted,
-                "reports_missing": reports_missing,
-                "submission_rate": round(submission_rate, 2),
-                "total_meetings_held": total_meetings,
-                "total_attendees": total_attendees
-            },
+            "total_lgas": total_lgas,
+            "total_wards": total_wards,
+            "total_submitted": reports_submitted,
+            "total_missing": reports_missing,
+            "total_reviewed": total_reviewed,
+            "total_flagged": total_flagged,
+            "submission_rate": round(submission_rate, 2),
+            "total_meetings_held": total_meetings,
+            "total_attendees": total_attendees,
             "top_performing_lgas": top_performing,
             "low_performing_lgas": low_performing
         }
@@ -124,18 +129,20 @@ def get_lga_comparison(
         reports_submitted = len(reports)
         reports_missing = total_wards - reports_submitted
         submission_rate = (reports_submitted / total_wards * 100) if total_wards > 0 else 0
+        reviewed_count = sum(1 for r in reports if r.status == "REVIEWED")
 
         total_meetings = sum(r.meetings_held for r in reports)
         total_attendees = sum(r.attendees_count for r in reports)
 
         comparison_data.append({
             "lga_id": lga.id,
-            "lga_name": lga.name,
+            "name": lga.name,
             "official_ward_count": lga.num_wards,
             "total_wards": total_wards,
-            "reports_submitted": reports_submitted,
-            "reports_missing": reports_missing,
+            "submitted_count": reports_submitted,
+            "missing_count": reports_missing,
             "submission_rate": round(submission_rate, 2),
+            "reviewed_count": reviewed_count,
             "total_meetings": total_meetings,
             "total_attendees": total_attendees
         })
