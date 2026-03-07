@@ -7,13 +7,15 @@ import { useSwipeNavigation } from '../../hooks/useSwipeNavigation';
  * Multi-step wizard form container with animated step transitions.
  *
  * Props:
- *   sections        - Array<{ id, title, icon?, description?, validate?, component }>
- *   formData        - Current form state object
- *   onChange        - (updater) => void   — accepts object-merge or functional updater
- *   onSubmit        - () => void
- *   onSaveDraft     - () => void
- *   draftStatus     - 'idle' | 'saving' | 'saved' | 'error'
- *   initialStep     - number (0-based, default 0)
+ *   sections              - Array<{ id, title, icon?, description?, validate?, component }>
+ *   formData              - Current form state object
+ *   onChange              - (updater) => void   — accepts object-merge or functional updater
+ *   onSubmit              - () => void
+ *   onSaveDraft           - () => void
+ *   draftStatus           - 'idle' | 'saving' | 'saved' | 'error'
+ *   initialStep           - number (0-based, default 0)
+ *   submitDisabled        - boolean — disables submit button on last step
+ *   submitDisabledMessage - string — message shown when submit is disabled
  */
 const FormWizard = ({
   sections = [],
@@ -23,6 +25,8 @@ const FormWizard = ({
   onSaveDraft,
   draftStatus = 'idle',
   initialStep = 0,
+  submitDisabled = false,
+  submitDisabledMessage = '',
 }) => {
   const [currentStep, setCurrentStep] = useState(initialStep);
   const [direction, setDirection] = useState(0); // -1 = back, 1 = forward
@@ -327,27 +331,38 @@ const FormWizard = ({
         </button>
 
         {/* Next / Submit */}
-        <button
-          type="button"
-          onClick={goNext}
-          className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white transition-all duration-200 min-h-[48px] shadow-lg active:scale-[0.97] ${
-            isLastStep
-              ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 shadow-green-600/30'
-              : 'bg-green-600 hover:bg-green-700 shadow-green-600/25'
-          }`}
-        >
-          {isLastStep ? (
-            <>
-              <Send className="w-4 h-4" />
-              Submit Report
-            </>
-          ) : (
-            <>
-              Next
-              <ChevronRight className="w-4 h-4" />
-            </>
+        <div className="flex flex-col items-end gap-2">
+          <button
+            type="button"
+            onClick={goNext}
+            disabled={isLastStep && submitDisabled}
+            title={isLastStep && submitDisabled ? submitDisabledMessage : ''}
+            className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white transition-all duration-200 min-h-[48px] shadow-lg active:scale-[0.97] ${
+              isLastStep && submitDisabled
+                ? 'bg-gray-400 cursor-not-allowed shadow-none'
+                : isLastStep
+                ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 shadow-green-600/30'
+                : 'bg-green-600 hover:bg-green-700 shadow-green-600/25'
+            }`}
+          >
+            {isLastStep ? (
+              <>
+                <Send className="w-4 h-4" />
+                Submit Report
+              </>
+            ) : (
+              <>
+                Next
+                <ChevronRight className="w-4 h-4" />
+              </>
+            )}
+          </button>
+          {isLastStep && submitDisabled && submitDisabledMessage && (
+            <p className="text-xs text-amber-600 max-w-[200px] text-right">
+              {submitDisabledMessage}
+            </p>
           )}
-        </button>
+        </div>
       </div>
 
       {/* Shake animation keyframe (injected via style tag once) */}

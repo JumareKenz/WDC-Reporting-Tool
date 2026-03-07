@@ -148,6 +148,33 @@ const MonthSelectionModal = ({
       return;
     }
 
+    // Check if selected month is current month - must wait until last day
+    const today = new Date();
+    const [selectedYear, selectedMonthNum] = selectedMonth.split('-').map(Number);
+    const isCurrentMonth = selectedYear === today.getFullYear() && selectedMonthNum === (today.getMonth() + 1);
+    
+    if (isCurrentMonth) {
+      const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+      const isLastDay = today.getDate() === lastDayOfMonth;
+      const monthName = today.toLocaleDateString('en-US', { month: 'long' });
+      
+      if (!isLastDay) {
+        setError(
+          <div className="flex items-start gap-2">
+            <Ban className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium">Submission Not Available Yet</p>
+              <p className="text-sm opacity-90">
+                Reports for {monthName} {selectedYear} can only be submitted on the last day of the month ({monthName} {lastDayOfMonth}). 
+                Today is {monthName} {today.getDate()}. Please come back on the last day to submit.
+              </p>
+            </div>
+          </div>
+        );
+        return;
+      }
+    }
+
     // Check if future month
     if (isFutureMonth(selectedMonth)) {
       setError(
@@ -298,7 +325,8 @@ const MonthSelectionModal = ({
             <div>
               <h3 className="font-semibold text-neutral-900">Submit Monthly Report</h3>
               <p className="text-sm text-neutral-600 mt-0.5">
-                Choose the month you want to submit a report for. You can only submit for previous months that haven't been reported yet.
+                Choose the month you want to submit a report for. 
+                <span className="font-medium text-amber-700"> Reports can only be submitted on the last day of each month.</span>
               </p>
             </div>
           </div>

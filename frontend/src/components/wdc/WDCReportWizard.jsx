@@ -92,6 +92,8 @@ const WDCReportWizard = ({
   draftContext = null, // { userId, wardId, reportMonth }
   onImageAdd, // (fieldName, file) => void
   onImagesRemove, // (fieldName) => void
+  submitDisabled = false,
+  submitDisabledMessage = '',
 }) => {
   // Inject user context into formData for the meeting section to display
   const enrichedFormData = useMemo(
@@ -223,6 +225,8 @@ const WDCReportWizard = ({
       onSubmit={onSubmit}
       onSaveDraft={onSaveDraft}
       draftStatus={draftStatus}
+      submitDisabled={submitDisabled}
+      submitDisabledMessage={submitDisabledMessage}
     />
   );
 };

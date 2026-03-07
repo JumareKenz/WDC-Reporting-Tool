@@ -25,6 +25,40 @@ const DRAFT_LOAD_TIMEOUT = 10000; // 10 seconds max for draft loading
 const MAX_DRAFT_RETRIES = 2;
 
 // ────────────────────────────────────────────────────────────────
+// Helpers for last-day-of-month submission restriction
+// ────────────────────────────────────────────────────────────────
+const isLastDayOfMonth = () => {
+  const today = new Date();
+  const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  return today.getDate() === lastDayOfMonth;
+};
+
+const getLastDayOfMonthFormatted = () => {
+  const today = new Date();
+  const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  const monthName = today.toLocaleDateString('en-US', { month: 'long' });
+  return `${monthName} ${lastDayOfMonth}`;
+};
+
+// Check if submission should be blocked for the selected report month
+// Only block if selected month is current month AND today is not the last day
+const isSubmissionBlocked = (reportMonth) => {
+  if (!reportMonth) return false;
+  
+  const today = new Date();
+  const [year, month] = reportMonth.split('-').map(Number);
+  const isCurrentMonth = year === today.getFullYear() && month === (today.getMonth() + 1);
+  
+  // Block only if current month and not last day
+  if (isCurrentMonth) {
+    return !isLastDayOfMonth();
+  }
+  
+  // Past or future months: no restriction (other validations handle future months)
+  return false;
+};
+
+// ────────────────────────────────────────────────────────────────
 // Initial form state — mirrors every field from the original form
 // ────────────────────────────────────────────────────────────────
 const buildInitialFormData = (userWard, userLGA) => ({
@@ -310,6 +344,12 @@ const SubmitReportPage = () => {
 
     if (!selectedMonth) {
       setMonthError('Please select a month.');
+      return;
+    }
+
+    // Block if selected month is current month and not last day
+    if (isSubmissionBlocked(selectedMonth)) {
+      setMonthError(`Reports for ${formatMonthDisplay(selectedMonth)} can only be submitted on the last day of the month (${getLastDayOfMonthFormatted()}). Please come back on the last day to submit your report.`);
       return;
     }
 
@@ -896,6 +936,12 @@ const SubmitReportPage = () => {
     }
   };
 
+  // Check if submission is allowed (only on last day of month for current month)
+  const submissionAllowed = !isSubmissionBlocked(reportMonth);
+  const submissionDisabledMessage = reportMonth 
+    ? `Reports for ${formatMonthDisplay(reportMonth)} can only be submitted on the last day of that month. Please come back on the last day to submit your report.`
+    : `Reports can only be submitted on the last day of the month. Please come back on the last day to submit your report.`;
+
   // ── RENDER ──────────────────────────────────────────────────
 
   // Success screen
@@ -1177,6 +1223,8 @@ const SubmitReportPage = () => {
                   }}
                   onImageAdd={addImage}
                   onImagesRemove={removeImages}
+                  submitDisabled={!submissionAllowed}
+                  submitDisabledMessage={submissionDisabledMessage}
                 />
               </>
             )}
