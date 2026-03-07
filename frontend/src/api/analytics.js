@@ -7,7 +7,7 @@ import { API_ENDPOINTS } from '../utils/constants';
 export const getOverview = async (params = {}) => {
   const queryString = buildQueryString(params);
   const response = await apiClient.get(`${API_ENDPOINTS.ANALYTICS_OVERVIEW}${queryString}`);
-  return response;
+  return response?.data || response;
 };
 
 /**
@@ -16,7 +16,7 @@ export const getOverview = async (params = {}) => {
 export const getLGAComparison = async (params = {}) => {
   const queryString = buildQueryString(params);
   const response = await apiClient.get(`${API_ENDPOINTS.ANALYTICS_LGA_COMPARISON}${queryString}`);
-  return response;
+  return response?.data || response;
 };
 
 /**
@@ -25,7 +25,7 @@ export const getLGAComparison = async (params = {}) => {
 export const getTrends = async (params = {}) => {
   const queryString = buildQueryString(params);
   const response = await apiClient.get(`${API_ENDPOINTS.ANALYTICS_TRENDS}${queryString}`);
-  return response;
+  return response?.data || response;
 };
 
 /**
@@ -34,7 +34,7 @@ export const getTrends = async (params = {}) => {
 export const generateAIReport = async (data = {}) => {
   // Longer timeout for LLM-powered report generation
   const response = await apiClient.post(API_ENDPOINTS.ANALYTICS_AI_REPORT, data, { timeout: 90000 });
-  return response;
+  return response?.data || response;
 };
 
 /**
@@ -43,7 +43,7 @@ export const generateAIReport = async (data = {}) => {
 export const getServiceDelivery = async (params = {}) => {
   const queryString = buildQueryString(params);
   const response = await apiClient.get(`${API_ENDPOINTS.ANALYTICS_SERVICE_DELIVERY}${queryString}`);
-  return response;
+  return response?.data || response;
 };
 
 /**
@@ -51,7 +51,7 @@ export const getServiceDelivery = async (params = {}) => {
  */
 export const generateMonthlyReport = async (data = {}) => {
   const response = await apiClient.post(API_ENDPOINTS.ANALYTICS_MONTHLY_REPORT, data);
-  return response;
+  return response?.data || response;
 };
 
 /**
@@ -59,7 +59,7 @@ export const generateMonthlyReport = async (data = {}) => {
  */
 export const getLGAs = async () => {
   const response = await apiClient.get(API_ENDPOINTS.LGAS);
-  return response;
+  return response?.data || response;
 };
 
 /**

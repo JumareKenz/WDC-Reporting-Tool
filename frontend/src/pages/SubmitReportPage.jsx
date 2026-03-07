@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, CheckCircle, Info, Calendar, AlertTriangle, Loader2, RefreshCw, WifiOff, FileX } from 'lucide-react';
@@ -270,9 +270,16 @@ const SubmitReportPage = () => {
   const [draftLoadRetryCount, setDraftLoadRetryCount] = useState(0);
   const [isUserReady, setIsUserReady] = useState(false);
 
-  // Form state
-  const userWard = { id: user?.ward?.id, name: user?.ward?.name };
-  const userLGA = { id: user?.ward?.lga_id || user?.lga?.id, name: user?.ward?.lga_name || user?.lga?.name };
+  // Form state — memoized to prevent unstable references that cause
+  // section component remounting (and keyboard dismissal) on every keystroke
+  const userWard = useMemo(
+    () => ({ id: user?.ward?.id, name: user?.ward?.name }),
+    [user?.ward?.id, user?.ward?.name]
+  );
+  const userLGA = useMemo(
+    () => ({ id: user?.ward?.lga_id || user?.lga?.id, name: user?.ward?.lga_name || user?.lga?.name }),
+    [user?.ward?.lga_id, user?.lga?.id, user?.ward?.lga_name, user?.lga?.name]
+  );
   const [formData, setFormData] = useState(() => buildInitialFormData(userWard, userLGA));
   const [voiceNotes, setVoiceNotes] = useState({});
 
@@ -545,98 +552,87 @@ const SubmitReportPage = () => {
       try {
         setIsLoadingDraft(true);
         setDraftLoadError(null);
-        
-        // Small delay to prevent UI flickering if loading is very fast
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-        if (abortController.signal.aborted) return;
 
-        // First, always try to load local draft (this is fast and reliable)
+        // ── Step 1: Load local draft immediately (synchronous, always available) ──
         const localDraft = loadDraftFromLocal();
-        
+
         if (abortController.signal.aborted) return;
 
-        let serverDraft = null;
-        let serverError = null;
-        
-        // Only try server draft if online
-        if (isOnline) {
+        // If we have a local draft, apply it and show the form RIGHT AWAY.
+        // The server check runs in the background below.
+        if (localDraft) {
+          applyDraftData(localDraft.formData);
+          setLocalLastSavedAt(new Date(localDraft.savedAt));
+          setIsLoadingDraft(false); // Unblock form immediately
+        }
+
+        // ── Step 2: Try server draft in the background (non-blocking) ──
+        if (navigator.onLine) {
           try {
-            // Use timeout to prevent hanging
             const response = await withTimeout(
               getExistingDraft(reportMonth),
               DRAFT_LOAD_TIMEOUT,
               'Server request timed out. Using local draft if available.'
             );
-            
+
             if (abortController.signal.aborted) return;
-            
+
             if (response && response.has_draft && response.report_data) {
-              serverDraft = { 
-                formData: response.report_data, 
-                savedAt: response.saved_at || response.updated_at, 
-                draftId: response.draft_id 
+              const serverDraft = {
+                formData: response.report_data,
+                savedAt: response.saved_at || response.updated_at,
+                draftId: response.draft_id
               };
+
+              // Only apply server draft if it's NEWER than local
+              if (localDraft) {
+                const localTime = new Date(localDraft.savedAt).getTime();
+                const serverTime = new Date(serverDraft.savedAt).getTime();
+                if (serverTime > localTime) {
+                  applyDraftData(serverDraft.formData);
+                  toast.info('Updated with newer draft from server', { duration: 2000 });
+                }
+              } else {
+                applyDraftData(serverDraft.formData);
+                toast.success('Loaded draft from server', { duration: 2000 });
+              }
             }
           } catch (err) {
             console.warn('[SubmitReportPage] Failed to load server draft:', err.message);
-            serverError = err.message;
+            // If no local draft either, and retries exhausted, show error
+            if (!localDraft && draftLoadRetryCount >= MAX_DRAFT_RETRIES) {
+              setDraftLoadError({
+                type: 'server_error',
+                message: err.message,
+                isOffline: !navigator.onLine,
+              });
+            }
           }
-        }
-
-        if (abortController.signal.aborted) return;
-
-        // Apply draft data (prefer local if both exist and local is newer)
-        if (localDraft && serverDraft) {
-          const localTime = new Date(localDraft.savedAt).getTime();
-          const serverTime = new Date(serverDraft.savedAt).getTime();
-          const useLocal = localTime >= serverTime;
-          
-          applyDraftData(useLocal ? localDraft.formData : serverDraft.formData);
-          
-          if (useLocal) {
-            setLocalLastSavedAt(new Date(localDraft.savedAt));
-          }
-          
-          // Show info if we had to fall back
-          if (serverError && !useLocal) {
-            toast.warning('Using local draft. Server draft could not be loaded.', {
-              duration: 4000,
-            });
-          }
-        } else if (localDraft) {
-          applyDraftData(localDraft.formData);
-          setLocalLastSavedAt(new Date(localDraft.savedAt));
-        } else if (serverDraft) {
-          applyDraftData(serverDraft.formData);
-          toast.success('Loaded draft from server', { duration: 2000 });
-        } else {
-          // No draft found - starting fresh is fine
-          setLocalDraftStatus('idle');
-        }
-
-        // If server had an error but we have no local draft, show warning
-        if (serverError && !localDraft && !serverDraft) {
-          // Only show error if we've retried enough times
+        } else if (!localDraft) {
+          // Offline with no local draft
           if (draftLoadRetryCount >= MAX_DRAFT_RETRIES) {
             setDraftLoadError({
               type: 'server_error',
-              message: serverError,
-              isOffline: !isOnline,
+              message: 'Cannot reach server while offline.',
+              isOffline: true,
             });
           }
         }
+
+        // If no local draft and no server draft loaded, starting fresh is fine
+        if (!localDraft) {
+          setLocalDraftStatus('idle');
+        }
       } catch (err) {
         console.error('[SubmitReportPage] Unexpected error loading draft:', err);
-        
+
         if (abortController.signal.aborted) return;
-        
-        // If we've exhausted retries, show error UI
+
         if (draftLoadRetryCount >= MAX_DRAFT_RETRIES) {
           setDraftLoadError({
             type: 'unexpected',
             message: err.message || 'Failed to load draft',
-            isOffline: !isOnline,
+            isOffline: !navigator.onLine,
           });
         }
       } finally {
@@ -647,13 +643,15 @@ const SubmitReportPage = () => {
     };
 
     loadDraft();
-    
+
     // Cleanup
     return () => {
       abortController.abort();
     };
+    // Note: isOnline intentionally excluded — network changes shouldn't restart draft loading.
+    // The effect reads navigator.onLine directly instead.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reportMonth, isUserReady, draftLoadRetryCount, isOnline]);
+  }, [reportMonth, isUserReady, draftLoadRetryCount]);
 
   // ── Voice note handler ──────────────────────────────────────
   const handleVoiceNote = useCallback((fieldName, file) => {
@@ -924,6 +922,12 @@ const SubmitReportPage = () => {
       draftMutation.mutate(formData);
     }
   }, [formData, isOnline, saveDraftToLocal, draftMutation]);
+
+  // Stable draftContext — prevents section component remounting on every keystroke
+  const draftContext = useMemo(
+    () => ({ userId: user?.id, wardId: userWard?.id, reportMonth }),
+    [user?.id, userWard?.id, reportMonth]
+  );
 
   // ── onChange handler (functional updater compatible) ─────────
   const handleFormChange = useCallback((updaterOrObj) => {
@@ -1233,11 +1237,7 @@ const SubmitReportPage = () => {
                   voiceNotes={voiceNotes}
                   userLGA={userLGA}
                   userWard={userWard}
-                  draftContext={{
-                    userId: user?.id,
-                    wardId: userWard?.id,
-                    reportMonth,
-                  }}
+                  draftContext={draftContext}
                   onImageAdd={addImage}
                   onImagesRemove={removeImages}
                   submitDisabled={!submissionAllowed}

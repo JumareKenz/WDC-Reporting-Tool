@@ -69,7 +69,6 @@ import {
   getCurrentMonth,
   getSubmissionRateColor,
 } from '../utils/formatters';
-import { getTargetReportMonth } from '../utils/dateUtils';
 import MonthlyReportModal from '../components/state/MonthlyReportModal';
 import AIChatInterface from '../components/state/AIChatInterface';
 import apiClient from '../api/client';
@@ -167,8 +166,8 @@ const StateDashboard = () => {
   const [monthlyReportData, setMonthlyReportData] = useState(null);
   const [showMonthSelector, setShowMonthSelector] = useState(false);
   const [selectedReportMonth, setSelectedReportMonth] = useState(currentMonth);
-  const [selectedMonth, setSelectedMonth] = useState(getTargetReportMonth());
-  
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+
   // AI Chat state
   const [showAIChat, setShowAIChat] = useState(false);
 
@@ -177,8 +176,8 @@ const StateDashboard = () => {
   const [trendMonths, setTrendMonths] = useState(6); // 3 | 6 | 12
 
   // Data fetching
-  const { data: overviewData, isLoading: loadingOverview, refetch: refetchOverview, dataUpdatedAt: overviewUpdatedAt, isRefetching: isRefetchingOverview } = useOverview({ month: selectedMonth });
-  const { data: comparisonData, isLoading: loadingComparison, refetch: refetchComparison, isRefetching: isRefetchingComparison } = useLGAComparison({ month: selectedMonth });
+  const { data: overviewData, isLoading: loadingOverview, isError: isOverviewError, error: overviewError, refetch: refetchOverview, dataUpdatedAt: overviewUpdatedAt, isRefetching: isRefetchingOverview } = useOverview({ month: selectedMonth });
+  const { data: comparisonData, isLoading: loadingComparison, isError: isComparisonError, refetch: refetchComparison, isRefetching: isRefetchingComparison } = useLGAComparison({ month: selectedMonth });
   const { data: trendsData, isLoading: loadingTrends, refetch: refetchTrends } = useTrends({ months: trendMonths });
   const { data: serviceDeliveryData, isLoading: loadingServiceDelivery } = useServiceDelivery({ month: selectedMonth });
 
@@ -193,20 +192,20 @@ const StateDashboard = () => {
   // Mutations
   const generateMonthlyMutation = useGenerateAIReport();
 
-  // Extract data
-  const overview = overviewData?.data || overviewData || {};
-  const lgaComparison = comparisonData?.data?.lgas || comparisonData?.lgas || [];
-  const trends = trendsData?.data?.trends || trendsData?.trends || [];
-  const serviceDelivery = serviceDeliveryData?.data || {};
+  // Extract data (API layer already unwraps { success, data } wrapper)
+  const overview = overviewData || {};
+  const lgaComparison = comparisonData?.lgas || [];
+  const trends = trendsData?.trends || [];
+  const serviceDelivery = serviceDeliveryData || {};
 
   // Calculate overview stats - prefer overview data, fallback to calculating from LGA comparison
   const totalLGAs = overview.total_lgas || lgaComparison.length || 23; // 23 LGAs in Kaduna
   const totalWards = overview.total_wards || lgaComparison.reduce((sum, lga) => sum + (lga.total_wards || lga.wards_count || 0), 0) || 255; // 255 wards in Kaduna
   const totalSubmitted = (overview.total_submitted !== undefined) ? overview.total_submitted : lgaComparison.reduce((sum, lga) => sum + (lga.submitted_count || lga.reports_count || 0), 0);
   const totalMissing = (overview.total_missing !== undefined) ? overview.total_missing : Math.max(0, totalWards - totalSubmitted);
-  const totalReviewed = overview.total_reviewed || lgaComparison.reduce((sum, lga) => sum + (lga.reviewed_count || 0), 0);
-  const totalFlagged = overview.total_flagged || lgaComparison.reduce((sum, lga) => sum + (lga.flagged_count || 0), 0);
-  const submissionRate = totalWards > 0 ? Math.round((totalSubmitted / totalWards) * 100) : 0;
+  const totalReviewed = (overview.total_reviewed !== undefined) ? overview.total_reviewed : lgaComparison.reduce((sum, lga) => sum + (lga.reviewed_count || 0), 0);
+  const totalFlagged = (overview.total_flagged !== undefined) ? overview.total_flagged : lgaComparison.reduce((sum, lga) => sum + (lga.flagged_count || 0), 0);
+  const submissionRate = overview.submission_rate !== undefined ? overview.submission_rate : (totalWards > 0 ? Math.round((totalSubmitted / totalWards) * 100) : 0);
 
   // Sort and filter LGAs
   const sortedLGAs = useMemo(() => [...lgaComparison]
@@ -285,8 +284,8 @@ const StateDashboard = () => {
         generateMonthlyMutation.mutateAsync({ month: selectedReportMonth }),
       ]);
 
-      const monthlyData = monthlyRes?.data || monthlyRes || {};
-      const aiData = aiRes?.data?.report || aiRes?.data || aiRes?.report || aiRes || {};
+      const monthlyData = monthlyRes?.report || monthlyRes || {};
+      const aiData = aiRes?.report || aiRes || {};
 
       // Merge: use monthly report for stats/charts/SWOT, AI report for narrative
       const fullReport = {
@@ -551,6 +550,25 @@ const StateDashboard = () => {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* API error indicator */}
+        {(isOverviewError || isComparisonError) && !loadingOverview && !loadingComparison && (
+          <motion.div
+            className="flex items-center gap-2 mb-4 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            <span>Could not load dashboard data. Stats may be inaccurate.</span>
+            <button
+              onClick={handleRefreshAll}
+              className="ml-auto flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-800"
+            >
+              <RefreshCw className="w-3 h-3" />
+              Retry
+            </button>
+          </motion.div>
+        )}
 
         {/* Month indicator */}
         {selectedMonth !== currentMonth && (

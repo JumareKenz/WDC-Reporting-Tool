@@ -253,9 +253,11 @@ apiClient.interceptors.response.use(
       const networkError = new Error(networkMessage);
       networkError.isNetworkError = true;
 
-      // Only show the draft-save toast when the user is already authenticated.
+      // Only show the draft-save toast when the user is already authenticated
+      // and the request hasn't opted out via _silentError config flag.
+      const isSilent = error.config?._silentError;
       const isAuthenticated = !!localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-      if (isAuthenticated) {
+      if (isAuthenticated && !isSilent) {
         emitToast('warning', 'No connection – your work has been saved as a draft and will sync when reconnected.', {
           title: 'You are offline',
           duration: 6000,

@@ -56,7 +56,9 @@ export const checkSubmitted = async (month) => {
  */
 export const getSubmissionInfo = async (reportMonth = null) => {
   const queryString = reportMonth ? buildQueryString({ report_month: reportMonth }) : '';
-  return apiClient.get(`/reports/submission-info${queryString}`);
+  return apiClient.get(`/reports/submission-info${queryString}`, {
+    _silentError: true, // Don't show "offline" toast — caller handles errors gracefully
+  });
 };
 
 /**
@@ -133,6 +135,7 @@ export const getExistingDraft = async (reportMonth = null, timeoutMs = 10000) =>
     const response = await apiClient.get(`/reports/draft/existing${queryString}`, {
       signal: controller.signal,
       timeout: timeoutMs,
+      _silentError: true, // Don't show "offline" toast for background draft loading
     });
     clearTimeout(timeoutId);
     return response;
