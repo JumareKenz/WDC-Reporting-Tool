@@ -105,6 +105,73 @@ const WDCReportWizard = ({
     [formData, userLGA, userWard]
   );
 
+  // STABLE COMPONENT WRAPPERS - Memoized to prevent re-mounting during typing
+  // These wrappers ensure component references remain stable across re-renders
+  // preventing focus loss when draft auto-save or other state updates occur
+  
+  const MeetingDetailsWrapper = useMemo(
+    () => function MeetingDetailsWrapper(props) {
+      return <MeetingDetailsSection {...props} userLGA={userLGA} userWard={userWard} />;
+    },
+    [userLGA, userWard]
+  );
+
+  const ActionTrackerWrapper = useMemo(
+    () => function ActionTrackerWrapper(props) {
+      return <ActionTrackerSection {...props} onVoiceNote={onVoiceNote} voiceNotes={voiceNotes} draftContext={draftContext} />;
+    },
+    [onVoiceNote, voiceNotes, draftContext]
+  );
+
+  const FacilitySupportWrapper = useMemo(
+    () => function FacilitySupportWrapper(props) {
+      return <FacilitySupportSection {...props} onVoiceNote={onVoiceNote} voiceNotes={voiceNotes} draftContext={draftContext} />;
+    },
+    [onVoiceNote, voiceNotes, draftContext]
+  );
+
+  const CMPDSRWrapper = useMemo(
+    () => function CMPDSRWrapper(props) {
+      return <CMPDSRSection {...props} onVoiceNote={onVoiceNote} voiceNotes={voiceNotes} draftContext={draftContext} />;
+    },
+    [onVoiceNote, voiceNotes, draftContext]
+  );
+
+  const CommunityFeedbackWrapper = useMemo(
+    () => function CommunityFeedbackWrapper(props) {
+      return <CommunityFeedbackSection {...props} onVoiceNote={onVoiceNote} voiceNotes={voiceNotes} draftContext={draftContext} />;
+    },
+    [onVoiceNote, voiceNotes, draftContext]
+  );
+
+  const VDCReportsWrapper = useMemo(
+    () => function VDCReportsWrapper(props) {
+      return <VDCReportsSection {...props} onVoiceNote={onVoiceNote} voiceNotes={voiceNotes} draftContext={draftContext} />;
+    },
+    [onVoiceNote, voiceNotes, draftContext]
+  );
+
+  const MobilizationWrapper = useMemo(
+    () => function MobilizationWrapper(props) {
+      return <MobilizationSection {...props} onVoiceNote={onVoiceNote} voiceNotes={voiceNotes} draftContext={draftContext} />;
+    },
+    [onVoiceNote, voiceNotes, draftContext]
+  );
+
+  const ActionPlanWrapper = useMemo(
+    () => function ActionPlanWrapper(props) {
+      return <ActionPlanSection {...props} onVoiceNote={onVoiceNote} voiceNotes={voiceNotes} draftContext={draftContext} />;
+    },
+    [onVoiceNote, voiceNotes, draftContext]
+  );
+
+  const ConclusionWrapper = useMemo(
+    () => function ConclusionWrapper(props) {
+      return <ConclusionSection {...props} onVoiceNote={onVoiceNote} voiceNotes={voiceNotes} draftContext={draftContext} onImageAdd={onImageAdd} onImagesRemove={onImagesRemove} />;
+    },
+    [onVoiceNote, voiceNotes, draftContext, onImageAdd, onImagesRemove]
+  );
+
   const sections = useMemo(
     () => {
       const baseSections = [
@@ -113,9 +180,7 @@ const WDCReportWizard = ({
           title: 'Meeting Details',
           description: 'Report date, meeting type, and agenda items covered',
           icon: FileText,
-          component: (props) => (
-            <MeetingDetailsSection {...props} userLGA={userLGA} userWard={userWard} />
-          ),
+          component: MeetingDetailsWrapper,
           validate: (data) => {
             const errors = {};
             if (!data.report_date) errors.report_date = 'Report date is required';
@@ -128,7 +193,7 @@ const WDCReportWizard = ({
           title: 'Action Tracker',
           description: 'Feedback from the last meeting — track action points',
           icon: CheckCircle,
-          component: (props) => <ActionTrackerSection {...props} onVoiceNote={onVoiceNote} voiceNotes={voiceNotes} draftContext={draftContext} />,
+          component: ActionTrackerWrapper,
           validate: () => ({}),
         },
         {
@@ -144,7 +209,7 @@ const WDCReportWizard = ({
           title: 'Facility Support',
           description: 'Renovations, donations, and repairs to health facilities',
           icon: Building,
-          component: (props) => <FacilitySupportSection {...props} onVoiceNote={onVoiceNote} voiceNotes={voiceNotes} draftContext={draftContext} />,
+          component: FacilitySupportWrapper,
           validate: () => ({}),
         },
         {
@@ -160,7 +225,7 @@ const WDCReportWizard = ({
           title: 'MPDSR',
           description: 'Maternal and perinatal death surveillance and response',
           icon: Skull,
-          component: (props) => <CMPDSRSection {...props} onVoiceNote={onVoiceNote} voiceNotes={voiceNotes} draftContext={draftContext} />,
+          component: CMPDSRWrapper,
           validate: validateNoNegatives('cmpdsr'),
         },
       ];
@@ -172,7 +237,7 @@ const WDCReportWizard = ({
           title: 'Community Feedback',
           description: 'Town hall feedback on health services',
           icon: MessageSquare,
-          component: (props) => <CommunityFeedbackSection {...props} onVoiceNote={onVoiceNote} voiceNotes={voiceNotes} draftContext={draftContext} />,
+          component: CommunityFeedbackWrapper,
           validate: () => ({}),
         });
       }
@@ -183,7 +248,7 @@ const WDCReportWizard = ({
           title: 'VDC Reports',
           description: 'Reports from Village Development Committees',
           icon: MapPin,
-          component: (props) => <VDCReportsSection {...props} onVoiceNote={onVoiceNote} voiceNotes={voiceNotes} draftContext={draftContext} />,
+          component: VDCReportsWrapper,
           validate: () => ({}),
         },
         {
@@ -191,7 +256,7 @@ const WDCReportWizard = ({
           title: 'Mobilization',
           description: 'Awareness topics and community leader support',
           icon: Users,
-          component: (props) => <MobilizationSection {...props} onVoiceNote={onVoiceNote} voiceNotes={voiceNotes} draftContext={draftContext} />,
+          component: MobilizationWrapper,
           validate: () => ({}),
         },
         {
@@ -199,7 +264,7 @@ const WDCReportWizard = ({
           title: 'Action Plan',
           description: 'Community action plan with timelines and responsible persons',
           icon: Calendar,
-          component: (props) => <ActionPlanSection {...props} onVoiceNote={onVoiceNote} voiceNotes={voiceNotes} draftContext={draftContext} />,
+          component: ActionPlanWrapper,
           validate: () => ({}),
         },
         {
@@ -207,14 +272,15 @@ const WDCReportWizard = ({
           title: 'Conclusion',
           description: 'Support required, attendance, photos, and signatures',
           icon: AlertTriangle,
-          component: (props) => <ConclusionSection {...props} onVoiceNote={onVoiceNote} voiceNotes={voiceNotes} draftContext={draftContext} onImageAdd={onImageAdd} onImagesRemove={onImagesRemove} />,
+          component: ConclusionWrapper,
           validate: validateNoNegatives('conclusion'),
         }
       );
 
       return baseSections;
     },
-    [userLGA, userWard, onVoiceNote, voiceNotes, formData.meeting_type, draftContext, onImageAdd, onImagesRemove]
+    // Dependencies now only include stable wrappers and meeting_type
+    [formData.meeting_type, MeetingDetailsWrapper, ActionTrackerWrapper, FacilitySupportWrapper, CMPDSRWrapper, CommunityFeedbackWrapper, VDCReportsWrapper, MobilizationWrapper, ActionPlanWrapper, ConclusionWrapper]
   );
 
   return (
