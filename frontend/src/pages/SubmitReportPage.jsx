@@ -403,17 +403,22 @@ const SubmitReportPage = () => {
   }, [user?.id, userWard?.id, reportMonth]);
 
   // ── Save draft to localStorage ──────────────────────────────
-  const saveDraftToLocal = useCallback((data, instant = false) => {
+  const saveDraftToLocal = useCallback((data, instant = false, showStatus = false) => {
     const key = getDraftKey();
     if (!key) return false;
     try {
       const payload = { formData: serializableFormData(data), savedAt: new Date().toISOString(), version: 1 };
       localStorage.setItem(key, JSON.stringify(payload));
       setLocalLastSavedAt(new Date());
-      setLocalDraftStatus('saved');
+      // Only update visible status if explicitly requested (manual saves)
+      if (showStatus) {
+        setLocalDraftStatus('saved');
+      }
       return true;
     } catch {
-      setLocalDraftStatus('error');
+      if (showStatus) {
+        setLocalDraftStatus('error');
+      }
       return false;
     }
   }, [getDraftKey]);
@@ -432,20 +437,27 @@ const SubmitReportPage = () => {
   }, [getDraftKey]);
 
   // ── Debounced auto-save on form changes ─────────────────────
+  // SILENT AUTO-SAVE: Saves in background without triggering status updates
+  // This prevents keyboard dismissal on mobile by avoiding re-renders during typing
   useEffect(() => {
     if (!getDraftKey() || isLoadingDraft) return;
-    setLocalDraftStatus('saving');
+    // Don't set 'saving' status for auto-save to prevent re-render/focus loss
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => saveDraftToLocal(formData), 1000);
+    debounceRef.current = setTimeout(() => {
+      saveDraftToLocal(formData);
+      // Silently update last saved timestamp without status change
+      setLocalLastSavedAt(new Date());
+    }, 2000); // Increased to 2s for less frequent saves
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [formData, getDraftKey, saveDraftToLocal, isLoadingDraft]);
 
   // ── Save on visibility change ───────────────────────────────
+  // SILENT: Background save when tab/app is hidden
   useEffect(() => {
     const handler = () => {
       if (document.visibilityState === 'hidden' && getDraftKey()) {
         if (debounceRef.current) clearTimeout(debounceRef.current);
-        saveDraftToLocal(formDataRef.current, true);
+        saveDraftToLocal(formDataRef.current, true, false); // silent
       }
     };
     document.addEventListener('visibilitychange', handler);
@@ -453,11 +465,12 @@ const SubmitReportPage = () => {
   }, [saveDraftToLocal, getDraftKey]);
 
   // ── Save on beforeunload ────────────────────────────────────
+  // SILENT: Emergency save when leaving page
   useEffect(() => {
     const handler = () => {
       if (getDraftKey()) {
         if (debounceRef.current) clearTimeout(debounceRef.current);
-        saveDraftToLocal(formDataRef.current, true);
+        saveDraftToLocal(formDataRef.current, true, false); // silent
       }
     };
     window.addEventListener('beforeunload', handler);
@@ -905,7 +918,8 @@ const SubmitReportPage = () => {
   // ── Manual save draft handler ───────────────────────────────
   const handleSaveDraft = useCallback(() => {
     setSubmitError(null);
-    const saved = saveDraftToLocal(formData, true);
+    setLocalDraftStatus('saving');
+    const saved = saveDraftToLocal(formData, true, true); // showStatus = true
     if (saved && isOnline) {
       draftMutation.mutate(formData);
     }
@@ -1193,7 +1207,10 @@ const SubmitReportPage = () => {
                     isOnline={isOnline}
                     queueStats={getQueueStats()}
                     isSyncing={isSyncing}
-                    onForceSave={() => saveDraftToLocal(formData, true)}
+                    onForceSave={() => {
+                      setLocalDraftStatus('saving');
+                      saveDraftToLocal(formData, true, true); // showStatus = true
+                    }}
                     onRetryFailed={retryFailed}
                   />
                 </div>
