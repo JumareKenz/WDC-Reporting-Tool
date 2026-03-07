@@ -123,11 +123,29 @@ const FormWizard = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [goNext, goBack]);
 
-  // Swipe support (mobile)
-  const { onTouchStart, onTouchEnd } = useSwipeNavigation({
+  // Swipe support (mobile) - with input field protection
+  const swipeNav = useSwipeNavigation({
     onSwipeLeft: goNext,
     onSwipeRight: goBack,
   });
+
+  // Wrap touch handlers to ignore touches on input elements
+  // Prevents keyboard dismissal on mobile when typing
+  const onTouchStart = useCallback((e) => {
+    const target = e.target;
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) {
+      return;
+    }
+    swipeNav.onTouchStart(e);
+  }, [swipeNav]);
+
+  const onTouchEnd = useCallback((e) => {
+    const target = e.target;
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) {
+      return;
+    }
+    swipeNav.onTouchEnd(e);
+  }, [swipeNav]);
 
   // Slide animation variants
   const slideVariants = {
