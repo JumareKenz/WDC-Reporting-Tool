@@ -59,11 +59,32 @@ const ReportDetailView = ({ report }) => {
   console.log('vdc_reports:', report.vdc_reports);
   console.log('action_plan:', report.action_plan);
 
-  // Parse group photos — stored as JSON string or already an array
+  // Parse group photos — handle both group_photo_path and group_photos fields
   const groupPhotos = (() => {
-    if (!report.group_photo_path) return [];
-    if (Array.isArray(report.group_photo_path)) return report.group_photo_path;
-    try { return JSON.parse(report.group_photo_path); } catch { return []; }
+    // Try group_photos first (newer API format)
+    if (report.group_photos) {
+      if (Array.isArray(report.group_photos)) return report.group_photos;
+      try { return JSON.parse(report.group_photos); } catch { return []; }
+    }
+    // Fallback to group_photo_path (older format)
+    if (report.group_photo_path) {
+      if (Array.isArray(report.group_photo_path)) return report.group_photo_path;
+      try { return JSON.parse(report.group_photo_path); } catch { return []; }
+    }
+    return [];
+  })();
+  
+  // Parse attendance photos - handle both attendance_photo_url and attendance_photos
+  const attendancePhotos = (() => {
+    if (report.attendance_photos) {
+      if (Array.isArray(report.attendance_photos)) return report.attendance_photos;
+      try { return JSON.parse(report.attendance_photos); } catch { return []; }
+    }
+    // Fallback to single attendance_photo_url wrapped in array
+    if (report.attendance_photo_url) {
+      return [report.attendance_photo_url];
+    }
+    return [];
   })();
 
   const photoUrl = (path) => `${UPLOAD_BASE}/${path}`;
@@ -875,34 +896,31 @@ const ReportDetailView = ({ report }) => {
         </div>
       )}
 
-      {/* Attendance Photo */}
-      {report.attendance_photo_url && (
+      {/* Attendance Photos */}
+      {attendancePhotos.length > 0 ? (
         <div className="bg-white rounded-lg border border-neutral-200 p-5">
-          {renderSectionHeader('Attendance Photo', <Image className="w-5 h-5 text-primary-600" />)}
-          <div className="flex items-start gap-4">
-            <button
-              onClick={() => setAttendancePhotoModal(true)}
-              className="relative group"
-            >
-              <img
-                src={`${UPLOAD_BASE}/${report.attendance_photo_url}`}
-                alt="Attendance"
-                className="w-24 h-24 object-cover rounded-lg border border-neutral-200 group-hover:border-primary-400 transition-colors"
-              />
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors rounded-lg flex items-center justify-center">
-                <Eye className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-            </button>
-            <div>
-              <p className="text-sm text-neutral-600">
-                Click thumbnail to view full-size attendance photo
-              </p>
-            </div>
+          {renderSectionHeader(`Attendance Photo${attendancePhotos.length > 1 ? 's' : ''}`, <Image className="w-5 h-5 text-primary-600" />)}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {attendancePhotos.map((path, idx) => (
+              <a
+                key={idx}
+                href={photoUrl(path)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="relative aspect-square rounded-lg overflow-hidden border border-neutral-200 hover:border-primary-400 transition-all group"
+              >
+                <img
+                  src={photoUrl(path)}
+                  alt={`Attendance ${idx + 1}`}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+              </a>
+            ))}
           </div>
         </div>
-      )}
-      
-      {!report.attendance_photo_url && (
+      ) : (
         <div className="bg-white rounded-lg border border-neutral-200 p-5">
           {renderSectionHeader('Attendance Photo', <Image className="w-5 h-5 text-primary-600" />)}
           <p className="text-sm text-neutral-400 italic">No photo uploaded</p>
@@ -1130,7 +1148,7 @@ const ReportDetailView = ({ report }) => {
       )}
       
       {/* Attendance Photo Modal */}
-      {attendancePhotoModal && report.attendance_photo_url && (
+      {attendancePhotoModal && attendancePhotos.length > 0 && (
         <div
           className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
           onClick={() => setAttendancePhotoModal(false)}
@@ -1148,7 +1166,7 @@ const ReportDetailView = ({ report }) => {
           </button>
           
           <a
-            href={`${UPLOAD_BASE}/${report.attendance_photo_url}`}
+            href={photoUrl(attendancePhotos[0])}
             download
             className="absolute top-4 left-4 flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
             onClick={(e) => e.stopPropagation()}
@@ -1158,7 +1176,7 @@ const ReportDetailView = ({ report }) => {
           </a>
 
           <img
-            src={`${UPLOAD_BASE}/${report.attendance_photo_url}`}
+            src={photoUrl(attendancePhotos[0])}
             alt="Attendance"
             className="max-w-full max-h-[85vh] rounded-lg shadow-2xl object-contain"
             onClick={(e) => e.stopPropagation()}

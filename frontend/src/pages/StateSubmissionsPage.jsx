@@ -15,6 +15,7 @@ import {
   ArrowUpDown,
   CheckCircle,
   XCircle,
+  Image as ImageIcon,
 } from 'lucide-react';
 import Card, { IconCard, EmptyCard } from '../components/common/Card';
 import Button from '../components/common/Button';
@@ -608,6 +609,67 @@ const StateSubmissionsPage = () => {
                   ))}
                 </div>
               </div>
+            )}
+
+            {/* Uploaded Images Section */}
+            {fullReportData && (
+              <>
+                {/* Group Photos */}
+                {(fullReportData.group_photos?.length > 0 || fullReportData.group_photo_path) && (
+                  <div className="bg-white rounded-lg border border-neutral-200 p-5">
+                    <h4 className="font-semibold text-neutral-900 mb-3 flex items-center gap-2">
+                      <ImageIcon className="w-4 h-4 text-blue-600" />
+                      Meeting Photos
+                    </h4>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                      {(fullReportData.group_photos || JSON.parse(fullReportData.group_photo_path || '[]')).map((photo, idx) => (
+                        <a
+                          key={idx}
+                          href={`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || ''}${photo}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="relative aspect-square rounded-lg overflow-hidden border border-neutral-200 hover:border-blue-400 transition-all group"
+                        >
+                          <img
+                            src={`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || ''}${photo}`}
+                            alt={`Meeting photo ${idx + 1}`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                            loading="lazy"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Attendance Photos */}
+                {(fullReportData.attendance_photos?.length > 0 || fullReportData.attendance_photo_url) && (
+                  <div className="bg-white rounded-lg border border-neutral-200 p-5">
+                    <h4 className="font-semibold text-neutral-900 mb-3 flex items-center gap-2">
+                      <ImageIcon className="w-4 h-4 text-green-600" />
+                      Attendance Photos
+                    </h4>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                      {(fullReportData.attendance_photos || [fullReportData.attendance_photo_url]).filter(Boolean).map((photo, idx) => (
+                        <a
+                          key={idx}
+                          href={`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || ''}${photo}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="relative aspect-square rounded-lg overflow-hidden border border-neutral-200 hover:border-green-400 transition-all group"
+                        >
+                          <img
+                            src={`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || ''}${photo}`}
+                            alt={`Attendance photo ${idx + 1}`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                            loading="lazy"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
 
             {/* Review Notes Input (shown when a review action is pending) */}

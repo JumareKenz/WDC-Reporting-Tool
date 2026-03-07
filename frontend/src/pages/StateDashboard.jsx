@@ -192,13 +192,13 @@ const StateDashboard = () => {
   const trends = trendsData?.data?.trends || trendsData?.trends || [];
   const serviceDelivery = serviceDeliveryData?.data || {};
 
-  // Calculate overview stats
-  const totalLGAs = overview.total_lgas || lgaComparison.length;
-  const totalWards = overview.total_wards || lgaComparison.reduce((sum, lga) => sum + (lga.total_wards || 0), 0);
-  const totalSubmitted = (overview.total_submitted > 0) ? overview.total_submitted : lgaComparison.reduce((sum, lga) => sum + (lga.submitted_count || 0), 0);
-  const totalMissing = overview.total_missing || (totalWards - totalSubmitted);
+  // Calculate overview stats - prefer overview data, fallback to calculating from LGA comparison
+  const totalLGAs = overview.total_lgas || lgaComparison.length || 23; // 23 LGAs in Kaduna
+  const totalWards = overview.total_wards || lgaComparison.reduce((sum, lga) => sum + (lga.total_wards || lga.wards_count || 0), 0) || 255; // 255 wards in Kaduna
+  const totalSubmitted = (overview.total_submitted !== undefined) ? overview.total_submitted : lgaComparison.reduce((sum, lga) => sum + (lga.submitted_count || lga.reports_count || 0), 0);
+  const totalMissing = (overview.total_missing !== undefined) ? overview.total_missing : Math.max(0, totalWards - totalSubmitted);
   const totalReviewed = overview.total_reviewed || lgaComparison.reduce((sum, lga) => sum + (lga.reviewed_count || 0), 0);
-  const totalFlagged = overview.total_flagged || 0;
+  const totalFlagged = overview.total_flagged || lgaComparison.reduce((sum, lga) => sum + (lga.flagged_count || 0), 0);
   const submissionRate = totalWards > 0 ? Math.round((totalSubmitted / totalWards) * 100) : 0;
 
   // Sort and filter LGAs
