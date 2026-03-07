@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
+from pydantic import BaseModel
 from ..database import get_db
 from ..models import User, Ward, LGA
 from ..schemas import LoginRequest, LoginResponse, UserResponse, WardSimple, LGASimple, RefreshTokenRequest
@@ -9,6 +10,12 @@ from ..config import SECRET_KEY, ALGORITHM
 from ..dependencies import get_current_user
 from ..services.email import send_password_reset_email
 import secrets
+
+
+class SecretaryLoginRequest(BaseModel):
+    lga_id: int
+    ward_id: int
+    pin: str
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 

@@ -46,6 +46,7 @@ import {
   Award,
   Target,
   Info,
+  Bot,
 } from 'lucide-react';
 import Card, { IconCard, EmptyCard } from '../components/common/Card';
 import Button from '../components/common/Button';
@@ -58,8 +59,9 @@ import {
   useLGAComparison,
   useTrends,
   useServiceDelivery,
-  useGenerateMonthlyReport,
+  useGenerateAIReport,
 } from '../hooks/useStateData';
+import { generateMonthlyReport } from '../api/analytics';
 import {
   formatDate,
   formatNumber,
@@ -67,7 +69,9 @@ import {
   getCurrentMonth,
   getSubmissionRateColor,
 } from '../utils/formatters';
+import { getTargetReportMonth } from '../utils/dateUtils';
 import MonthlyReportModal from '../components/state/MonthlyReportModal';
+import AIChatInterface from '../components/state/AIChatInterface';
 import apiClient from '../api/client';
 
 const COLORS = ['#16a34a', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
@@ -163,7 +167,10 @@ const StateDashboard = () => {
   const [monthlyReportData, setMonthlyReportData] = useState(null);
   const [showMonthSelector, setShowMonthSelector] = useState(false);
   const [selectedReportMonth, setSelectedReportMonth] = useState(currentMonth);
-  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  const [selectedMonth, setSelectedMonth] = useState(getTargetReportMonth());
+  
+  // AI Chat state
+  const [showAIChat, setShowAIChat] = useState(false);
 
   // Chart type & timeframe for trends
   const [chartType, setChartType] = useState('area'); // 'area' | 'line' | 'bar'
@@ -184,7 +191,7 @@ const StateDashboard = () => {
   };
 
   // Mutations
-  const generateMonthlyMutation = useGenerateMonthlyReport();
+  const generateMonthlyMutation = useGenerateAIReport();
 
   // Extract data
   const overview = overviewData?.data || overviewData || {};
@@ -271,8 +278,24 @@ const StateDashboard = () => {
 
   const handleConfirmGenerateReport = async () => {
     try {
-      const result = await generateMonthlyMutation.mutateAsync({ month: selectedReportMonth });
-      setMonthlyReportData(result?.data || result);
+      // Fetch both: the comprehensive monthly report (has all stats, charts, SWOT)
+      // and the AI narrative report (has executive summary text)
+      const [monthlyRes, aiRes] = await Promise.all([
+        generateMonthlyReport({ month: selectedReportMonth }),
+        generateMonthlyMutation.mutateAsync({ month: selectedReportMonth }),
+      ]);
+
+      const monthlyData = monthlyRes?.data || monthlyRes || {};
+      const aiData = aiRes?.data?.report || aiRes?.data || aiRes?.report || aiRes || {};
+
+      // Merge: use monthly report for stats/charts/SWOT, AI report for narrative
+      const fullReport = {
+        ...monthlyData,
+        ai_narrative: aiData.executive_summary || aiData.ai_narrative || monthlyData.ai_narrative || '',
+        executive_summary: aiData.executive_summary || monthlyData.executive_summary || '',
+      };
+
+      setMonthlyReportData(fullReport);
       setShowMonthSelector(false);
       setShowMonthlyReport(true);
     } catch (error) {
@@ -488,6 +511,16 @@ const StateDashboard = () => {
                   className="shadow-md bg-gradient-to-r from-primary-600 to-primary-700"
                 >
                   Generate AI Monthly Report
+                </Button>
+              </InfoTooltip>
+              
+              <InfoTooltip text="Ask AI Assistant about system data">
+                <Button
+                  icon={Bot}
+                  onClick={() => setShowAIChat(true)}
+                  className="shadow-md bg-gradient-to-r from-purple-600 to-blue-600"
+                >
+                  AI Assistant
                 </Button>
               </InfoTooltip>
             </div>
@@ -1616,6 +1649,12 @@ const StateDashboard = () => {
         onClose={() => setShowMonthlyReport(false)}
         reportData={monthlyReportData}
         month={selectedReportMonth}
+      />
+      
+      {/* AI Chat Interface */}
+      <AIChatInterface
+        isOpen={showAIChat}
+        onClose={() => setShowAIChat(false)}
       />
     </div>
   );

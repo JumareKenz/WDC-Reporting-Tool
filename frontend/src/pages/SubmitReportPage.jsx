@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, CheckCircle, Info, Calendar, AlertTriangle, Loader2, RefreshCw, WifiOff, FileX } from 'lucide-react';
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
@@ -16,6 +16,7 @@ import apiClient from '../api/client';
 import { API_ENDPOINTS } from '../utils/constants';
 import { getSubmissionInfo as getLocalSubmissionInfo, getTargetReportMonth, formatMonthDisplay, getSubmissionPeriodDescription } from '../utils/dateUtils';
 import { getSubmissionInfo, getExistingDraft, saveDraft, checkSubmitted } from '../api/reports';
+import { STATE_QUERY_KEYS } from '../hooks/useStateData';
 
 // ────────────────────────────────────────────────────────────────
 // Configuration
@@ -203,6 +204,7 @@ const withTimeout = (promise, timeoutMs, errorMessage) => {
 const SubmitReportPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const { user, verifyToken, isLoading: isAuthLoading } = useAuth();
   const { toast } = useToast();
 
@@ -712,6 +714,12 @@ const SubmitReportPage = () => {
       });
     },
     onSuccess: async () => {
+      // Invalidate dashboard queries to refresh stats
+      queryClient.invalidateQueries({ queryKey: [STATE_QUERY_KEYS.overview] });
+      queryClient.invalidateQueries({ queryKey: [STATE_QUERY_KEYS.lgaComparison] });
+      queryClient.invalidateQueries({ queryKey: [STATE_QUERY_KEYS.trends] });
+      queryClient.invalidateQueries({ queryKey: [STATE_QUERY_KEYS.stateSubmissions] });
+
       // Clear the local draft on successful submission
       const key = getDraftKey();
       if (key) localStorage.removeItem(key);
@@ -739,6 +747,12 @@ const SubmitReportPage = () => {
     onError: async (error) => {
       // If the server says it already exists (409), treat as success
       if (error.status === 409) {
+        // Invalidate dashboard queries even on 409 (report exists)
+        queryClient.invalidateQueries({ queryKey: [STATE_QUERY_KEYS.overview] });
+        queryClient.invalidateQueries({ queryKey: [STATE_QUERY_KEYS.lgaComparison] });
+        queryClient.invalidateQueries({ queryKey: [STATE_QUERY_KEYS.trends] });
+        queryClient.invalidateQueries({ queryKey: [STATE_QUERY_KEYS.stateSubmissions] });
+
         const key = getDraftKey();
         if (key) localStorage.removeItem(key);
         setSubmitSuccess(true);
@@ -755,6 +769,12 @@ const SubmitReportPage = () => {
         try {
           const check = await checkSubmitted(reportMonth);
           if (check?.submitted || check?.data?.submitted) {
+            // Invalidate dashboard queries (report went through)
+            queryClient.invalidateQueries({ queryKey: [STATE_QUERY_KEYS.overview] });
+            queryClient.invalidateQueries({ queryKey: [STATE_QUERY_KEYS.lgaComparison] });
+            queryClient.invalidateQueries({ queryKey: [STATE_QUERY_KEYS.trends] });
+            queryClient.invalidateQueries({ queryKey: [STATE_QUERY_KEYS.stateSubmissions] });
+
             const key = getDraftKey();
             if (key) localStorage.removeItem(key);
             setSubmitSuccess(true);

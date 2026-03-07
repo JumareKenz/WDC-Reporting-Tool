@@ -114,6 +114,12 @@ export const API_ENDPOINTS = {
 
   // Health
   HEALTH: '/health',
+
+  // Chat (AI Assistant)
+  CHAT_SESSIONS: '/chat/sessions',
+  CHAT_HISTORY: (sessionId) => `/chat/sessions/${sessionId}/messages`,
+  CHAT_SEND: '/chat/message',
+  CHAT_CLEAR: '/chat/history',
 };
 
 // Demo Credentials

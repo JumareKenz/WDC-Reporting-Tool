@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, RefreshCw, ChevronLeft } from 'lucide-react';
+import { ArrowLeft, RefreshCw, ChevronLeft, AlertCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../hooks/useToast';
 import { fetchLgas, fetchWards } from '../api/auth';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Alert from '../components/common/Alert';
@@ -24,6 +25,7 @@ const stepVariants = {
 const SecretaryLogin = () => {
   const navigate = useNavigate();
   const { loginWithPin, getDefaultRoute } = useAuth();
+  const { toast } = useToast();
 
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState(1);
@@ -126,23 +128,36 @@ const SecretaryLogin = () => {
       setPin('');
       setSubmitting(false);
 
-      if (err.isNetworkError) {
-        setError('Unable to reach the server. Please check your connection and try again.');
-        return;
+      // Debug logging
+      console.log('Secretary login error:', { err, status: err?.status, message: err?.message, response: err?.response });
+
+      // Try to extract status from various locations
+      const status = err?.status || err?.response?.status;
+      const message = err?.message || err?.response?.data?.detail;
+
+      let errorMsg;
+      if (err?.isNetworkError) {
+        errorMsg = 'Unable to reach the server. Please check your connection and try again.';
+      } else if (status === 401) {
+        errorMsg = 'Incorrect PIN. Please try again.';
+      } else if (status === 404) {
+        errorMsg = 'No secretary is assigned to this ward. Contact your LGA coordinator.';
+      } else if (status === 403) {
+        errorMsg = 'PIN not set for this account. Contact your LGA coordinator.';
+      } else if (status === 409) {
+        errorMsg = 'Multiple secretaries found for this ward. Contact your state administrator.';
+      } else {
+        errorMsg = message || 'Something went wrong. Please try again.';
       }
 
-      const status = err.status;
-      if (status === 401) {
-        setError('Incorrect PIN. Please try again.');
-      } else if (status === 404) {
-        setError('No secretary is assigned to this ward. Contact your LGA coordinator.');
-      } else if (status === 403) {
-        setError('PIN not set for this account. Contact your LGA coordinator.');
-      } else if (status === 409) {
-        setError('Multiple secretaries found for this ward. Contact your state administrator.');
-      } else {
-        setError('Something went wrong. Please try again.');
-      }
+      // Show error in UI state
+      setError(errorMsg);
+      
+      // Also show as toast for visibility
+      toast.error(errorMsg, { 
+        title: 'Login Failed',
+        duration: 0 // Don't auto-dismiss error toasts
+      });
     }
   };
 
@@ -335,12 +350,15 @@ const SecretaryLogin = () => {
               </h1>
 
               {error && (
-                <Alert
-                  type="error"
-                  message={error}
-                  onClose={() => setError(null)}
-                  className="mb-4 w-full"
-                />
+                <div className="mb-4 w-full rounded-xl bg-red-500 border border-red-400 shadow-lg shadow-red-500/20 overflow-hidden">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-red-600">
+                    <AlertCircle className="w-5 h-5 text-white" />
+                    <span className="font-semibold text-white text-sm">Login Failed</span>
+                  </div>
+                  <div className="px-4 py-3">
+                    <p className="text-white text-sm leading-relaxed">{error}</p>
+                  </div>
+                </div>
               )}
 
               <PinDots

@@ -26,6 +26,7 @@ import {
 import Modal from '../common/Modal';
 import Button from '../common/Button';
 import { formatNumber, formatMonth, formatDate } from '../../utils/formatters';
+import generateReportPDF from '../../utils/generateReportPDF';
 
 const PIE_COLORS = ['#3b82f6', '#16a34a', '#f59e0b', '#8b5cf6'];
 
@@ -41,6 +42,8 @@ const MonthlyReportModal = ({ isOpen, onClose, reportData, month }) => {
     recommendations = [],
     charts = {},
     swot = {},
+    ai_narrative,
+    executive_summary,
   } = reportData;
 
   const { health_data = {}, facility_support = {}, transportation = {}, cmpdsr = {} } = service_delivery;
@@ -122,6 +125,10 @@ Kaduna State WDC Digital Reporting System
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownloadPDF = () => {
+    generateReportPDF(reportData, month);
   };
 
   const handleExportCSV = () => {
@@ -210,6 +217,13 @@ Kaduna State WDC Digital Reporting System
         {/* Action Buttons */}
         <div className="flex justify-end gap-2 sticky top-0 bg-white z-10 pb-2">
           <Button
+            variant="primary"
+            icon={Download}
+            onClick={handleDownloadPDF}
+          >
+            Download PDF
+          </Button>
+          <Button
             variant="outline"
             icon={Download}
             onClick={handleExportCSV}
@@ -224,6 +238,18 @@ Kaduna State WDC Digital Reporting System
             {copied ? 'Copied!' : 'Copy to Clipboard'}
           </Button>
         </div>
+
+        {/* 0. Executive Summary / AI Narrative */}
+        {(ai_narrative || executive_summary) && (
+          <section>
+            <h3 className="text-lg font-bold text-neutral-900 mb-4 border-b pb-2">Executive Summary</h3>
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
+              <p className="text-sm text-neutral-700 leading-relaxed whitespace-pre-line">
+                {ai_narrative || executive_summary}
+              </p>
+            </div>
+          </section>
+        )}
 
         {/* 1. State Overview */}
         <section>

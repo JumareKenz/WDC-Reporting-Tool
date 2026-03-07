@@ -32,7 +32,8 @@ export const getTrends = async (params = {}) => {
  * Generate AI-powered report
  */
 export const generateAIReport = async (data = {}) => {
-  const response = await apiClient.post(API_ENDPOINTS.ANALYTICS_AI_REPORT, data);
+  // Longer timeout for LLM-powered report generation
+  const response = await apiClient.post(API_ENDPOINTS.ANALYTICS_AI_REPORT, data, { timeout: 90000 });
   return response;
 };
 

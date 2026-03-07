@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { LogIn, Mail, Lock, AlertCircle, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../hooks/useToast';
 import { APP_CONFIG, DEMO_CREDENTIALS } from '../utils/constants';
 import Button from '../components/common/Button';
 import Alert from '../components/common/Alert';
@@ -10,6 +11,7 @@ import Logo from '../components/common/Logo';
 const Login = () => {
   const navigate = useNavigate();
   const { login, getDefaultRoute } = useAuth();
+  const { toast } = useToast();
 
   const [formData, setFormData] = useState({
     email: '',
@@ -37,10 +39,39 @@ const Login = () => {
         navigate(getDefaultRoute(), { replace: true });
       }
     } catch (err) {
-      const msg = err.isNetworkError
-        ? 'Cannot reach the server. Make sure the backend is running on port 8000, then try again.'
-        : err.message || 'Login failed. Please check your credentials.';
-      setError(msg);
+      // ALWAYS ensure we show an error and stop loading
+      try {
+        let msg;
+        
+        // Try to get status from various possible locations
+        const status = err?.status || err?.response?.status || err?.code;
+        const message = err?.message || err?.response?.data?.detail || err?.response?.data?.message || String(err);
+        
+        // Debug logging - remove in production
+        console.log('Login error caught:', { status, message, fullError: err });
+        
+        if (err?.isNetworkError) {
+          msg = 'Cannot reach the server. Make sure the backend is running on port 8000, then try again.';
+        } else if (status === 401 || status === 403) {
+          // 401 = wrong credentials, 403 = inactive account
+          // Check the error message from backend
+          if (message?.toLowerCase()?.includes('inactive') || message?.toLowerCase()?.includes('disabled')) {
+            msg = 'Your account is inactive. Please contact your administrator.';
+          } else {
+            msg = 'Incorrect email or password. Please check your credentials and try again.';
+          }
+        } else {
+          msg = message || 'Login failed. Please try again.';
+        }
+        
+        setError(msg);
+        toast('error', msg, { title: 'Login Failed', duration: 5000 });
+      } catch (handlerError) {
+        // Absolute fallback - should never happen
+        console.error('Error in error handler:', handlerError);
+        setError('An unexpected error occurred. Please try again.');
+        toast('error', 'An unexpected error occurred. Please try again.', { title: 'Login Failed' });
+      }
       setLoading(false);
     }
   };
@@ -59,10 +90,24 @@ const Login = () => {
         navigate(getDefaultRoute(), { replace: true });
       }
     } catch (err) {
-      const msg = err.isNetworkError
-        ? 'Cannot reach the server. Make sure the backend is running on port 8000, then try again.'
-        : err.message || 'Demo login failed.';
-      setError(msg);
+      try {
+        let msg;
+        const status = err?.status || err?.response?.status;
+        
+        if (err?.isNetworkError) {
+          msg = 'Cannot reach the server. Make sure the backend is running on port 8000, then try again.';
+        } else if (status === 401 || status === 403) {
+          msg = 'Demo account credentials are incorrect or inactive. Please contact support.';
+        } else {
+          msg = err?.message || 'Demo login failed. Please try again.';
+        }
+        
+        setError(msg);
+        toast('error', msg, { title: 'Login Failed', duration: 5000 });
+      } catch (handlerError) {
+        setError('An unexpected error occurred. Please try again.');
+        toast('error', 'An unexpected error occurred. Please try again.', { title: 'Login Failed' });
+      }
       setLoading(false);
     }
   };
@@ -118,22 +163,29 @@ const Login = () => {
             {error && (
               <div
                 role="alert"
-                className="mb-5 flex items-start gap-3 px-4 py-3 rounded-xl bg-red-500/20 border border-red-400/40 text-red-100"
+                className="mb-5 rounded-xl bg-red-500 border border-red-400 shadow-lg shadow-red-500/20 overflow-hidden"
               >
-                <svg className="w-5 h-5 flex-shrink-0 mt-0.5 text-red-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                </svg>
-                <p className="text-sm font-medium flex-1">{error}</p>
-                <button
-                  type="button"
-                  onClick={() => setError(null)}
-                  className="text-red-300 hover:text-red-100 transition-colors"
-                  aria-label="Dismiss error"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+                {/* Error Header */}
+                <div className="flex items-center gap-2 px-4 py-2 bg-red-600">
+                  <AlertCircle className="w-5 h-5 text-white" />
+                  <span className="font-semibold text-white text-sm">Login Failed</span>
+                </div>
+                
+                {/* Error Message */}
+                <div className="px-4 py-3">
+                  <p className="text-white text-sm leading-relaxed">{error}</p>
+                </div>
+                
+                {/* Dismiss Button */}
+                <div className="px-4 pb-3 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setError(null)}
+                    className="text-xs text-red-200 hover:text-white underline transition-colors"
+                  >
+                    Dismiss
+                  </button>
+                </div>
               </div>
             )}
 

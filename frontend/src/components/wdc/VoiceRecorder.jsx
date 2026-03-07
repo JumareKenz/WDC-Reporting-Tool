@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Mic, Square, Play, Pause, Trash2, Check, Loader2 } from 'lucide-react';
+import { Mic, Square, Play, Pause, Trash2, Check, Loader2, RotateCcw } from 'lucide-react';
 import { useVoiceNoteDraft } from '../../hooks/useVoiceNoteDraft';
 
 /**
@@ -47,6 +47,7 @@ const VoiceRecorder = ({
   const audioRef = useRef(null);
   const streamRef = useRef(null);
   const hasPersistedRef = useRef(false);
+  const deletedRef = useRef(false);
 
   // Draft persistence hook
   const {
@@ -62,11 +63,17 @@ const VoiceRecorder = ({
   });
 
   /**
-   * Sync existingRecording prop to state (for parent-passed recordings)
+   * Sync existingRecording prop to state (for parent-passed recordings).
+   * Skip if user just deleted — deletedRef prevents the old prop from restoring.
    */
   useEffect(() => {
-    // Only sync if we have an existingRecording from parent and no local recording
-    if (existingRecording && existingRecording instanceof Blob && !audioBlob) {
+    // Once the parent confirms the clear (existingRecording becomes null), reset the guard
+    if (!existingRecording) {
+      deletedRef.current = false;
+      return;
+    }
+    if (deletedRef.current) return;
+    if (existingRecording instanceof Blob && !audioBlob) {
       setAudioBlob(existingRecording);
       if (process.env.NODE_ENV === 'development') {
         console.log('[VoiceRecorder] Synced existingRecording for:', fieldName);
@@ -102,12 +109,12 @@ const VoiceRecorder = ({
 
   /**
    * Create audio URL when blob changes (for non-draft blobs)
+   * URL cleanup is handled by deleteRecording and the unmount effect.
    */
   useEffect(() => {
     if (audioBlob && !audioUrl) {
       const url = URL.createObjectURL(audioBlob);
       setAudioUrl(url);
-      return () => URL.revokeObjectURL(url);
     }
   }, [audioBlob, audioUrl]);
 
@@ -191,6 +198,7 @@ const VoiceRecorder = ({
     setError(null);
     setIsRestored(false);
     hasPersistedRef.current = false;
+    deletedRef.current = false;
     
     try {
       // Check for MediaRecorder support
@@ -296,18 +304,24 @@ const VoiceRecorder = ({
     if (audioUrl && !isRestored) {
       URL.revokeObjectURL(audioUrl);
     }
-    
+
+    deletedRef.current = true;
     setAudioBlob(null);
     setAudioUrl(null);
     setRecordingTime(0);
     setIsRestored(false);
     hasPersistedRef.current = false;
-    
+
     // Remove from IndexedDB
     if (autoSaveDraft && draftContext) {
       await removeVoiceNote(fieldName);
     }
-    
+
+    // Notify parent to clear the file from its state.
+    // This is critical — without it, the parent still holds the file
+    // in voiceNotes[fieldName] and passes it back as existingRecording,
+    // causing the sync effect to immediately restore the deleted blob.
+    onRecordingComplete?.(null);
     onRecordingDelete?.();
   };
 
@@ -447,15 +461,27 @@ const VoiceRecorder = ({
               </span>
               <span className="text-xs text-green-600">({formatTime(recordingTime)})</span>
             </div>
-            <button
-              type="button"
-              onClick={deleteRecording}
-              disabled={disabled}
-              className="p-1.5 rounded-full text-red-500 hover:bg-red-100 transition-colors"
-              title="Delete recording"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={deleteRecording}
+                disabled={disabled}
+                className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-neutral-600 hover:text-primary-600 hover:bg-white rounded transition-colors disabled:opacity-50"
+                title="Re-record"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Redo
+              </button>
+              <button
+                type="button"
+                onClick={deleteRecording}
+                disabled={disabled}
+                className="p-1.5 rounded-full text-red-500 hover:bg-red-100 transition-colors disabled:opacity-50"
+                title="Delete recording"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
           </div>
           {audioUrl && (
             <audio
