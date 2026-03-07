@@ -23,12 +23,14 @@ import {
   MapPin,
   User,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Alert from '../components/common/Alert';
 import { useReportById, useDownloadVoiceNote } from '../hooks/useWDCData';
+import { fetchVoiceNoteAudio } from '../api/reports';
+import { Play, Image as ImageIcon } from 'lucide-react';
 import { REPORT_STATUS } from '../utils/constants';
 
 const ReportDetails = () => {
@@ -52,6 +54,26 @@ const ReportDetails = () => {
   } = useReportById(id);
 
   const downloadMutation = useDownloadVoiceNote();
+  
+  // Voice note audio playback state
+  const [voiceNoteAudioUrls, setVoiceNoteAudioUrls] = useState({});
+  const [voiceNoteLoading, setVoiceNoteLoading] = useState({});
+  const audioRef = useRef(null);
+  
+  // Load audio for a voice note
+  const loadVoiceNoteAudio = useCallback(async (voiceNoteId) => {
+    if (voiceNoteAudioUrls[voiceNoteId]) return; // Already loaded
+    
+    setVoiceNoteLoading(prev => ({ ...prev, [voiceNoteId]: true }));
+    try {
+      const url = await fetchVoiceNoteAudio(voiceNoteId);
+      setVoiceNoteAudioUrls(prev => ({ ...prev, [voiceNoteId]: url }));
+    } catch (error) {
+      console.error('Failed to load voice note audio:', error);
+    } finally {
+      setVoiceNoteLoading(prev => ({ ...prev, [voiceNoteId]: false }));
+    }
+  }, [voiceNoteAudioUrls]);
 
   // The API client interceptor already unwraps response.data,
   // so reportData IS the report object directly
@@ -702,8 +724,32 @@ const ReportDetails = () => {
                           </p>
                         </div>
                       </div>
+                      
+                      {/* Audio Player or Load Button */}
+                      {voiceNoteAudioUrls[voiceNote.id] ? (
+                        <audio
+                          ref={audioRef}
+                          src={voiceNoteAudioUrls[voiceNote.id]}
+                          controls
+                          className="w-full h-10 mb-2"
+                          preload="metadata"
+                        />
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          icon={Play}
+                          fullWidth
+                          onClick={() => loadVoiceNoteAudio(voiceNote.id)}
+                          loading={voiceNoteLoading[voiceNote.id]}
+                          className="mb-2"
+                        >
+                          Play
+                        </Button>
+                      )}
+                      
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
                         icon={Download}
                         fullWidth
@@ -714,6 +760,66 @@ const ReportDetails = () => {
                       </Button>
                     </div>
                   ))}
+                </div>
+              </Card>
+            )}
+
+            {/* Attendance Photos */}
+            {report.attendance_photos && report.attendance_photos.length > 0 && (
+              <Card
+                title="Attendance Photos"
+                subtitle={`${report.attendance_photos.length} photo(s)`}
+              >
+                <div className="p-4">
+                  <div className="grid grid-cols-2 gap-2">
+                    {report.attendance_photos.map((photo, idx) => (
+                      <a
+                        key={idx}
+                        href={`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || ''}${photo.url || photo}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="relative aspect-square rounded-lg overflow-hidden border border-neutral-200 hover:border-primary-400 transition-all group"
+                      >
+                        <img
+                          src={`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || ''}${photo.url || photo}`}
+                          alt={`Attendance ${idx + 1}`}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          loading="lazy"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {/* Group Photos */}
+            {report.group_photos && report.group_photos.length > 0 && (
+              <Card
+                title="Meeting Photos"
+                subtitle={`${report.group_photos.length} photo(s)`}
+              >
+                <div className="p-4">
+                  <div className="grid grid-cols-2 gap-2">
+                    {report.group_photos.map((photo, idx) => (
+                      <a
+                        key={idx}
+                        href={`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || ''}${photo.url || photo}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="relative aspect-square rounded-lg overflow-hidden border border-neutral-200 hover:border-primary-400 transition-all group"
+                      >
+                        <img
+                          src={`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || ''}${photo.url || photo}`}
+                          alt={`Group photo ${idx + 1}`}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          loading="lazy"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                      </a>
+                    ))}
+                  </div>
                 </div>
               </Card>
             )}

@@ -22,7 +22,7 @@ const REPAIR_ACTORS = ['WDC', 'Government', 'Partners'];
  * Section 3B: Health Facility Support
  * Renovations, donations, repairs
  */
-const FacilitySupportSection = ({ formData, onChange, errors }) => {
+const FacilitySupportSection = ({ formData, onChange, errors, onVoiceNote, voiceNotes = {}, draftContext }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     onChange((prev) => ({ ...prev, [name]: value }));
@@ -219,6 +219,9 @@ const FacilitySupportSection = ({ formData, onChange, errors }) => {
               name="items_donated_facility"
               value={formData.items_donated_facility || ''}
               onChange={handleChange}
+              onVoiceNote={onVoiceNote ? (file) => onVoiceNote('items_donated_facility', file) : undefined}
+              draftContext={draftContext}
+              existingVoiceNote={voiceNotes.items_donated_facility}
               placeholder="Name of the health facility..."
             />
             <NumberInput label="Number of items donated" name="items_donated_count" value={formData.items_donated_count} onChange={handleChange} min={1} required />
@@ -248,6 +251,9 @@ const FacilitySupportSection = ({ formData, onChange, errors }) => {
                       name="items_donated_other_specify"
                       value={formData.items_donated_other_specify || ''}
                       onChange={handleChange}
+                      onVoiceNote={onVoiceNote ? (file) => onVoiceNote('items_donated_other_specify', file) : undefined}
+                      draftContext={draftContext}
+                      existingVoiceNote={voiceNotes.items_donated_other_specify}
                       placeholder="Specify other items..."
                       required
                     />
@@ -299,6 +305,9 @@ const FacilitySupportSection = ({ formData, onChange, errors }) => {
               name="items_donated_govt_facility"
               value={formData.items_donated_govt_facility || ''}
               onChange={handleChange}
+              onVoiceNote={onVoiceNote ? (file) => onVoiceNote('items_donated_govt_facility', file) : undefined}
+              draftContext={draftContext}
+              existingVoiceNote={voiceNotes.items_donated_govt_facility}
               placeholder="Name of the health facility..."
             />
             <NumberInput label="Number of items donated" name="items_donated_govt_count" value={formData.items_donated_govt_count} onChange={handleChange} min={1} required />
@@ -328,6 +337,9 @@ const FacilitySupportSection = ({ formData, onChange, errors }) => {
                       name="items_donated_govt_other_specify"
                       value={formData.items_donated_govt_other_specify || ''}
                       onChange={handleChange}
+                      onVoiceNote={onVoiceNote ? (file) => onVoiceNote('items_donated_govt_other_specify', file) : undefined}
+                      draftContext={draftContext}
+                      existingVoiceNote={voiceNotes.items_donated_govt_other_specify}
                       placeholder="Specify other items..."
                       required
                     />
@@ -377,6 +389,9 @@ const FacilitySupportSection = ({ formData, onChange, errors }) => {
               name="items_repaired_facility"
               value={formData.items_repaired_facility || ''}
               onChange={handleChange}
+              onVoiceNote={onVoiceNote ? (file) => onVoiceNote('items_repaired_facility', file) : undefined}
+              draftContext={draftContext}
+              existingVoiceNote={voiceNotes.items_repaired_facility}
               placeholder="Name of the health facility..."
             />
             <NumberInput label="Number of items repaired" name="items_repaired_count" value={formData.items_repaired_count} onChange={handleChange} min={1} required />
@@ -406,6 +421,9 @@ const FacilitySupportSection = ({ formData, onChange, errors }) => {
                       name="items_repaired_other_specify"
                       value={formData.items_repaired_other_specify || ''}
                       onChange={handleChange}
+                      onVoiceNote={onVoiceNote ? (file) => onVoiceNote('items_repaired_other_specify', file) : undefined}
+                      draftContext={draftContext}
+                      existingVoiceNote={voiceNotes.items_repaired_other_specify}
                       placeholder="Specify other items..."
                       required
                     />

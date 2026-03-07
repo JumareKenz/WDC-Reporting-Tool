@@ -1,10 +1,11 @@
 import React from 'react';
 import { DynamicTable } from './shared';
+import VoiceRecorder from '../VoiceRecorder';
 
 /**
  * Section 2: Action Tracker (Feedback from last meeting)
  */
-const ActionTrackerSection = ({ formData, onChange, errors }) => {
+const ActionTrackerSection = ({ formData, onChange, errors, onVoiceNote, voiceNotes = {}, draftContext }) => {
   const handleRowChange = (index, field, value) => {
     onChange((prev) => ({
       ...prev,
@@ -52,6 +53,11 @@ const ActionTrackerSection = ({ formData, onChange, errors }) => {
         onAddRow={addRow}
         onRemoveRow={removeRow}
       />
+      {onVoiceNote && (
+        <div className="mt-3">
+          <VoiceRecorder fieldName="action_tracker" onRecordingComplete={(file) => onVoiceNote('action_tracker', file)} existingRecording={voiceNotes.action_tracker} draftContext={draftContext} />
+        </div>
+      )}
     </div>
   );
 };

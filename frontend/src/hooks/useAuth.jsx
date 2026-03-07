@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import apiClient from '../api/client';
+import { secretaryLogin } from '../api/auth';
 import { API_ENDPOINTS, STORAGE_KEYS, USER_ROLES } from '../utils/constants';
 
 // Create Auth Context
@@ -161,11 +162,52 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const loginWithPin = async (lgaId, wardId, pin) => {
+    setError(null);
+    setLoading(true);
+
+    try {
+      const data = await secretaryLogin(lgaId, wardId, pin);
+      const access_token = data.access_token;
+      const refresh_token = data.refresh_token;
+      const userData = data.user;
+
+      if (access_token && userData) {
+        localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, access_token);
+        if (refresh_token) {
+          localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, refresh_token);
+        }
+        localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData));
+
+        setUser(userData);
+        setLoading(false);
+
+        return { success: true, user: userData };
+      }
+
+      setLoading(false);
+      throw new Error('Invalid login response');
+    } catch (err) {
+      setLoading(false);
+      const message =
+        err.response?.data?.detail ||
+        err.response?.data?.message ||
+        err.message ||
+        'Login failed';
+      const enhanced = new Error(message);
+      enhanced.status = err.response?.status;
+      enhanced.isNetworkError = !err.response && !err.status;
+      setError(message);
+      throw enhanced;
+    }
+  };
+
   const value = {
     user,
     loading,
     error,
     login,
+    loginWithPin,
     logout,
     verifyToken,
     updateUser,

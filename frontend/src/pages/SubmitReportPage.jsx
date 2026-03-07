@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
-import { ArrowLeft, CheckCircle, Info, Calendar, AlertTriangle, Loader2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Info, Calendar, AlertTriangle, Loader2, RefreshCw, WifiOff, FileX } from 'lucide-react';
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
 import Alert from '../components/common/Alert';
@@ -10,10 +10,18 @@ import DraftStatusBar from '../components/wdc/DraftStatusBar';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { useOfflineQueue } from '../hooks/useOfflineQueue';
+import { useVoiceNoteDraft, clearVoiceNoteDrafts } from '../hooks/useVoiceNoteDraft';
+import { useImageDraft, clearImageDrafts } from '../hooks/useImageDraft';
 import apiClient from '../api/client';
 import { API_ENDPOINTS } from '../utils/constants';
 import { getSubmissionInfo as getLocalSubmissionInfo, getTargetReportMonth, formatMonthDisplay, getSubmissionPeriodDescription } from '../utils/dateUtils';
-import { getSubmissionInfo, getExistingDraft, saveDraft } from '../api/reports';
+import { getSubmissionInfo, getExistingDraft, saveDraft, checkSubmitted } from '../api/reports';
+
+// ────────────────────────────────────────────────────────────────
+// Configuration
+// ────────────────────────────────────────────────────────────────
+const DRAFT_LOAD_TIMEOUT = 10000; // 10 seconds max for draft loading
+const MAX_DRAFT_RETRIES = 2;
 
 // ────────────────────────────────────────────────────────────────
 // Initial form state — mirrors every field from the original form
@@ -178,12 +186,24 @@ const isFutureMonth = (monthStr) => {
 };
 
 // ────────────────────────────────────────────────────────────────
+// Promise with timeout helper
+// ────────────────────────────────────────────────────────────────
+const withTimeout = (promise, timeoutMs, errorMessage) => {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => 
+      setTimeout(() => reject(new Error(errorMessage || 'Request timed out')), timeoutMs)
+    )
+  ]);
+};
+
+// ────────────────────────────────────────────────────────────────
 // Page component
 // ────────────────────────────────────────────────────────────────
 const SubmitReportPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, verifyToken } = useAuth();
+  const { user, verifyToken, isLoading: isAuthLoading } = useAuth();
   const { toast } = useToast();
 
   // Get preselected month from navigation state (from dashboard modal)
@@ -208,6 +228,11 @@ const SubmitReportPage = () => {
   const [isLoadingDraft, setIsLoadingDraft] = useState(true);
   const [localDraftStatus, setLocalDraftStatus] = useState('idle');
   const [localLastSavedAt, setLocalLastSavedAt] = useState(null);
+  
+  // Draft loading error state
+  const [draftLoadError, setDraftLoadError] = useState(null);
+  const [draftLoadRetryCount, setDraftLoadRetryCount] = useState(0);
+  const [isUserReady, setIsUserReady] = useState(false);
 
   // Form state
   const userWard = { id: user?.ward?.id, name: user?.ward?.name };
@@ -215,10 +240,47 @@ const SubmitReportPage = () => {
   const [formData, setFormData] = useState(() => buildInitialFormData(userWard, userLGA));
   const [voiceNotes, setVoiceNotes] = useState({});
 
+  // Voice note draft persistence
+  const {
+    voiceNotes: draftVoiceNotes,
+    saveVoiceNote,
+    removeVoiceNote,
+    clearAllVoiceNotes,
+    isInitialized: voiceDraftsInitialized,
+  } = useVoiceNoteDraft({
+    userId: user?.id,
+    wardId: userWard?.id,
+    reportMonth,
+    enabled: !!user?.id && !!userWard?.id && !!reportMonth,
+  });
+
+  // Image draft persistence
+  const {
+    images: draftImages,
+    addImage,
+    removeImages,
+    clearAllImages,
+    isInitialized: imagesDraftInitialized,
+  } = useImageDraft({
+    userId: user?.id,
+    wardId: userWard?.id,
+    reportMonth,
+    enabled: !!user?.id && !!userWard?.id && !!reportMonth,
+  });
+
   // Refs for debounce / latest formData
   const debounceRef = useRef(null);
   const formDataRef = useRef(formData);
+  const draftLoadAbortRef = useRef(null);
   useEffect(() => { formDataRef.current = formData; }, [formData]);
+
+  // ── Check when user data is ready ────────────────────────────
+  useEffect(() => {
+    // Wait for auth to finish loading and user data to be available
+    if (!isAuthLoading && user?.id && (user?.ward?.id || user?.lga?.id)) {
+      setIsUserReady(true);
+    }
+  }, [isAuthLoading, user]);
 
   // Pre-select the target month on load (only if no preselected month)
   useEffect(() => {
@@ -360,11 +422,44 @@ const SubmitReportPage = () => {
     return () => window.removeEventListener('beforeunload', handler);
   }, [saveDraftToLocal, getDraftKey]);
 
+  // ── Retry draft loading ─────────────────────────────────────
+  const handleRetryDraftLoad = useCallback(() => {
+    setDraftLoadError(null);
+    setDraftLoadRetryCount(prev => prev + 1);
+    setIsLoadingDraft(true);
+  }, []);
+
+  // ── Skip draft loading and start fresh ──────────────────────
+  const handleSkipDraftLoad = useCallback(() => {
+    setDraftLoadError(null);
+    setIsLoadingDraft(false);
+    toast.info('Starting with a fresh form. Your previous draft (if any) is still saved.', {
+      title: 'New Form',
+      duration: 4000,
+    });
+  }, [toast]);
+
   // ── Load draft when reportMonth is set ──────────────────────
   useEffect(() => {
-    if (!reportMonth || !user?.id || !userWard?.id) return;
+    // Don't load draft if user data isn't ready yet
+    if (!reportMonth || !isUserReady) {
+      // If we're in form phase but user isn't ready, show loading
+      if (phase === 'form' && !isUserReady) {
+        setIsLoadingDraft(true);
+      }
+      return;
+    }
+
+    // Cancel any previous draft loading
+    if (draftLoadAbortRef.current) {
+      draftLoadAbortRef.current.abort();
+    }
+    const abortController = new AbortController();
+    draftLoadAbortRef.current = abortController;
 
     const applyDraftData = (draftData) => {
+      if (abortController.signal.aborted) return;
+      
       setFormData((prev) => ({
         ...prev,
         ...draftData,
@@ -394,41 +489,185 @@ const SubmitReportPage = () => {
     const loadDraft = async () => {
       try {
         setIsLoadingDraft(true);
+        setDraftLoadError(null);
+        
+        // Small delay to prevent UI flickering if loading is very fast
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        if (abortController.signal.aborted) return;
+
+        // First, always try to load local draft (this is fast and reliable)
         const localDraft = loadDraftFromLocal();
+        
+        if (abortController.signal.aborted) return;
 
         let serverDraft = null;
+        let serverError = null;
+        
+        // Only try server draft if online
         if (isOnline) {
           try {
-            const response = await getExistingDraft(reportMonth);
-            if (response.has_draft && response.report_data) {
-              serverDraft = { formData: response.report_data, savedAt: response.saved_at, draftId: response.draft_id };
+            // Use timeout to prevent hanging
+            const response = await withTimeout(
+              getExistingDraft(reportMonth),
+              DRAFT_LOAD_TIMEOUT,
+              'Server request timed out. Using local draft if available.'
+            );
+            
+            if (abortController.signal.aborted) return;
+            
+            if (response && response.has_draft && response.report_data) {
+              serverDraft = { 
+                formData: response.report_data, 
+                savedAt: response.saved_at || response.updated_at, 
+                draftId: response.draft_id 
+              };
             }
-          } catch { /* offline or no draft */ }
+          } catch (err) {
+            console.warn('[SubmitReportPage] Failed to load server draft:', err.message);
+            serverError = err.message;
+          }
         }
 
+        if (abortController.signal.aborted) return;
+
+        // Apply draft data (prefer local if both exist and local is newer)
         if (localDraft && serverDraft) {
           const localTime = new Date(localDraft.savedAt).getTime();
           const serverTime = new Date(serverDraft.savedAt).getTime();
-          applyDraftData(localTime > serverTime ? localDraft.formData : serverDraft.formData);
+          const useLocal = localTime >= serverTime;
+          
+          applyDraftData(useLocal ? localDraft.formData : serverDraft.formData);
+          
+          if (useLocal) {
+            setLocalLastSavedAt(new Date(localDraft.savedAt));
+          }
+          
+          // Show info if we had to fall back
+          if (serverError && !useLocal) {
+            toast.warning('Using local draft. Server draft could not be loaded.', {
+              duration: 4000,
+            });
+          }
         } else if (localDraft) {
           applyDraftData(localDraft.formData);
           setLocalLastSavedAt(new Date(localDraft.savedAt));
         } else if (serverDraft) {
           applyDraftData(serverDraft.formData);
+          toast.success('Loaded draft from server', { duration: 2000 });
+        } else {
+          // No draft found - starting fresh is fine
+          setLocalDraftStatus('idle');
         }
-      } catch { /* use initial state */ } finally {
-        setIsLoadingDraft(false);
+
+        // If server had an error but we have no local draft, show warning
+        if (serverError && !localDraft && !serverDraft) {
+          // Only show error if we've retried enough times
+          if (draftLoadRetryCount >= MAX_DRAFT_RETRIES) {
+            setDraftLoadError({
+              type: 'server_error',
+              message: serverError,
+              isOffline: !isOnline,
+            });
+          }
+        }
+      } catch (err) {
+        console.error('[SubmitReportPage] Unexpected error loading draft:', err);
+        
+        if (abortController.signal.aborted) return;
+        
+        // If we've exhausted retries, show error UI
+        if (draftLoadRetryCount >= MAX_DRAFT_RETRIES) {
+          setDraftLoadError({
+            type: 'unexpected',
+            message: err.message || 'Failed to load draft',
+            isOffline: !isOnline,
+          });
+        }
+      } finally {
+        if (!abortController.signal.aborted) {
+          setIsLoadingDraft(false);
+        }
       }
     };
 
     loadDraft();
+    
+    // Cleanup
+    return () => {
+      abortController.abort();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reportMonth, user?.id, userWard?.id]);
+  }, [reportMonth, isUserReady, draftLoadRetryCount, isOnline]);
 
   // ── Voice note handler ──────────────────────────────────────
   const handleVoiceNote = useCallback((fieldName, file) => {
     setVoiceNotes((prev) => ({ ...prev, [fieldName]: file }));
-  }, []);
+    
+    // Also save to IndexedDB for draft persistence
+    if (file && file instanceof Blob) {
+      saveVoiceNote(fieldName, file, file.type);
+    } else if (!file) {
+      // File is null - remove the draft
+      removeVoiceNote(fieldName);
+    }
+  }, [saveVoiceNote, removeVoiceNote]);
+
+  // ── Load voice note drafts when initialized ─────────────────
+  useEffect(() => {
+    if (voiceDraftsInitialized && Object.keys(draftVoiceNotes).length > 0) {
+      // Convert draft voice notes to File objects for form state
+      const files = {};
+      Object.entries(draftVoiceNotes).forEach(([fieldName, note]) => {
+        if (note.blob) {
+          const extension = note.mimeType?.includes('mp4') ? 'm4a' : 'webm';
+          files[fieldName] = new File(
+            [note.blob],
+            `voice_${fieldName}_${Date.now()}.${extension}`,
+            { type: note.mimeType || 'audio/webm' }
+          );
+        }
+      });
+      
+      if (Object.keys(files).length > 0) {
+        setVoiceNotes(prev => ({ ...prev, ...files }));
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[SubmitReportPage] Restored voice note drafts:', Object.keys(files));
+        }
+      }
+    }
+  }, [voiceDraftsInitialized, draftVoiceNotes]);
+
+  // ── Load image drafts when initialized ──────────────────────
+  useEffect(() => {
+    if (imagesDraftInitialized && Object.keys(draftImages).length > 0) {
+      // Convert draft images to form format
+      const attendancePictures = (draftImages.attendance_pictures || []).map(img => ({
+        file: new File([img.blob], img.name, { type: img.mimeType }),
+        preview: img.url,
+        name: img.name,
+      }));
+      
+      const groupPhotos = (draftImages.group_photos || []).map(img => ({
+        file: new File([img.blob], img.name, { type: img.mimeType }),
+        preview: img.url,
+        name: img.name,
+      }));
+      
+      setFormData(prev => ({
+        ...prev,
+        ...(attendancePictures.length > 0 && { _attendance_pictures: attendancePictures }),
+        ...(groupPhotos.length > 0 && { _group_photos: groupPhotos }),
+      }));
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[SubmitReportPage] Restored image drafts:', {
+          attendance: attendancePictures.length,
+          group: groupPhotos.length,
+        });
+      }
+    }
+  }, [imagesDraftInitialized, draftImages]);
 
   // ── Offline queue ───────────────────────────────────────────
   const { addToQueue, getQueueStats, retryFailed, isSyncing } = useOfflineQueue({
@@ -439,6 +678,10 @@ const SubmitReportPage = () => {
       return apiClient.post('/reports', formPayload, {
         headers: { 'Content-Type': 'multipart/form-data', ...headers },
       });
+    },
+    verifyFn: async (month) => {
+      const check = await checkSubmitted(month);
+      return !!(check?.submitted || check?.data?.submitted);
     },
   });
 
@@ -468,10 +711,23 @@ const SubmitReportPage = () => {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       // Clear the local draft on successful submission
       const key = getDraftKey();
       if (key) localStorage.removeItem(key);
+
+      // Clear voice note drafts
+      await clearAllVoiceNotes();
+      // Also clear legacy voice note storage
+      if (user?.id && userWard?.id && reportMonth) {
+        await clearVoiceNoteDrafts(user.id, userWard.id, reportMonth);
+      }
+
+      // Clear image drafts
+      await clearAllImages();
+      if (user?.id && userWard?.id && reportMonth) {
+        await clearImageDrafts(user.id, userWard.id, reportMonth);
+      }
 
       setSubmitSuccess(true);
       toast.success('Your monthly report has been submitted successfully!', {
@@ -480,7 +736,40 @@ const SubmitReportPage = () => {
       });
       setTimeout(() => navigate('/wdc'), 2500);
     },
-    onError: (error) => {
+    onError: async (error) => {
+      // If the server says it already exists (409), treat as success
+      if (error.status === 409) {
+        const key = getDraftKey();
+        if (key) localStorage.removeItem(key);
+        setSubmitSuccess(true);
+        toast.success('Your monthly report has been submitted successfully!', {
+          title: 'Report Submitted',
+          duration: 6000,
+        });
+        setTimeout(() => navigate('/wdc'), 2500);
+        return;
+      }
+
+      // For server/network errors, verify if the report actually went through
+      if (error.status >= 500 || error.isNetworkError) {
+        try {
+          const check = await checkSubmitted(reportMonth);
+          if (check?.submitted || check?.data?.submitted) {
+            const key = getDraftKey();
+            if (key) localStorage.removeItem(key);
+            setSubmitSuccess(true);
+            toast.success('Your monthly report has been submitted successfully!', {
+              title: 'Report Submitted',
+              duration: 6000,
+            });
+            setTimeout(() => navigate('/wdc'), 2500);
+            return;
+          }
+        } catch {
+          // Verification failed — fall through to show original error
+        }
+      }
+
       const msg = error.message || 'Failed to submit report. Please try again.';
       setSubmitError(msg);
       toast.error(msg, { title: 'Submission Failed' });
@@ -493,8 +782,22 @@ const SubmitReportPage = () => {
       const formPayload = new FormData();
       formPayload.append('report_month', reportMonth);
       formPayload.append('report_data', JSON.stringify(serializableFormData(data)));
-      const firstVoice = Object.values(voiceNotes)[0];
-      if (firstVoice) formPayload.append('voice_note', firstVoice);
+
+      // Attach ALL voice notes
+      Object.entries(voiceNotes).forEach(([fieldName, file]) => {
+        if (file) formPayload.append(`voice_${fieldName}`, file);
+      });
+
+      // Attach attendance pictures
+      (data._attendance_pictures || []).forEach((pic, idx) => {
+        if (pic.file) formPayload.append(`attendance_picture_${idx}`, pic.file);
+      });
+
+      // Attach group photos
+      (data._group_photos || []).forEach((pic, idx) => {
+        if (pic.file) formPayload.append(`group_photo_${idx}`, pic.file);
+      });
+
       return saveDraft(formPayload);
     },
     onSuccess: () => {
@@ -564,6 +867,8 @@ const SubmitReportPage = () => {
       setReportMonth('');
       setFormData(buildInitialFormData(userWard, userLGA));
       setIsLoadingDraft(true);
+      setDraftLoadError(null);
+      setDraftLoadRetryCount(0);
       setLocalDraftStatus('idle');
       setMonthError('');
     } else {
@@ -716,12 +1021,88 @@ const SubmitReportPage = () => {
         {/* ── PHASE: Form ────────────────────────────────────── */}
         {phase === 'form' && (
           <>
-            {isLoadingDraft ? (
-              <div className="text-center py-16">
-                <div className="w-10 h-10 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-neutral-500 text-sm">Loading your saved draft...</p>
-              </div>
-            ) : (
+            {/* ── Loading States ─────────────────────────────── */}
+            {isLoadingDraft && (
+              <>
+                {/* Waiting for user data */}
+                {!isUserReady ? (
+                  <Card className="py-16">
+                    <div className="text-center">
+                      <div className="w-10 h-10 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mx-auto mb-4" />
+                      <p className="text-neutral-600 text-sm font-medium">Loading your profile...</p>
+                      <p className="text-neutral-400 text-xs mt-2">Please wait while we verify your account</p>
+                    </div>
+                  </Card>
+                ) : draftLoadError ? (
+                  /* Error State with Retry */
+                  <Card className="py-12">
+                    <div className="text-center max-w-md mx-auto px-4">
+                      <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        {draftLoadError.isOffline ? (
+                          <WifiOff className="w-8 h-8 text-amber-600" />
+                        ) : (
+                          <FileX className="w-8 h-8 text-amber-600" />
+                        )}
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        {draftLoadError.isOffline ? 'You are offline' : 'Could not load saved draft'}
+                      </h3>
+                      <p className="text-sm text-gray-500 mb-6">
+                        {draftLoadError.isOffline 
+                          ? 'Your device appears to be offline. You can start a new form or wait to reconnect.'
+                          : draftLoadError.message || 'We encountered an issue while loading your saved draft. You can try again or start fresh.'}
+                      </p>
+                      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                        <Button 
+                          variant="primary" 
+                          icon={RefreshCw}
+                          onClick={handleRetryDraftLoad}
+                          disabled={isLoadingDraft}
+                        >
+                          Try Again
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          onClick={handleSkipDraftLoad}
+                        >
+                          Start Fresh Form
+                        </Button>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-4">
+                        Don't worry — any previously saved drafts are still stored safely.
+                      </p>
+                    </div>
+                  </Card>
+                ) : (
+                  /* Normal Loading */
+                  <Card className="py-16">
+                    <div className="text-center">
+                      <div className="w-10 h-10 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mx-auto mb-4" />
+                      <p className="text-neutral-600 text-sm font-medium">Loading your saved draft...</p>
+                      <p className="text-neutral-400 text-xs mt-2">This may take a few moments</p>
+                      
+                      {/* Timeout warning - show after some time */}
+                      {draftLoadRetryCount > 0 && (
+                        <div className="mt-6 p-3 bg-amber-50 border border-amber-200 rounded-lg max-w-sm mx-auto">
+                          <p className="text-xs text-amber-700">
+                            Taking longer than expected...
+                          </p>
+                          <button
+                            onClick={handleSkipDraftLoad}
+                            className="text-xs text-amber-800 underline mt-1 hover:text-amber-900"
+                          >
+                            Skip and start fresh
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                )}
+              </>
+            )}
+
+            {/* ── Form Content ───────────────────────────────── */}
+            {!isLoadingDraft && (
               <>
                 {/* Submission Period Banner */}
                 {reportMonth && (
@@ -766,8 +1147,16 @@ const SubmitReportPage = () => {
                   onSaveDraft={handleSaveDraft}
                   draftStatus={localDraftStatus}
                   onVoiceNote={handleVoiceNote}
+                  voiceNotes={voiceNotes}
                   userLGA={userLGA}
                   userWard={userWard}
+                  draftContext={{
+                    userId: user?.id,
+                    wardId: userWard?.id,
+                    reportMonth,
+                  }}
+                  onImageAdd={addImage}
+                  onImagesRemove={removeImages}
                 />
               </>
             )}

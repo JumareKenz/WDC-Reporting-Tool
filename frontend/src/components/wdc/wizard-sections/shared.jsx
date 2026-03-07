@@ -19,6 +19,8 @@ export const TextInput = ({
   value,
   onChange,
   onVoiceNote,
+  existingVoiceNote,
+  draftContext,
   placeholder,
   required,
   error,
@@ -37,7 +39,7 @@ export const TextInput = ({
           {label} {required && <span className="text-red-500">*</span>}
         </label>
         {onVoiceNote && (
-          <VoiceRecorder fieldName={name} onRecordingComplete={onVoiceNote} compact />
+          <VoiceRecorder fieldName={name} onRecordingComplete={onVoiceNote} existingRecording={existingVoiceNote} compact draftContext={draftContext} />
         )}
       </div>
       {isTextarea ? (
@@ -77,7 +79,23 @@ export const TextInput = ({
 };
 
 // ── NumberInput ────────────────────────────────────────────────────────────
-export const NumberInput = ({ label, name, value, onChange, min, required, error, ...props }) => (
+export const NumberInput = ({ label, name, value, onChange, min = 0, required, error, ...props }) => {
+  const handleChange = (e) => {
+    const raw = e.target.value;
+    if (raw === '' || raw === '-') {
+      onChange(e);
+      return;
+    }
+    const num = Number(raw);
+    if (min !== undefined && num < min) {
+      const clamped = { ...e, target: { ...e.target, name, value: String(min) } };
+      onChange(clamped);
+      return;
+    }
+    onChange(e);
+  };
+
+  return (
   <div className="space-y-1">
     <label htmlFor={`wiz-${name}`} className={labelClass}>
       {label} {required && <span className="text-red-500">*</span>}
@@ -87,8 +105,8 @@ export const NumberInput = ({ label, name, value, onChange, min, required, error
       type="number"
       name={name}
       value={value}
-      onChange={onChange}
-      {...(min !== undefined ? { min } : {})}
+      onChange={handleChange}
+      min={min}
       required={required}
       className={error ? inputErrorClass : inputClass}
       {...props}
@@ -100,7 +118,8 @@ export const NumberInput = ({ label, name, value, onChange, min, required, error
       </div>
     )}
   </div>
-);
+  );
+};
 
 // ── DynamicTable ──────────────────────────────────────────────────────────
 export const DynamicTable = ({
@@ -166,7 +185,12 @@ export const DynamicTable = ({
                     <input
                       type={col.type || 'text'}
                       value={row[col.name] || ''}
-                      onChange={(e) => onRowChange(rowIdx, col.name, e.target.value)}
+                      onChange={(e) => {
+                        let val = e.target.value;
+                        if (col.type === 'number' && val !== '' && Number(val) < 0) val = '0';
+                        onRowChange(rowIdx, col.name, val);
+                      }}
+                      min={col.type === 'number' ? 0 : undefined}
                       className="w-full px-2 py-1 text-xs border-0 focus:ring-1 focus:ring-green-500 rounded"
                       placeholder={col.placeholder}
                     />
@@ -237,7 +261,12 @@ export const DynamicTable = ({
                   <input
                     type={col.type || 'text'}
                     value={row[col.name] || ''}
-                    onChange={(e) => onRowChange(rowIdx, col.name, e.target.value)}
+                    onChange={(e) => {
+                      let val = e.target.value;
+                      if (col.type === 'number' && val !== '' && Number(val) < 0) val = '0';
+                      onRowChange(rowIdx, col.name, val);
+                    }}
+                    min={col.type === 'number' ? 0 : undefined}
                     className={inputClass}
                     placeholder={col.placeholder}
                   />

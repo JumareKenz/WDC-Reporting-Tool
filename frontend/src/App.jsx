@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './hooks/useAuth';
@@ -5,8 +6,12 @@ import { ToastProvider } from './hooks/useToast';
 import { USER_ROLES } from './utils/constants';
 import { useSessionManager } from './hooks/useSessionManager';
 import ToastContainer from './components/common/ToastContainer';
+import { getPendingVoiceNotes, deleteVoiceNoteBlob } from './utils/voiceNoteStorage';
+import { uploadVoiceNote } from './api/reports';
 
 // Pages
+import LoginChooser from './pages/LoginChooser';
+import SecretaryLogin from './pages/SecretaryLogin';
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
@@ -118,6 +123,22 @@ const AppRoutes = () => {
       {/* Public Routes */}
       <Route
         path="/login"
+        element={
+          <PublicRoute>
+            <LoginChooser />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/login/secretary"
+        element={
+          <PublicRoute>
+            <SecretaryLogin />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/login/official"
         element={
           <PublicRoute>
             <Login />
@@ -370,6 +391,46 @@ const SessionGuard = () => {
 };
 
 /**
+ * Voice Note Sync Component
+ * Retries pending voice note uploads on app load when online
+ */
+const VoiceNoteSync = () => {
+  const { isAuthenticated } = useAuth();
+  
+  useEffect(() => {
+    if (!isAuthenticated || !navigator.onLine) return;
+    
+    const syncPendingVoiceNotes = async () => {
+      try {
+        const pending = await getPendingVoiceNotes();
+        if (pending.length === 0) return;
+        
+        console.log(`[VoiceNoteSync] Found ${pending.length} pending voice notes to upload`);
+        
+        for (const entry of pending) {
+          try {
+            await uploadVoiceNote(entry.reportId, entry.fieldName, entry.blob, entry.mimeType);
+            await deleteVoiceNoteBlob(entry.reportId, entry.fieldName);
+            console.log(`[VoiceNoteSync] Uploaded voice note for ${entry.fieldName}`);
+          } catch (error) {
+            console.error(`[VoiceNoteSync] Failed to upload voice note for ${entry.fieldName}:`, error);
+            // Leave in IndexedDB for next retry
+          }
+        }
+      } catch (error) {
+        console.error('[VoiceNoteSync] Error syncing voice notes:', error);
+      }
+    };
+    
+    // Delay slightly to allow app to fully initialize
+    const timeoutId = setTimeout(syncPendingVoiceNotes, 3000);
+    return () => clearTimeout(timeoutId);
+  }, [isAuthenticated]);
+  
+  return null;
+};
+
+/**
  * Main App Component
  */
 function App() {
@@ -379,6 +440,7 @@ function App() {
         <ToastProvider>
           <AuthProvider>
             <SessionGuard />
+            <VoiceNoteSync />
             <AppRoutes />
             <ToastContainer />
           </AuthProvider>

@@ -22,6 +22,7 @@ import {
   getWardSecretary,
   updateUser,
   changeUserPassword,
+  changeUserPin,
   toggleUserAccess,
   assignUser,
 } from '../api/users';
@@ -185,6 +186,12 @@ export const useUpdateUser = () => {
 export const useChangeUserPassword = () => {
   return useMutation({
     mutationFn: ({ userId, data }) => changeUserPassword(userId, data),
+  });
+};
+
+export const useChangeUserPin = () => {
+  return useMutation({
+    mutationFn: ({ userId, data }) => changeUserPin(userId, data),
   });
 };
 

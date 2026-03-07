@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
   User,
   Bell,
@@ -12,13 +12,16 @@ import {
   MapPin,
   Building,
   CheckCircle,
+  ArrowLeft,
 } from 'lucide-react';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import Alert from '../components/common/Alert';
 import { useAuth } from '../hooks/useAuth';
 import { ROLE_LABELS } from '../utils/constants';
-import { updateProfile, updateEmail, changePassword } from '../api/profile';
+import { updateProfile, updateEmail, changePassword, changePin } from '../api/profile';
+import PinKeypad from '../components/secretary-login/PinKeypad';
+import PinDots from '../components/secretary-login/PinDots';
 
 const SettingsPage = () => {
   const { user, logout, updateUser } = useAuth();
@@ -45,6 +48,127 @@ const SettingsPage = () => {
     new_password: '',
     confirm_password: '',
   });
+
+  // PIN change state (for WDC_SECRETARY)
+  const isSecretary = user?.role === 'WDC_SECRETARY';
+  const [pinStep, setPinStep] = useState('current'); // 'current' | 'new' | 'confirm'
+  const [currentPin, setCurrentPin] = useState('');
+  const [newPin, setNewPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const [pinError, setPinError] = useState('');
+  const [pinLoading, setPinLoading] = useState(false);
+  const [pinSuccess, setPinSuccess] = useState(false);
+
+  const resetPinFlow = useCallback(() => {
+    setPinStep('current');
+    setCurrentPin('');
+    setNewPin('');
+    setConfirmPin('');
+    setPinError('');
+    setPinLoading(false);
+    setPinSuccess(false);
+  }, []);
+
+  const activePinValue = pinStep === 'current' ? currentPin : pinStep === 'new' ? newPin : confirmPin;
+
+  const handlePinDigit = useCallback((digit) => {
+    if (pinLoading) return;
+    setPinError('');
+    setPinSuccess(false);
+
+    if (pinStep === 'current' && currentPin.length < 4) {
+      const next = currentPin + digit;
+      setCurrentPin(next);
+      if (next.length === 4) {
+        setTimeout(() => setPinStep('new'), 300);
+      }
+    } else if (pinStep === 'new' && newPin.length < 4) {
+      const next = newPin + digit;
+      setNewPin(next);
+      if (next.length === 4) {
+        setTimeout(() => setPinStep('confirm'), 300);
+      }
+    } else if (pinStep === 'confirm' && confirmPin.length < 4) {
+      const next = confirmPin + digit;
+      setConfirmPin(next);
+      if (next.length === 4) {
+        // Auto-submit
+        submitPinChange(currentPin, newPin, next);
+      }
+    }
+  }, [pinStep, currentPin, newPin, confirmPin, pinLoading]);
+
+  const handlePinBackspace = useCallback(() => {
+    if (pinLoading) return;
+    setPinError('');
+
+    if (pinStep === 'current') {
+      setCurrentPin((p) => p.slice(0, -1));
+    } else if (pinStep === 'new') {
+      if (newPin.length === 0) {
+        setPinStep('current');
+        setCurrentPin((p) => p.slice(0, -1));
+      } else {
+        setNewPin((p) => p.slice(0, -1));
+      }
+    } else if (pinStep === 'confirm') {
+      if (confirmPin.length === 0) {
+        setPinStep('new');
+        setNewPin((p) => p.slice(0, -1));
+      } else {
+        setConfirmPin((p) => p.slice(0, -1));
+      }
+    }
+  }, [pinStep, newPin, confirmPin, pinLoading]);
+
+  const submitPinChange = async (current, newP, confirm) => {
+    if (newP !== confirm) {
+      setPinError('PINs do not match. Please try again.');
+      setConfirmPin('');
+      return;
+    }
+    if (newP === current) {
+      setPinError('New PIN must be different from current PIN.');
+      setConfirmPin('');
+      return;
+    }
+
+    setPinLoading(true);
+    setPinError('');
+    try {
+      await changePin(current, newP);
+      setPinSuccess(true);
+      setPinLoading(false);
+      // Reset after showing success
+      setTimeout(() => resetPinFlow(), 2500);
+    } catch (error) {
+      setPinLoading(false);
+      const status = error?.response?.status || error?.status;
+      const msg = error?.response?.data?.detail || error?.message || 'Failed to change PIN';
+
+      if (status === 401) {
+        setPinError('Current PIN is incorrect.');
+        setCurrentPin('');
+        setNewPin('');
+        setConfirmPin('');
+        setPinStep('current');
+      } else if (status === 400) {
+        setPinError('New PIN must be different from current PIN.');
+        setNewPin('');
+        setConfirmPin('');
+        setPinStep('new');
+      } else if (status === 403) {
+        setPinError(msg.includes('coordinator') ? msg : 'No PIN set. Contact your LGA coordinator.');
+        setCurrentPin('');
+        setNewPin('');
+        setConfirmPin('');
+        setPinStep('current');
+      } else {
+        setPinError(msg);
+        setConfirmPin('');
+      }
+    }
+  };
 
   const handleProfileSave = async () => {
     try {
@@ -355,73 +479,156 @@ const SettingsPage = () => {
 
           {/* Security Tab */}
           {activeTab === 'security' && (
-            <Card title="Security Settings" subtitle="Manage your password and security">
+            <Card
+              title={isSecretary ? 'Change PIN' : 'Security Settings'}
+              subtitle={isSecretary ? 'Update your 4-digit login PIN' : 'Manage your password and security'}
+            >
               <div className="space-y-6">
-                <div>
-                  <h4 className="text-sm font-semibold text-neutral-800 mb-4">Change Password</h4>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-1">
-                        Current Password
-                      </label>
-                      <div className="relative">
-                        <input
-                          type={showPassword ? 'text' : 'password'}
-                          value={passwordData.current_password}
-                          onChange={(e) =>
-                            setPasswordData({ ...passwordData, current_password: e.target.value })
-                          }
-                          className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+                {isSecretary ? (
+                  /* ── Secretary PIN Change Flow ── */
+                  <div className="flex flex-col items-center py-4">
+                    {pinSuccess ? (
+                      <div className="text-center py-8">
+                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <CheckCircle className="w-8 h-8 text-green-600" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-neutral-900 mb-1">PIN Changed!</h3>
+                        <p className="text-sm text-neutral-500">Your login PIN has been updated successfully.</p>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Step indicator */}
+                        <div className="flex items-center gap-2 mb-2">
+                          {pinStep !== 'current' && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (pinStep === 'new') {
+                                  setPinStep('current');
+                                  setCurrentPin('');
+                                  setNewPin('');
+                                } else if (pinStep === 'confirm') {
+                                  setPinStep('new');
+                                  setNewPin('');
+                                  setConfirmPin('');
+                                }
+                                setPinError('');
+                              }}
+                              className="p-1 text-neutral-400 hover:text-neutral-600 transition-colors"
+                            >
+                              <ArrowLeft className="w-5 h-5" />
+                            </button>
+                          )}
+                          <span className="text-xs font-medium text-neutral-400 uppercase tracking-wider">
+                            Step {pinStep === 'current' ? '1' : pinStep === 'new' ? '2' : '3'} of 3
+                          </span>
+                        </div>
+
+                        {/* Step label */}
+                        <h3 className="text-lg font-semibold text-neutral-900 mb-1">
+                          {pinStep === 'current' && 'Enter Current PIN'}
+                          {pinStep === 'new' && 'Enter New PIN'}
+                          {pinStep === 'confirm' && 'Confirm New PIN'}
+                        </h3>
+                        <p className="text-sm text-neutral-500 mb-4">
+                          {pinStep === 'current' && 'Enter your current 4-digit PIN to continue'}
+                          {pinStep === 'new' && 'Choose a new 4-digit PIN'}
+                          {pinStep === 'confirm' && 'Re-enter your new PIN to confirm'}
+                        </p>
+
+                        {/* PIN dots */}
+                        <PinDots
+                          filledCount={activePinValue.length}
+                          isError={!!pinError}
+                          isLoading={pinLoading}
                         />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
-                        >
-                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
+
+                        {/* Error message */}
+                        {pinError && (
+                          <p className="text-sm text-red-600 font-medium mt-2 mb-2 text-center">{pinError}</p>
+                        )}
+
+                        {/* Keypad */}
+                        <div className="mt-4">
+                          <PinKeypad
+                            onDigit={handlePinDigit}
+                            onBackspace={handlePinBackspace}
+                            disabled={pinLoading}
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  /* ── Password Change (LGA / State) ── */
+                  <>
+                    <div>
+                      <h4 className="text-sm font-semibold text-neutral-800 mb-4">Change Password</h4>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-neutral-700 mb-1">
+                            Current Password
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={showPassword ? 'text' : 'password'}
+                              value={passwordData.current_password}
+                              onChange={(e) =>
+                                setPasswordData({ ...passwordData, current_password: e.target.value })
+                              }
+                              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                            >
+                              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-neutral-700 mb-1">
+                            New Password
+                          </label>
+                          <input
+                            type={showPassword ? 'text' : 'password'}
+                            value={passwordData.new_password}
+                            onChange={(e) =>
+                              setPasswordData({ ...passwordData, new_password: e.target.value })
+                            }
+                            className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-neutral-700 mb-1">
+                            Confirm New Password
+                          </label>
+                          <input
+                            type={showPassword ? 'text' : 'password'}
+                            value={passwordData.confirm_password}
+                            onChange={(e) =>
+                              setPasswordData({ ...passwordData, confirm_password: e.target.value })
+                            }
+                            className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+                          />
+                        </div>
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-1">
-                        New Password
-                      </label>
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        value={passwordData.new_password}
-                        onChange={(e) =>
-                          setPasswordData({ ...passwordData, new_password: e.target.value })
-                        }
-                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
-                      />
+                    <div className="flex justify-end">
+                      <Button
+                        icon={Shield}
+                        onClick={handlePasswordChange}
+                        disabled={!passwordData.current_password || !passwordData.new_password || !passwordData.confirm_password || isLoading}
+                      >
+                        {isLoading ? 'Updating...' : 'Update Password'}
+                      </Button>
                     </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-1">
-                        Confirm New Password
-                      </label>
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        value={passwordData.confirm_password}
-                        onChange={(e) =>
-                          setPasswordData({ ...passwordData, confirm_password: e.target.value })
-                        }
-                        className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <Button
-                    icon={Shield}
-                    onClick={handlePasswordChange}
-                    disabled={!passwordData.current_password || !passwordData.new_password || !passwordData.confirm_password || isLoading}
-                  >
-                    {isLoading ? 'Updating...' : 'Update Password'}
-                  </Button>
-                </div>
+                  </>
+                )}
 
                 <hr />
 

@@ -4,7 +4,7 @@ import { NumberInput, TextInput } from './shared';
 /**
  * Section 3D: MPDSR (Maternal and Perinatal Death Surveillance and Response)
  */
-const CMPDSRSection = ({ formData, onChange }) => {
+const CMPDSRSection = ({ formData, onChange, onVoiceNote, voiceNotes = {}, draftContext }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     onChange((prev) => ({ ...prev, [name]: value }));
@@ -63,6 +63,9 @@ const CMPDSRSection = ({ formData, onChange }) => {
                   name={`maternal_death_cause_${i}`}
                   value={(formData.maternal_death_causes || ['', '', ''])[i] || ''}
                   onChange={(e) => handleCauseChange('maternal', i, e.target.value)}
+                  onVoiceNote={onVoiceNote ? (file) => onVoiceNote(`maternal_death_cause_${i}`, file) : undefined}
+                  draftContext={draftContext}
+                  existingVoiceNote={voiceNotes[`maternal_death_cause_${i}`]}
                   placeholder="Enter cause..."
                 />
               ))}
@@ -82,6 +85,9 @@ const CMPDSRSection = ({ formData, onChange }) => {
                   name={`perinatal_death_cause_${i}`}
                   value={(formData.perinatal_death_causes || ['', '', ''])[i] || ''}
                   onChange={(e) => handleCauseChange('perinatal', i, e.target.value)}
+                  onVoiceNote={onVoiceNote ? (file) => onVoiceNote(`perinatal_death_cause_${i}`, file) : undefined}
+                  draftContext={draftContext}
+                  existingVoiceNote={voiceNotes[`perinatal_death_cause_${i}`]}
                   placeholder="Enter cause..."
                 />
               ))}

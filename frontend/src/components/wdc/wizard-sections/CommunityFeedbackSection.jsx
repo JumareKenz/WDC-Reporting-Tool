@@ -1,11 +1,12 @@
 import React from 'react';
 import { inputClass } from './shared';
+import VoiceRecorder from '../VoiceRecorder';
 
 /**
  * Section 4: Community Involvement & Town Hall Feedback
  * Only appears for 'Quarterly Town Hall' meetings.
  */
-const CommunityFeedbackSection = ({ formData, onChange }) => {
+const CommunityFeedbackSection = ({ formData, onChange, onVoiceNote, voiceNotes = {}, draftContext }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     onChange((prev) => ({ ...prev, [name]: value }));
@@ -67,9 +68,14 @@ const CommunityFeedbackSection = ({ formData, onChange }) => {
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="block text-xs font-medium text-gray-600">
-                    Feedback / Observation <span className="text-red-500">*</span>
-                  </label>
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="block text-xs font-medium text-gray-600">
+                      Feedback / Observation <span className="text-red-500">*</span>
+                    </label>
+                    {onVoiceNote && (
+                      <VoiceRecorder fieldName={`community_feedback_${idx}`} onRecordingComplete={(file) => onVoiceNote(`community_feedback_${idx}`, file)} compact draftContext={draftContext} />
+                    )}
+                  </div>
                   <textarea
                     value={item.feedback}
                     onChange={(e) => handleFeedbackChange(idx, 'feedback', e.target.value)}
@@ -79,9 +85,14 @@ const CommunityFeedbackSection = ({ formData, onChange }) => {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="block text-xs font-medium text-gray-600">
-                    Action Required <span className="text-red-500">*</span>
-                  </label>
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="block text-xs font-medium text-gray-600">
+                      Action Required <span className="text-red-500">*</span>
+                    </label>
+                    {onVoiceNote && (
+                      <VoiceRecorder fieldName={`community_action_${idx}`} onRecordingComplete={(file) => onVoiceNote(`community_action_${idx}`, file)} compact draftContext={draftContext} />
+                    )}
+                  </div>
                   <textarea
                     value={item.action_required}
                     onChange={(e) => handleFeedbackChange(idx, 'action_required', e.target.value)}

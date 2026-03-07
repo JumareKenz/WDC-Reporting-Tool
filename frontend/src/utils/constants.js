@@ -108,6 +108,7 @@ export const API_ENDPOINTS = {
   USER_SECRETARY: (wardId) => `/users/secretary/${wardId}`,
   USER_BY_ID: (id) => `/users/${id}`,
   USER_PASSWORD: (id) => `/users/${id}/password`,
+  USER_PIN: (id) => `/users/${id}/pin`,
   USER_ACCESS: (id) => `/users/${id}/access`,
   USER_ASSIGN: '/users/assign',
 

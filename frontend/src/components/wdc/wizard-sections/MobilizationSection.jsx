@@ -4,7 +4,7 @@ import { TextInput } from './shared';
 /**
  * Section 6: Community Mobilization Activities
  */
-const MobilizationSection = ({ formData, onChange, onVoiceNote }) => {
+const MobilizationSection = ({ formData, onChange, onVoiceNote, voiceNotes = {}, draftContext }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     onChange((prev) => ({ ...prev, [name]: value }));
@@ -22,6 +22,8 @@ const MobilizationSection = ({ formData, onChange, onVoiceNote }) => {
         value={formData.awareness_topic}
         onChange={handleChange}
         onVoiceNote={onVoiceNote ? (file) => onVoiceNote('awareness_topic', file) : undefined}
+        draftContext={draftContext}
+        existingVoiceNote={voiceNotes.awareness_topic}
         placeholder="Enter awareness topic..."
         required
       />
@@ -33,6 +35,8 @@ const MobilizationSection = ({ formData, onChange, onVoiceNote }) => {
         value={formData.traditional_leaders_support}
         onChange={handleChange}
         onVoiceNote={onVoiceNote ? (file) => onVoiceNote('traditional_leaders_support', file) : undefined}
+        draftContext={draftContext}
+        existingVoiceNote={voiceNotes.traditional_leaders_support}
         placeholder="Describe support needed/given by traditional leaders..."
         rows={3}
         required
@@ -45,6 +49,8 @@ const MobilizationSection = ({ formData, onChange, onVoiceNote }) => {
         value={formData.religious_leaders_support}
         onChange={handleChange}
         onVoiceNote={onVoiceNote ? (file) => onVoiceNote('religious_leaders_support', file) : undefined}
+        draftContext={draftContext}
+        existingVoiceNote={voiceNotes.religious_leaders_support}
         placeholder="Describe support needed/given by religious leaders..."
         rows={3}
         required

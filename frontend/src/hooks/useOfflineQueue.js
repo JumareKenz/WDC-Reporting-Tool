@@ -16,6 +16,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
  */
 export const useOfflineQueue = ({
     submitFn,
+    verifyFn,
     maxRetries = 3,
 }) => {
     const [queue, setQueue] = useState([]);
@@ -122,6 +123,31 @@ export const useOfflineQueue = ({
 
             return true;
         } catch (error) {
+            // 409 = already submitted — treat as success
+            if (error.status === 409) {
+                removeFromQueue(item.id);
+                if (process.env.NODE_ENV === 'development') {
+                    console.log('[useOfflineQueue] Already submitted (409), removing:', item.id);
+                }
+                return true;
+            }
+
+            // For server errors (5xx), verify if the report actually went through
+            if ((error.status >= 500 || error.isNetworkError) && verifyFn && item.reportMonth) {
+                try {
+                    const isSubmitted = await verifyFn(item.reportMonth);
+                    if (isSubmitted) {
+                        removeFromQueue(item.id);
+                        if (process.env.NODE_ENV === 'development') {
+                            console.log('[useOfflineQueue] Verified submitted after error, removing:', item.id);
+                        }
+                        return true;
+                    }
+                } catch {
+                    // Verification failed — fall through to retry logic
+                }
+            }
+
             const newRetryCount = item.retryCount + 1;
 
             if (newRetryCount >= maxRetries) {
@@ -147,7 +173,7 @@ export const useOfflineQueue = ({
 
             return false;
         }
-    }, [submitFn, updateQueueItem, removeFromQueue, maxRetries]);
+    }, [submitFn, verifyFn, updateQueueItem, removeFromQueue, maxRetries]);
 
     // Process all queued items
     const syncQueue = useCallback(async () => {

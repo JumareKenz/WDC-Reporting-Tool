@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { LogIn, Mail, Lock, AlertCircle } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { LogIn, Mail, Lock, AlertCircle, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { APP_CONFIG, DEMO_CREDENTIALS } from '../utils/constants';
 import Button from '../components/common/Button';
@@ -87,8 +87,19 @@ const Login = () => {
         style={{ filter: 'blur(80px)' }}
       />
 
+      {/* Back link */}
+      <div className="relative z-10 pt-4 pl-4">
+        <Link
+          to="/login"
+          className="inline-flex items-center gap-1 text-emerald-300 hover:text-white text-sm transition-colors py-2 pr-3"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back
+        </Link>
+      </div>
+
       {/* Content */}
-      <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
+      <div className="relative z-10 flex items-center justify-center min-h-screen p-4" style={{ marginTop: -40 }}>
         <div className="w-full max-w-md">
           {/* Logo & Title */}
           <div className="text-center mb-8">

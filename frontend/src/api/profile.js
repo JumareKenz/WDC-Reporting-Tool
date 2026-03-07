@@ -34,3 +34,14 @@ export const changePassword = async (currentPassword, newPassword) => {
   });
   return response;
 };
+
+/**
+ * Change secretary PIN (WDC_SECRETARY only)
+ */
+export const changePin = async (currentPin, newPin) => {
+  const response = await apiClient.patch('/auth/secretary-change-pin', {
+    current_pin: currentPin,
+    new_pin: newPin,
+  });
+  return response;
+};

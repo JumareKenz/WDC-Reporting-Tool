@@ -28,6 +28,7 @@ import {
   useWardSecretary,
   useUpdateUser,
   useChangeUserPassword,
+  useChangeUserPin,
   useToggleUserAccess,
   useAssignUser,
 } from '../hooks/useStateData';
@@ -239,7 +240,7 @@ function UserDetailCard({ user, onEdit, onPassword, onAccess, onCopyEmail, copie
             onClick={onPassword}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white border border-neutral-200 text-neutral-700 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 text-sm font-medium transition-all shadow-sm"
           >
-            <Key className="w-4 h-4" /> Reset Password
+            <Key className="w-4 h-4" /> {user.role === 'WDC_SECRETARY' ? 'Set PIN' : 'Reset Password'}
           </button>
           <button
             onClick={onAccess}
@@ -334,6 +335,7 @@ export default function StateUsersPage() {
   // mutations
   const updateUserMutation       = useUpdateUser();
   const changePasswordMutation   = useChangeUserPassword();
+  const changePinMutation        = useChangeUserPin();
   const toggleAccessMutation     = useToggleUserAccess();
   const assignUserMutation       = useAssignUser();
 
@@ -385,8 +387,10 @@ export default function StateUsersPage() {
     setShowEditModal(true);
   };
 
+  const isSecretary = selectedUser?.role === 'WDC_SECRETARY';
+
   const openPasswordModal = () => {
-    setPasswordForm({ new_password: '', confirm_password: '' });
+    setPasswordForm(isSecretary ? { new_pin: '' } : { new_password: '', confirm_password: '' });
     setPasswordErrors({});
     setShowPw(false);
     setShowCfPw(false);
@@ -427,24 +431,45 @@ export default function StateUsersPage() {
 
   const handlePasswordSave = async () => {
     const errs = {};
-    if (!passwordForm.new_password)
-      errs.new_password = 'New password is required';
-    else if (passwordForm.new_password.length < 6)
-      errs.new_password = 'Password must be at least 6 characters';
-    if (passwordForm.new_password !== passwordForm.confirm_password)
-      errs.confirm_password = 'Passwords do not match';
 
-    if (Object.keys(errs).length) { setPasswordErrors(errs); return; }
+    if (isSecretary) {
+      if (!passwordForm.new_pin)
+        errs.new_pin = 'PIN is required';
+      else if (!/^\d{4}$/.test(passwordForm.new_pin))
+        errs.new_pin = 'PIN must be exactly 4 digits';
 
-    try {
-      await changePasswordMutation.mutateAsync({
-        userId: selectedUser.id,
-        data: { new_password: passwordForm.new_password },
-      });
-      setShowPasswordModal(false);
-      showToast('Password has been reset successfully.');
-    } catch (err) {
-      showToast(err.message || 'Failed to reset password.', 'error');
+      if (Object.keys(errs).length) { setPasswordErrors(errs); return; }
+
+      try {
+        await changePinMutation.mutateAsync({
+          userId: selectedUser.id,
+          data: { new_pin: passwordForm.new_pin },
+        });
+        setShowPasswordModal(false);
+        showToast('PIN has been set successfully.');
+      } catch (err) {
+        showToast(err.message || 'Failed to set PIN.', 'error');
+      }
+    } else {
+      if (!passwordForm.new_password)
+        errs.new_password = 'New password is required';
+      else if (passwordForm.new_password.length < 6)
+        errs.new_password = 'Password must be at least 6 characters';
+      if (passwordForm.new_password !== passwordForm.confirm_password)
+        errs.confirm_password = 'Passwords do not match';
+
+      if (Object.keys(errs).length) { setPasswordErrors(errs); return; }
+
+      try {
+        await changePasswordMutation.mutateAsync({
+          userId: selectedUser.id,
+          data: { new_password: passwordForm.new_password },
+        });
+        setShowPasswordModal(false);
+        showToast('Password has been reset successfully.');
+      } catch (err) {
+        showToast(err.message || 'Failed to reset password.', 'error');
+      }
     }
   };
 
@@ -765,69 +790,101 @@ export default function StateUsersPage() {
         </div>
       </Modal>
 
-      {/* ── Reset Password Modal ── */}
-      <Modal isOpen={showPasswordModal} onClose={() => setShowPasswordModal(false)} title="Reset Password" size="md">
+      {/* ── Reset Password / Set PIN Modal ── */}
+      <Modal isOpen={showPasswordModal} onClose={() => setShowPasswordModal(false)} title={isSecretary ? 'Set Login PIN' : 'Reset Password'} size="md">
         <div className="space-y-4">
-          <p className="text-sm text-neutral-600">
-            Set a new password for{' '}
-            <span className="font-semibold text-neutral-800">{selectedUser?.full_name}</span>.
-            They will need this new password to log in.
-          </p>
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">New Password</label>
-            <div className="relative">
-              <input
-                type={showPw ? 'text' : 'password'}
-                value={passwordForm.new_password}
-                onChange={(e) => {
-                  setPasswordForm((p) => ({ ...p, new_password: e.target.value }));
-                  setPasswordErrors((p) => ({ ...p, new_password: null }));
-                }}
-                className={`input-base w-full pr-10 ${passwordErrors.new_password ? 'border-red-400 focus:ring-red-400' : ''}`}
-                placeholder="Enter new password"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPw(!showPw)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
-              >
-                {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-            {passwordErrors.new_password && (
-              <p className="text-xs text-red-500 mt-1">{passwordErrors.new_password}</p>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">Confirm Password</label>
-            <div className="relative">
-              <input
-                type={showCfPw ? 'text' : 'password'}
-                value={passwordForm.confirm_password}
-                onChange={(e) => {
-                  setPasswordForm((p) => ({ ...p, confirm_password: e.target.value }));
-                  setPasswordErrors((p) => ({ ...p, confirm_password: null }));
-                }}
-                className={`input-base w-full pr-10 ${passwordErrors.confirm_password ? 'border-red-400 focus:ring-red-400' : ''}`}
-                placeholder="Confirm new password"
-              />
-              <button
-                type="button"
-                onClick={() => setShowCfPw(!showCfPw)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
-              >
-                {showCfPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-            {passwordErrors.confirm_password && (
-              <p className="text-xs text-red-500 mt-1">{passwordErrors.confirm_password}</p>
-            )}
-          </div>
-          <p className="text-xs text-neutral-400">Password must be at least 6 characters long.</p>
+          {isSecretary ? (
+            <>
+              <p className="text-sm text-neutral-600">
+                Set a 4-digit PIN for{' '}
+                <span className="font-semibold text-neutral-800">{selectedUser?.full_name}</span>.
+                They will use this PIN to log in from their ward.
+              </p>
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">New PIN</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={passwordForm.new_pin || ''}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+                    setPasswordForm({ new_pin: val });
+                    setPasswordErrors((p) => ({ ...p, new_pin: null }));
+                  }}
+                  className={`input-base w-full text-center text-2xl tracking-[0.5em] font-mono ${passwordErrors.new_pin ? 'border-red-400 focus:ring-red-400' : ''}`}
+                  placeholder="0000"
+                />
+                {passwordErrors.new_pin && (
+                  <p className="text-xs text-red-500 mt-1">{passwordErrors.new_pin}</p>
+                )}
+              </div>
+              <p className="text-xs text-neutral-400">PIN must be exactly 4 digits.</p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-neutral-600">
+                Set a new password for{' '}
+                <span className="font-semibold text-neutral-800">{selectedUser?.full_name}</span>.
+                They will need this new password to log in.
+              </p>
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">New Password</label>
+                <div className="relative">
+                  <input
+                    type={showPw ? 'text' : 'password'}
+                    value={passwordForm.new_password}
+                    onChange={(e) => {
+                      setPasswordForm((p) => ({ ...p, new_password: e.target.value }));
+                      setPasswordErrors((p) => ({ ...p, new_password: null }));
+                    }}
+                    className={`input-base w-full pr-10 ${passwordErrors.new_password ? 'border-red-400 focus:ring-red-400' : ''}`}
+                    placeholder="Enter new password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw(!showPw)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                  >
+                    {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {passwordErrors.new_password && (
+                  <p className="text-xs text-red-500 mt-1">{passwordErrors.new_password}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">Confirm Password</label>
+                <div className="relative">
+                  <input
+                    type={showCfPw ? 'text' : 'password'}
+                    value={passwordForm.confirm_password}
+                    onChange={(e) => {
+                      setPasswordForm((p) => ({ ...p, confirm_password: e.target.value }));
+                      setPasswordErrors((p) => ({ ...p, confirm_password: null }));
+                    }}
+                    className={`input-base w-full pr-10 ${passwordErrors.confirm_password ? 'border-red-400 focus:ring-red-400' : ''}`}
+                    placeholder="Confirm new password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCfPw(!showCfPw)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                  >
+                    {showCfPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {passwordErrors.confirm_password && (
+                  <p className="text-xs text-red-500 mt-1">{passwordErrors.confirm_password}</p>
+                )}
+              </div>
+              <p className="text-xs text-neutral-400">Password must be at least 6 characters long.</p>
+            </>
+          )}
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="outline" size="sm" onClick={() => setShowPasswordModal(false)}>Cancel</Button>
-            <Button variant="primary" size="sm" onClick={handlePasswordSave} loading={changePasswordMutation.isPending}>
-              Reset Password
+            <Button variant="primary" size="sm" onClick={handlePasswordSave} loading={isSecretary ? changePinMutation.isPending : changePasswordMutation.isPending}>
+              {isSecretary ? 'Set PIN' : 'Reset Password'}
             </Button>
           </div>
         </div>

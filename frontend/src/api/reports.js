@@ -119,11 +119,44 @@ export const saveDraft = async (data) => {
 /**
  * Get existing draft for a specific month
  * @param {string} reportMonth - Month in YYYY-MM format (optional, defaults to current month)
+ * @param {number} timeoutMs - Timeout in milliseconds (default: 10000)
  * @returns {Promise} Response with draft data if exists
  */
-export const getExistingDraft = async (reportMonth = null) => {
+export const getExistingDraft = async (reportMonth = null, timeoutMs = 10000) => {
   const queryString = buildQueryString(reportMonth ? { report_month: reportMonth } : {});
-  return apiClient.get(`/reports/draft/existing${queryString}`);
+  
+  // Create an abort controller for timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    const response = await apiClient.get(`/reports/draft/existing${queryString}`, {
+      signal: controller.signal,
+      timeout: timeoutMs,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    
+    // Enhance error message for timeout
+    if (error.name === 'AbortError' || error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+      const timeoutError = new Error('Request timed out while loading draft. Please try again.');
+      timeoutError.isTimeout = true;
+      timeoutError.isNetworkError = true;
+      throw timeoutError;
+    }
+    
+    // Handle 404 - endpoint not found
+    if (error.status === 404) {
+      const notFoundError = new Error('Draft service is temporarily unavailable. Please try again later.');
+      notFoundError.status = 404;
+      notFoundError.isNetworkError = false;
+      throw notFoundError;
+    }
+    
+    throw error;
+  }
 };
 
 /**
@@ -149,4 +182,83 @@ export const getMySubmissions = async () => {
     console.error('API: getMySubmissions error:', error.message, error.status, error.details);
     throw error;
   }
+};
+
+/**
+ * Upload attendance photo for a report
+ * Backend expects the photo as part of a PUT /reports/{id} with multipart form-data.
+ * @param {number} reportId - Report ID
+ * @param {File} file - Image file to upload
+ * @returns {Promise} Response with updated report (includes attendance_photo_url)
+ */
+export const uploadAttendancePhoto = async (reportId, file) => {
+  const formData = new FormData();
+  formData.append('attendance_photo', file);
+
+  return apiClient.put(`/reports/${reportId}`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+};
+
+/**
+ * Upload a voice note for a specific field in a report
+ * @param {number} reportId - Report ID
+ * @param {string} fieldName - Field name/key
+ * @param {Blob} audioBlob - Audio blob to upload
+ * @param {string} mimeType - MIME type of the audio (e.g., 'audio/webm')
+ * @returns {Promise} Response with { id, field_name, status, audio_url }
+ */
+export const uploadVoiceNote = async (reportId, fieldName, audioBlob, mimeType) => {
+  const formData = new FormData();
+  formData.append('field_name', fieldName);
+  
+  // Determine file extension from mimeType
+  const extension = mimeType === 'audio/webm' ? 'webm' : 
+                    mimeType === 'audio/mp4' ? 'mp4' : 
+                    mimeType === 'audio/ogg' ? 'ogg' : 'webm';
+  
+  const file = new File([audioBlob], `voice_${fieldName}.${extension}`, { type: mimeType });
+  formData.append('file', file);
+  
+  return apiClient.post(`/reports/${reportId}/voice-notes`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+};
+
+/**
+ * Fetch all voice notes for a report
+ * @param {number} reportId - Report ID
+ * @returns {Promise} Response with array of voice note objects
+ */
+export const fetchVoiceNotes = async (reportId) => {
+  return apiClient.get(`/reports/${reportId}/voice-notes`);
+};
+
+/**
+ * Trigger transcription for a voice note
+ * @param {number} voiceNoteId - Voice note ID
+ * @returns {Promise} Response with { id, transcription_text, status }
+ */
+export const triggerTranscription = async (voiceNoteId) => {
+  return apiClient.post(`/voice-notes/${voiceNoteId}/transcribe`);
+};
+
+/**
+ * Fetch voice note audio as blob URL
+ * @param {number} voiceNoteId - Voice note ID
+ * @returns {Promise} Blob URL for audio playback
+ */
+export const fetchVoiceNoteAudio = async (voiceNoteId) => {
+  const response = await apiClient.get(`/voice-notes/${voiceNoteId}/audio`, {
+    responseType: 'blob',
+  });
+  
+  // The response interceptor returns response.data, so we need to handle the raw response
+  // We'll use the apiClient's underlying axios instance for blob requests
+  const blob = response instanceof Blob ? response : response.data;
+  return URL.createObjectURL(blob);
 };

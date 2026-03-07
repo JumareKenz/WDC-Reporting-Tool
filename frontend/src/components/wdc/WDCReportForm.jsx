@@ -21,6 +21,7 @@ import {
   Info,
   Save,
   RefreshCw,
+  CloudOff,
 } from 'lucide-react';
 import Button from '../common/Button';
 import Alert from '../common/Alert';
@@ -30,7 +31,8 @@ import { useToast } from '../../hooks/useToast';
 import DraftStatusBar from './DraftStatusBar';
 import apiClient from '../../api/client';
 import { getTargetReportMonth, formatMonthDisplay, getSubmissionPeriodDescription } from '../../utils/dateUtils';
-import { saveDraft, getExistingDraft } from '../../api/reports';
+import { saveDraft, getExistingDraft, uploadAttendancePhoto, fetchVoiceNotes } from '../../api/reports';
+import VoiceNoteRecorder from '../VoiceNoteRecorder';
 import { useAuth } from '../../hooks/useAuth';
 import { useLocalDraft } from '../../hooks/useLocalDraft';
 import { useOfflineQueue } from '../../hooks/useOfflineQueue';
@@ -347,9 +349,14 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
   const [submitError, setSubmitError] = useState(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [voiceNotes, setVoiceNotes] = useState({});
-  const [attendancePictures, setAttendancePictures] = useState([]);
+  const [attendancePhoto, setAttendancePhoto] = useState(null);
+  const [attendancePhotoUrl, setAttendancePhotoUrl] = useState(null);
+  const [attendancePhotoUploading, setAttendancePhotoUploading] = useState(false);
+  const [attendancePhotoError, setAttendancePhotoError] = useState(null);
   const [groupPhotos, setGroupPhotos] = useState([]);
   const picUrlCacheRef = useRef(new Map());
+  const [existingVoiceNotes, setExistingVoiceNotes] = useState({});
+  const [reportIdForVoiceNotes, setReportIdForVoiceNotes] = useState(null);
   const [reportMonth, setReportMonth] = useState('');
   const [draftId, setDraftId] = useState(null);
   const [draftSavedAt, setDraftSavedAt] = useState(null);
@@ -641,6 +648,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
                 formData: response.report_data,
                 savedAt: response.saved_at,
                 draftId: response.draft_id,
+                reportId: response.report_id,
               };
             }
           } catch (error) {
@@ -665,6 +673,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
             applyDraftData(serverDraft.formData);
             setDraftId(serverDraft.draftId);
             setDraftSavedAt(serverDraft.savedAt);
+            setReportIdForVoiceNotes(serverDraft.reportId);
           }
         } else if (localDraft) {
           // Only local exists
@@ -675,6 +684,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
           applyDraftData(serverDraft.formData);
           setDraftId(serverDraft.draftId);
           setDraftSavedAt(serverDraft.savedAt);
+          setReportIdForVoiceNotes(serverDraft.reportId);
         }
         // else: no draft found, use initial form state
 
@@ -708,6 +718,29 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
 
     loadDraft();
   }, [reportMonth, user?.id, userWard?.id, isOnline, loadDraftFromLocal]);
+
+  // Fetch existing voice notes when we have a report ID
+  useEffect(() => {
+    const loadVoiceNotes = async () => {
+      if (!reportIdForVoiceNotes) return;
+      
+      try {
+        const response = await fetchVoiceNotes(reportIdForVoiceNotes);
+        if (response && Array.isArray(response)) {
+          // Convert array to object keyed by field_name
+          const notesMap = response.reduce((acc, note) => {
+            acc[note.field_name] = note;
+            return acc;
+          }, {});
+          setExistingVoiceNotes(notesMap);
+        }
+      } catch (error) {
+        console.error('[WDCReportForm] Failed to load voice notes:', error);
+      }
+    };
+    
+    loadVoiceNotes();
+  }, [reportIdForVoiceNotes]);
 
   // Handle per-field voice note recording
   const handleVoiceNote = (fieldName, file) => {
@@ -831,25 +864,68 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
     });
   };
 
-  // Handle picture upload for attendance
-  const handlePictureUpload = (e) => {
-    const files = Array.from(e.target.files);
-    const newPictures = files.map(file => ({
-      file,
-      preview: URL.createObjectURL(file),
-      name: file.name,
-    }));
-    setAttendancePictures(prev => [...prev, ...newPictures]);
+  // Handle attendance photo upload
+  const handleAttendancePhotoSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      setAttendancePhotoError('Please select a valid image file (JPG, PNG, or WebP)');
+      return;
+    }
+    
+    // Validate file size (5MB max)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setAttendancePhotoError('Photo must be under 5MB');
+      return;
+    }
+    
+    setAttendancePhotoError(null);
+    setAttendancePhoto(file);
+    setAttendancePhotoUrl(URL.createObjectURL(file));
+    
+    // Auto-upload if we have a report ID (draft already saved)
+    if (reportIdForVoiceNotes) {
+      uploadAttendancePhotoAuto(file);
+    }
   };
-
-  // Handle picture removal
-  const handleRemovePicture = (index) => {
-    setAttendancePictures(prev => {
-      const updated = [...prev];
-      URL.revokeObjectURL(updated[index].preview);
-      updated.splice(index, 1);
-      return updated;
-    });
+  
+  // Auto-upload attendance photo
+  const uploadAttendancePhotoAuto = async (file) => {
+    if (!reportIdForVoiceNotes || !file) return;
+    
+    setAttendancePhotoUploading(true);
+    setAttendancePhotoError(null);
+    
+    try {
+      await uploadAttendancePhoto(reportIdForVoiceNotes, file);
+      setAttendancePhotoUploading(false);
+      toast.success('Attendance photo saved');
+    } catch (error) {
+      console.error('Failed to upload attendance photo:', error);
+      setAttendancePhotoUploading(false);
+      setAttendancePhotoError('Photo failed to save. Tap to retry');
+    }
+  };
+  
+  // Retry attendance photo upload
+  const handleRetryPhotoUpload = () => {
+    if (attendancePhoto) {
+      uploadAttendancePhotoAuto(attendancePhoto);
+    }
+  };
+  
+  // Remove attendance photo
+  const handleRemoveAttendancePhoto = () => {
+    if (attendancePhotoUrl && !attendancePhotoUrl.startsWith('http')) {
+      URL.revokeObjectURL(attendancePhotoUrl);
+    }
+    setAttendancePhoto(null);
+    setAttendancePhotoUrl(null);
+    setAttendancePhotoError(null);
   };
 
   // Handle group photo upload
@@ -886,10 +962,10 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
         }
       });
 
-      // Add attendance pictures
-      attendancePictures.forEach((pic, index) => {
-        formPayload.append(`attendance_picture_${index}`, pic.file);
-      });
+      // Add attendance photo if exists
+      if (attendancePhoto) {
+        formPayload.append('attendance_photo', attendancePhoto);
+      }
 
       // Add group photos
       groupPhotos.forEach((pic, index) => {
@@ -1368,6 +1444,13 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
           onAddRow={addActionTrackerRow}
           onRemoveRow={removeActionTrackerRow}
         />
+        <div className="mt-3">
+          <VoiceNoteRecorder
+            reportId={reportIdForVoiceNotes}
+            fieldName="action_tracker"
+            existingNote={existingVoiceNotes.action_tracker}
+          />
+        </div>
       </FormSection>
 
       {/* Section 3: Report on Health System */}
@@ -1575,6 +1658,13 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
                     placeholder="Enter cause..."
                   />
                 </div>
+                <div className="mt-3">
+                  <VoiceNoteRecorder 
+                    reportId={reportIdForVoiceNotes}
+                    fieldName="maternal_death_causes"
+                    existingNote={existingVoiceNotes.maternal_death_causes}
+                  />
+                </div>
               </div>
 
               <div>
@@ -1612,6 +1702,13 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
                       setFormData(prev => ({ ...prev, perinatal_death_causes: newCauses }));
                     }}
                     placeholder="Enter cause..."
+                  />
+                </div>
+                <div className="mt-3">
+                  <VoiceNoteRecorder 
+                    reportId={reportIdForVoiceNotes}
+                    fieldName="perinatal_death_causes"
+                    existingNote={existingVoiceNotes.perinatal_death_causes}
                   />
                 </div>
               </div>
@@ -1671,6 +1768,13 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
                       />
                     </div>
                   </div>
+                  <div className="mt-2">
+                    <VoiceNoteRecorder 
+                      reportId={reportIdForVoiceNotes}
+                      fieldName={`community_feedback_${idx}`}
+                      existingNote={existingVoiceNotes[`community_feedback_${idx}`]}
+                    />
+                  </div>
                 </div>
               ))}
             </div>
@@ -1692,39 +1796,70 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
           onAddRow={addVDCRow}
           onRemoveRow={removeVDCRow}
         />
+        <div className="mt-3">
+          <VoiceNoteRecorder
+            reportId={reportIdForVoiceNotes}
+            fieldName="vdc_reports"
+            existingNote={existingVoiceNotes.vdc_reports}
+          />
+        </div>
       </FormSection>
 
       {/* Section 6: Community Mobilization Activities */}
       <FormSection title="COMMUNITY MOBILIZATION ACTIVITIES" number="6" icon={Users}>
         <div className="space-y-4">
-          <TextInput
-            label="Awareness Creation Theme"
-            name="awareness_theme"
-            value={formData.awareness_theme}
-            onChange={handleChange}
-            onVoiceNote={(file) => handleVoiceNote('awareness_theme', file)}
-            placeholder="Enter theme..."
-          />
-          <TextInput
-            label="Traditional Leaders Support Needed"
-            name="traditional_leaders_support"
-            type="textarea"
-            value={formData.traditional_leaders_support}
-            onChange={handleChange}
-            onVoiceNote={(file) => handleVoiceNote('traditional_leaders_support', file)}
-            placeholder="Describe support needed..."
-            rows={2}
-          />
-          <TextInput
-            label="Religious Leaders Support Needed"
-            name="religious_leaders_support"
-            type="textarea"
-            value={formData.religious_leaders_support}
-            onChange={handleChange}
-            onVoiceNote={(file) => handleVoiceNote('religious_leaders_support', file)}
-            placeholder="Describe support needed..."
-            rows={2}
-          />
+          <div>
+            <TextInput
+              label="Awareness Creation Theme"
+              name="awareness_theme"
+              value={formData.awareness_theme}
+              onChange={handleChange}
+              placeholder="Enter theme..."
+            />
+            <div className="mt-2">
+              <VoiceNoteRecorder 
+                reportId={reportIdForVoiceNotes}
+                fieldName="awareness_theme"
+                existingNote={existingVoiceNotes.awareness_theme}
+              />
+            </div>
+          </div>
+          <div>
+            <TextInput
+              label="Traditional Leaders Support Needed"
+              name="traditional_leaders_support"
+              type="textarea"
+              value={formData.traditional_leaders_support}
+              onChange={handleChange}
+              placeholder="Describe support needed..."
+              rows={2}
+            />
+            <div className="mt-2">
+              <VoiceNoteRecorder 
+                reportId={reportIdForVoiceNotes}
+                fieldName="traditional_leaders_support"
+                existingNote={existingVoiceNotes.traditional_leaders_support}
+              />
+            </div>
+          </div>
+          <div>
+            <TextInput
+              label="Religious Leaders Support Needed"
+              name="religious_leaders_support"
+              type="textarea"
+              value={formData.religious_leaders_support}
+              onChange={handleChange}
+              placeholder="Describe support needed..."
+              rows={2}
+            />
+            <div className="mt-2">
+              <VoiceNoteRecorder 
+                reportId={reportIdForVoiceNotes}
+                fieldName="religious_leaders_support"
+                existingNote={existingVoiceNotes.religious_leaders_support}
+              />
+            </div>
+          </div>
         </div>
       </FormSection>
 
@@ -1743,31 +1878,54 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
           onAddRow={addActionPlanRow}
           onRemoveRow={removeActionPlanRow}
         />
+        <div className="mt-3">
+          <VoiceNoteRecorder
+            reportId={reportIdForVoiceNotes}
+            fieldName="action_plan"
+            existingNote={existingVoiceNotes.action_plan}
+          />
+        </div>
       </FormSection>
 
       {/* Section 8: Support Required & Conclusion */}
       <FormSection title="SUPPORT REQUIRED & CONCLUSION" number="8" icon={AlertTriangle}>
         <div className="space-y-4">
-          <TextInput
-            label="Support Required (LEMCHIC / Government / Partners / Others)"
-            name="support_required"
-            type="textarea"
-            value={formData.support_required}
-            onChange={handleChange}
-            onVoiceNote={(file) => handleVoiceNote('support_required', file)}
-            placeholder="List support required..."
-            rows={3}
-          />
-          <TextInput
-            label="Any Other Business (AOB)"
-            name="aob"
-            type="textarea"
-            value={formData.aob}
-            onChange={handleChange}
-            onVoiceNote={(file) => handleVoiceNote('aob', file)}
-            placeholder="Other business..."
-            rows={3}
-          />
+          <div>
+            <TextInput
+              label="Support Required (LEMCHIC / Government / Partners / Others)"
+              name="support_required"
+              type="textarea"
+              value={formData.support_required}
+              onChange={handleChange}
+              placeholder="List support required..."
+              rows={3}
+            />
+            <div className="mt-2">
+              <VoiceNoteRecorder 
+                reportId={reportIdForVoiceNotes}
+                fieldName="support_required"
+                existingNote={existingVoiceNotes.support_required}
+              />
+            </div>
+          </div>
+          <div>
+            <TextInput
+              label="Any Other Business (AOB)"
+              name="aob"
+              type="textarea"
+              value={formData.aob}
+              onChange={handleChange}
+              placeholder="Other business..."
+              rows={3}
+            />
+            <div className="mt-2">
+              <VoiceNoteRecorder 
+                reportId={reportIdForVoiceNotes}
+                fieldName="aob"
+                existingNote={existingVoiceNotes.aob}
+              />
+            </div>
+          </div>
 
           {/* ─── Attendance Summary ─────────────────────────────── */}
           <div
@@ -1890,64 +2048,105 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
             </p>
           </div>
 
-          {/* Attendance Picture Upload */}
+          {/* Attendance Photo Upload */}
           <div className="bg-neutral-50 p-4 rounded-lg border border-neutral-200" role="group" aria-labelledby="attendance-photo-heading">
             <h5
               id="attendance-photo-heading"
               className="text-xs sm:text-sm font-semibold text-neutral-800 mb-1 flex items-center gap-2"
             >
               <Image className="w-4 h-4" aria-hidden="true" />
-              Upload Attendance Pictures
-              <Tooltip
-                text="Take or upload photos of the attendance sheet showing participant signatures. Supported formats: JPG, PNG (max 10MB each)."
-                position="right"
-              />
+              Attendance Photo
             </h5>
             <p className="text-xs text-neutral-500 mb-3">
-              Step 2 of 2: Photograph the signed attendance list and upload it here.
-              If photos are unavailable, note the reason in the Support Required field below.
+              Upload a photo of the signed attendance list.
             </p>
-            <div className="space-y-3">
+            
+            {!attendancePhoto && !attendancePhotoUrl ? (
+              /* Upload Button */
               <label
                 className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-neutral-300 rounded-lg cursor-pointer hover:bg-neutral-100 transition-colors focus-within:ring-2 focus-within:ring-primary-500"
-                aria-label="Upload attendance picture files"
+                aria-label="Upload attendance photo"
               >
                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
                   <Upload className="w-8 h-8 text-neutral-400 mb-2" aria-hidden="true" />
-                  <p className="text-sm text-neutral-600">Click to upload attendance pictures</p>
-                  <p className="text-xs text-neutral-500">PNG, JPG up to 10MB each</p>
+                  <p className="text-sm text-neutral-600 font-medium">Take Photo / Upload</p>
+                  <p className="text-xs text-neutral-500">JPG, PNG, WebP (max 5MB)</p>
                 </div>
                 <input
                   type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handlePictureUpload}
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleAttendancePhotoSelect}
                   className="hidden"
                 />
               </label>
-
-              {attendancePictures.length > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {attendancePictures.map((pic, index) => (
-                    <div key={index} className="relative group">
-                      <img
-                        src={pic.file ? (picUrlCacheRef.current.get(pic.file) || (() => { const u = URL.createObjectURL(pic.file); picUrlCacheRef.current.set(pic.file, u); return u; })()) : pic.preview}
-                        alt={`Attendance ${index + 1}`}
-                        className="w-full h-24 object-cover rounded-lg border border-neutral-200"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleRemovePicture(index)}
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                      <p className="text-xs text-neutral-500 mt-1 truncate">{pic.name}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            ) : (
+              /* Photo Preview */
+              <div className="relative inline-block">
+                <img
+                  src={attendancePhotoUrl}
+                  alt="Attendance"
+                  className="w-32 h-32 object-cover rounded-lg border border-neutral-200"
+                />
+                
+                {/* Upload Progress / Status */}
+                {attendancePhotoUploading && (
+                  <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
+                    <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
+                
+                {/* Success Checkmark */}
+                {!attendancePhotoUploading && !attendancePhotoError && (
+                  <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center shadow-lg">
+                    <Check className="w-4 h-4" />
+                  </div>
+                )}
+                
+                {/* Error Indicator */}
+                {attendancePhotoError && (
+                  <div 
+                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg cursor-pointer"
+                    onClick={handleRetryPhotoUpload}
+                    title="Click to retry"
+                  >
+                    <AlertTriangle className="w-4 h-4" />
+                  </div>
+                )}
+                
+                {/* Replace Button */}
+                <label className="absolute bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 bg-white/90 text-neutral-700 text-xs font-medium rounded-full cursor-pointer hover:bg-white shadow-sm">
+                  Replace
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleAttendancePhotoSelect}
+                    className="hidden"
+                  />
+                </label>
+                
+                {/* Remove Button */}
+                <button
+                  type="button"
+                  onClick={handleRemoveAttendancePhoto}
+                  className="absolute -top-2 -left-2 w-6 h-6 bg-neutral-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-neutral-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+            
+            {/* Error Message */}
+            {attendancePhotoError && (
+              <p className="mt-2 text-xs text-red-500">{attendancePhotoError}</p>
+            )}
+            
+            {/* Offline Message */}
+            {!isOnline && attendancePhoto && (
+              <p className="mt-2 text-xs text-amber-600 flex items-center gap-1">
+                <CloudOff className="w-3 h-3" />
+                Photo will upload when connected
+              </p>
+            )}
           </div>
 
           {/* Group Photo Upload */}

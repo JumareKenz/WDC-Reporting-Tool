@@ -25,6 +25,10 @@ export const changeUserPassword = async (userId, data) => {
   return await apiClient.patch(API_ENDPOINTS.USER_PASSWORD(userId), data);
 };
 
+export const changeUserPin = async (userId, data) => {
+  return await apiClient.patch(API_ENDPOINTS.USER_PIN(userId), data);
+};
+
 export const toggleUserAccess = async (userId, data) => {
   return await apiClient.patch(API_ENDPOINTS.USER_ACCESS(userId), data);
 };

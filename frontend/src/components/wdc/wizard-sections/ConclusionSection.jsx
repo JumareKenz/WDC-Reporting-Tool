@@ -29,7 +29,7 @@ function getPreviewUrl(pic, urlCache) {
  * as _attendance_pictures and _group_photos so the parent page can include
  * them in the submission payload.
  */
-const ConclusionSection = ({ formData, onChange, onVoiceNote, errors }) => {
+const ConclusionSection = ({ formData, onChange, onVoiceNote, voiceNotes = {}, errors, draftContext, onImageAdd, onImagesRemove }) => {
   const attendancePictures = formData._attendance_pictures || [];
   const groupPhotos = formData._group_photos || [];
 
@@ -62,7 +62,7 @@ const ConclusionSection = ({ formData, onChange, onVoiceNote, errors }) => {
     onChange((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handlePictureUpload = (e) => {
+  const handlePictureUpload = async (e) => {
     const files = Array.from(e.target.files);
     const newPictures = files.map((file) => ({
       file,
@@ -73,21 +73,37 @@ const ConclusionSection = ({ formData, onChange, onVoiceNote, errors }) => {
       ...prev,
       _attendance_pictures: [...(prev._attendance_pictures || []), ...newPictures],
     }));
+    
+    // Save to IndexedDB for draft persistence
+    if (onImageAdd) {
+      for (const file of files) {
+        await onImageAdd('attendance_pictures', file);
+      }
+    }
   };
 
-  const handleRemovePicture = (index) => {
+  const handleRemovePicture = async (index) => {
     const pic = attendancePictures[index];
     if (pic?.file && urlCacheRef.current.has(pic.file)) {
       URL.revokeObjectURL(urlCacheRef.current.get(pic.file));
       urlCacheRef.current.delete(pic.file);
     }
+    const newPictures = attendancePictures.filter((_, i) => i !== index);
     onChange((prev) => ({
       ...prev,
-      _attendance_pictures: (prev._attendance_pictures || []).filter((_, i) => i !== index),
+      _attendance_pictures: newPictures,
     }));
+    
+    // Update IndexedDB - remove and re-save remaining
+    if (onImagesRemove && onImageAdd) {
+      await onImagesRemove('attendance_pictures');
+      for (const pic of newPictures) {
+        await onImageAdd('attendance_pictures', pic.file);
+      }
+    }
   };
 
-  const handleGroupPhotoUpload = (e) => {
+  const handleGroupPhotoUpload = async (e) => {
     const files = Array.from(e.target.files);
     const newPhotos = files.map((file) => ({
       file,
@@ -98,18 +114,34 @@ const ConclusionSection = ({ formData, onChange, onVoiceNote, errors }) => {
       ...prev,
       _group_photos: [...(prev._group_photos || []), ...newPhotos],
     }));
+    
+    // Save to IndexedDB for draft persistence
+    if (onImageAdd) {
+      for (const file of files) {
+        await onImageAdd('group_photos', file);
+      }
+    }
   };
 
-  const handleRemoveGroupPhoto = (index) => {
+  const handleRemoveGroupPhoto = async (index) => {
     const pic = groupPhotos[index];
     if (pic?.file && urlCacheRef.current.has(pic.file)) {
       URL.revokeObjectURL(urlCacheRef.current.get(pic.file));
       urlCacheRef.current.delete(pic.file);
     }
+    const newPhotos = groupPhotos.filter((_, i) => i !== index);
     onChange((prev) => ({
       ...prev,
-      _group_photos: (prev._group_photos || []).filter((_, i) => i !== index),
+      _group_photos: newPhotos,
     }));
+    
+    // Update IndexedDB - remove and re-save remaining
+    if (onImagesRemove && onImageAdd) {
+      await onImagesRemove('group_photos');
+      for (const pic of newPhotos) {
+        await onImageAdd('group_photos', pic.file);
+      }
+    }
   };
 
   return (
@@ -122,6 +154,8 @@ const ConclusionSection = ({ formData, onChange, onVoiceNote, errors }) => {
         value={formData.support_required}
         onChange={handleChange}
         onVoiceNote={onVoiceNote ? (file) => onVoiceNote('support_required', file) : undefined}
+        draftContext={draftContext}
+        existingVoiceNote={voiceNotes.support_required}
         placeholder="List support required..."
         rows={3}
         required
@@ -134,6 +168,8 @@ const ConclusionSection = ({ formData, onChange, onVoiceNote, errors }) => {
         value={formData.aob}
         onChange={handleChange}
         onVoiceNote={onVoiceNote ? (file) => onVoiceNote('aob', file) : undefined}
+        draftContext={draftContext}
+        existingVoiceNote={voiceNotes.aob}
         placeholder="Other business..."
         rows={3}
         required

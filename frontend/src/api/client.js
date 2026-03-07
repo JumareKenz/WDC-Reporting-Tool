@@ -3,8 +3,10 @@ import { STORAGE_KEYS } from '../utils/constants';
 import { emitToast } from '../hooks/useToast';
 
 // Base API URL - can be configured via environment variable
-// Ensure the base URL always ends with /api
-const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+// In dev, hit localhost:8000; in production, use the deployed domain
+const rawBaseUrl =
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.DEV ? 'http://localhost:8000/api' : 'https://kadwdc.equily.ng/api');
 const BASE_URL = rawBaseUrl.endsWith('/api') ? rawBaseUrl : `${rawBaseUrl.replace(/\/+$/, '')}/api`;
 
 // Create axios instance
@@ -13,8 +15,40 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 30000, // 30 seconds
+  timeout: 30000, // 30 seconds default timeout
 });
+
+// Helper to make requests with custom timeout and cancellation
+export const makeRequest = async (method, url, data = null, options = {}) => {
+  const { timeout = 30000, signal, ...restOptions } = options;
+  
+  const config = {
+    method,
+    url,
+    timeout,
+    signal,
+    ...restOptions,
+  };
+  
+  if (data && ['post', 'put', 'patch'].includes(method.toLowerCase())) {
+    config.data = data;
+  }
+  
+  try {
+    const response = await apiClient(config);
+    return response;
+  } catch (error) {
+    // Enhance error with more context
+    if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+      error.isTimeout = true;
+      error.userMessage = 'The request took too long. Please check your connection and try again.';
+    } else if (!error.response) {
+      error.isNetworkError = true;
+      error.userMessage = 'Unable to connect to the server. Please check your internet connection.';
+    }
+    throw error;
+  }
+};
 
 // ---------- Token-refresh state for 401 interceptor ----------
 let isRefreshingToken = false;

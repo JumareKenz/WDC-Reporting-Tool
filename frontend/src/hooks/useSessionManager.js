@@ -2,7 +2,9 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import axios from 'axios';
 import { STORAGE_KEYS } from '../utils/constants';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+const BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.DEV ? 'http://localhost:8000/api' : 'https://kadwdc.equily.ng/api');
 
 // Activity tracking configuration
 const ACTIVITY_EVENTS = [

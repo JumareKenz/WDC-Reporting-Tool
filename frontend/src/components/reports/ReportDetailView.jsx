@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   FileText,
   Calendar,
@@ -19,10 +19,23 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  Mic,
+  Loader2,
+  RotateCcw,
+  Eye,
+  EyeOff,
+  Check,
+  Play,
+  Download,
 } from 'lucide-react';
 import { formatDate, formatMonth, toTitleCase } from '../../utils/formatters';
+import { fetchVoiceNoteAudio, triggerTranscription } from '../../api/reports';
+import apiClient from '../../api/client';
 
-const UPLOAD_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api').replace(/\/api$/, '');
+const UPLOAD_BASE = (
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.DEV ? 'http://localhost:8000/api' : 'https://kadwdc.equily.ng/api')
+).replace(/\/api$/, '');
 
 /**
  * Detailed Report View Component
@@ -30,6 +43,13 @@ const UPLOAD_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
  */
 const ReportDetailView = ({ report }) => {
   const [lightboxIndex, setLightboxIndex] = useState(null);
+  const [attendancePhotoModal, setAttendancePhotoModal] = useState(false);
+  const [voiceNotes, setVoiceNotes] = useState([]);
+  const [voiceNoteAudioUrls, setVoiceNoteAudioUrls] = useState({});
+  const [voiceNoteLoading, setVoiceNoteLoading] = useState({});
+  const [expandedTranscriptions, setExpandedTranscriptions] = useState({});
+  const [transcriptionLoading, setTranscriptionLoading] = useState({});
+  
   if (!report) return null;
 
   // Debug logging
@@ -47,6 +67,79 @@ const ReportDetailView = ({ report }) => {
   })();
 
   const photoUrl = (path) => `${UPLOAD_BASE}/${path}`;
+  
+  // Fetch voice notes on mount
+  useEffect(() => {
+    if (report.voice_notes && Array.isArray(report.voice_notes)) {
+      setVoiceNotes(report.voice_notes);
+    }
+  }, [report.voice_notes]);
+  
+  // Poll for transcription updates
+  useEffect(() => {
+    const hasPending = voiceNotes.some(n => n.status === 'PENDING');
+    if (!hasPending) return;
+    
+    const interval = setInterval(() => {
+      // Refetch report data to get updated transcription status
+      apiClient.get(`/reports/${report.id}`).then(response => {
+        if (response?.voice_notes) {
+          setVoiceNotes(response.voice_notes);
+        }
+      }).catch(console.error);
+    }, 15000);
+    
+    return () => clearInterval(interval);
+  }, [voiceNotes, report.id]);
+  
+  // Load audio for a voice note
+  const loadVoiceNoteAudio = useCallback(async (voiceNoteId) => {
+    if (voiceNoteAudioUrls[voiceNoteId]) return; // Already loaded
+    
+    setVoiceNoteLoading(prev => ({ ...prev, [voiceNoteId]: true }));
+    try {
+      const url = await fetchVoiceNoteAudio(voiceNoteId);
+      setVoiceNoteAudioUrls(prev => ({ ...prev, [voiceNoteId]: url }));
+    } catch (error) {
+      console.error('Failed to load voice note audio:', error);
+    } finally {
+      setVoiceNoteLoading(prev => ({ ...prev, [voiceNoteId]: false }));
+    }
+  }, [voiceNoteAudioUrls]);
+  
+  // Handle transcription trigger
+  const handleTranscribe = async (voiceNoteId) => {
+    setTranscriptionLoading(prev => ({ ...prev, [voiceNoteId]: true }));
+    try {
+      const response = await triggerTranscription(voiceNoteId);
+      // Update local state
+      setVoiceNotes(prev => prev.map(n => 
+        n.id === voiceNoteId 
+          ? { ...n, status: response.status || 'PENDING', transcription_text: response.transcription_text }
+          : n
+      ));
+    } catch (error) {
+      console.error('Transcription failed:', error);
+    } finally {
+      setTranscriptionLoading(prev => ({ ...prev, [voiceNoteId]: false }));
+    }
+  };
+  
+  // Toggle transcription visibility
+  const toggleTranscription = (voiceNoteId) => {
+    setExpandedTranscriptions(prev => ({
+      ...prev,
+      [voiceNoteId]: !prev[voiceNoteId]
+    }));
+  };
+  
+  // Format field name for display
+  const formatFieldName = (fieldName) => {
+    return fieldName
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
 
   // Helper to render a field value
   const renderField = (label, value, icon = null) => {
@@ -72,6 +165,39 @@ const ReportDetailView = ({ report }) => {
       <h3 className="text-lg font-bold text-neutral-900">{title}</h3>
     </div>
   );
+  
+  // Get status badge color
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'TRANSCRIBED':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+            <Check className="w-3 h-3" />
+            Transcribed
+          </span>
+        );
+      case 'PENDING':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
+            <Loader2 className="w-3 h-3 animate-spin" />
+            Transcribing...
+          </span>
+        );
+      case 'FAILED':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-full">
+            <AlertTriangle className="w-3 h-3" />
+            Failed
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-1 bg-neutral-100 text-neutral-600 text-xs font-medium rounded-full">
+            {status}
+          </span>
+        );
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -749,6 +875,168 @@ const ReportDetailView = ({ report }) => {
         </div>
       )}
 
+      {/* Attendance Photo */}
+      {report.attendance_photo_url && (
+        <div className="bg-white rounded-lg border border-neutral-200 p-5">
+          {renderSectionHeader('Attendance Photo', <Image className="w-5 h-5 text-primary-600" />)}
+          <div className="flex items-start gap-4">
+            <button
+              onClick={() => setAttendancePhotoModal(true)}
+              className="relative group"
+            >
+              <img
+                src={`${UPLOAD_BASE}/${report.attendance_photo_url}`}
+                alt="Attendance"
+                className="w-24 h-24 object-cover rounded-lg border border-neutral-200 group-hover:border-primary-400 transition-colors"
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors rounded-lg flex items-center justify-center">
+                <Eye className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+            </button>
+            <div>
+              <p className="text-sm text-neutral-600">
+                Click thumbnail to view full-size attendance photo
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {!report.attendance_photo_url && (
+        <div className="bg-white rounded-lg border border-neutral-200 p-5">
+          {renderSectionHeader('Attendance Photo', <Image className="w-5 h-5 text-primary-600" />)}
+          <p className="text-sm text-neutral-400 italic">No photo uploaded</p>
+        </div>
+      )}
+
+      {/* Voice Notes Section */}
+      {voiceNotes.length > 0 && (
+        <div className="bg-white rounded-lg border border-neutral-200 p-5">
+          {renderSectionHeader('Voice Notes', <Mic className="w-5 h-5 text-primary-600" />)}
+          <div className="space-y-4">
+            {voiceNotes.map((note) => (
+              <div key={note.id} className="border border-neutral-200 rounded-lg p-4">
+                {/* Row: Field Label, Audio Player, Status */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                  <div className="w-32 shrink-0">
+                    <span className="text-sm font-medium text-neutral-700">
+                      {formatFieldName(note.field_name)}
+                    </span>
+                  </div>
+                  
+                  <div className="flex-1 min-w-0">
+                    {voiceNoteAudioUrls[note.id] ? (
+                      <audio
+                        src={voiceNoteAudioUrls[note.id]}
+                        controls
+                        className="w-full h-10"
+                        preload="metadata"
+                      />
+                    ) : (
+                      <button
+                        onClick={() => loadVoiceNoteAudio(note.id)}
+                        disabled={voiceNoteLoading[note.id]}
+                        className="flex items-center gap-2 px-4 py-2 bg-primary-50 text-primary-600 rounded-lg hover:bg-primary-100 transition-colors disabled:opacity-50"
+                      >
+                        {voiceNoteLoading[note.id] ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Play className="w-4 h-4" />
+                            <span className="text-sm">Load audio</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    {getStatusBadge(note.status)}
+                  </div>
+                </div>
+                
+                {/* Transcription Section */}
+                {note.status === 'TRANSCRIBED' && note.transcription_text && (
+                  <div className="mt-3 pt-3 border-t border-neutral-100">
+                    <button
+                      onClick={() => toggleTranscription(note.id)}
+                      className="flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700"
+                    >
+                      {expandedTranscriptions[note.id] ? (
+                        <>
+                          <EyeOff className="w-4 h-4" />
+                          Hide transcript
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="w-4 h-4" />
+                          Show transcript
+                        </>
+                      )}
+                    </button>
+                    
+                    {expandedTranscriptions[note.id] && (
+                      <div className="mt-2 p-3 bg-neutral-50 rounded-lg">
+                        <p className="text-sm text-neutral-700 whitespace-pre-wrap">
+                          {note.transcription_text}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* Transcribe Now Button (PENDING) */}
+                {note.status === 'PENDING' && (
+                  <div className="mt-3 pt-3 border-t border-neutral-100">
+                    <button
+                      onClick={() => handleTranscribe(note.id)}
+                      disabled={transcriptionLoading[note.id]}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 text-amber-700 text-sm rounded-lg hover:bg-amber-100 transition-colors disabled:opacity-50"
+                    >
+                      {transcriptionLoading[note.id] ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <>
+                          <RotateCcw className="w-4 h-4" />
+                          Transcribe now
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+                
+                {/* Retry Button (FAILED) */}
+                {note.status === 'FAILED' && (
+                  <div className="mt-3 pt-3 border-t border-neutral-100">
+                    <button
+                      onClick={() => handleTranscribe(note.id)}
+                      disabled={transcriptionLoading[note.id]}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-700 text-sm rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50"
+                    >
+                      {transcriptionLoading[note.id] ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <>
+                          <RotateCcw className="w-4 h-4" />
+                          Retry transcription
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {voiceNotes.length === 0 && (
+        <div className="bg-white rounded-lg border border-neutral-200 p-5">
+          {renderSectionHeader('Voice Notes', <Mic className="w-5 h-5 text-primary-600" />)}
+          <p className="text-sm text-neutral-400 italic">No voice notes recorded</p>
+        </div>
+      )}
+
       {/* Section 13: Attendance & Next Meeting */}
       <div className="bg-white rounded-lg border border-neutral-200 p-5">
         {renderSectionHeader('Attendance & Next Steps', <ClipboardList className="w-5 h-5 text-primary-600" />)}
@@ -838,6 +1126,43 @@ const ReportDetailView = ({ report }) => {
           <p className="absolute bottom-4 text-white/60 text-sm">
             {lightboxIndex + 1} / {groupPhotos.length}
           </p>
+        </div>
+      )}
+      
+      {/* Attendance Photo Modal */}
+      {attendancePhotoModal && report.attendance_photo_url && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setAttendancePhotoModal(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Attendance photo viewer"
+        >
+          <button
+            type="button"
+            className="absolute top-4 right-4 text-white/80 hover:text-white p-2"
+            onClick={() => setAttendancePhotoModal(false)}
+            aria-label="Close"
+          >
+            <X className="w-7 h-7" />
+          </button>
+          
+          <a
+            href={`${UPLOAD_BASE}/${report.attendance_photo_url}`}
+            download
+            className="absolute top-4 left-4 flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Download className="w-5 h-5" />
+            Download
+          </a>
+
+          <img
+            src={`${UPLOAD_BASE}/${report.attendance_photo_url}`}
+            alt="Attendance"
+            className="max-w-full max-h-[85vh] rounded-lg shadow-2xl object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </div>

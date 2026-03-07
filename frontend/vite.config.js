@@ -79,12 +79,23 @@ export default defineConfig({
               },
             },
           },
+          // Public pre-login endpoints — network only, never cache
+          {
+            urlPattern: /\/api\/public\//,
+            handler: 'NetworkOnly',
+          },
+          // Secretary PIN login — network only, never cache
+          {
+            urlPattern: /\/api\/auth\/secretary-login/,
+            handler: 'NetworkOnly',
+          },
           // Safe read-only GET API responses (LGAs, forms, profile, notifications)
           {
             urlPattern: ({ url, request }) =>
               request.method === 'GET' &&
               url.pathname.startsWith('/api') &&
-              !url.pathname.includes('/auth/'),
+              !url.pathname.includes('/auth/') &&
+              !url.pathname.includes('/public/'),
             handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'api-cache',

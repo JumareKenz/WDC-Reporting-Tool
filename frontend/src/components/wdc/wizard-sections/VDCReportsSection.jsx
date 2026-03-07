@@ -1,10 +1,11 @@
 import React from 'react';
 import { DynamicTable } from './shared';
+import VoiceRecorder from '../VoiceRecorder';
 
 /**
  * Section 5: Reports from Village Development Committees (VDCs)
  */
-const VDCReportsSection = ({ formData, onChange }) => {
+const VDCReportsSection = ({ formData, onChange, onVoiceNote, voiceNotes = {}, draftContext }) => {
   const handleRowChange = (index, field, value) => {
     onChange((prev) => ({
       ...prev,
@@ -47,6 +48,11 @@ const VDCReportsSection = ({ formData, onChange }) => {
         onAddRow={addRow}
         onRemoveRow={removeRow}
       />
+      {onVoiceNote && (
+        <div className="mt-3">
+          <VoiceRecorder fieldName="vdc_reports" onRecordingComplete={(file) => onVoiceNote('vdc_reports', file)} existingRecording={voiceNotes.vdc_reports} draftContext={draftContext} />
+        </div>
+      )}
     </div>
   );
 };
