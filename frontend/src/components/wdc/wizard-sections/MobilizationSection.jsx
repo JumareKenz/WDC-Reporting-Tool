@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { TextInput } from './shared';
 
 /**
@@ -9,6 +9,21 @@ const MobilizationSection = ({ formData, onChange, onVoiceNote, voiceNotes = {},
     const { name, value } = e.target;
     onChange((prev) => ({ ...prev, [name]: value }));
   };
+
+  // Stable callbacks for VoiceRecorder to prevent re-renders during typing
+  // This fixes mobile keyboard dismissal caused by parent re-renders
+  const handleVoiceNoteAwareness = useCallback(
+    (file) => onVoiceNote('awareness_topic', file),
+    [onVoiceNote]
+  );
+  const handleVoiceNoteTraditional = useCallback(
+    (file) => onVoiceNote('traditional_leaders_support', file),
+    [onVoiceNote]
+  );
+  const handleVoiceNoteReligious = useCallback(
+    (file) => onVoiceNote('religious_leaders_support', file),
+    [onVoiceNote]
+  );
 
   return (
     <div className="space-y-5">
@@ -21,7 +36,7 @@ const MobilizationSection = ({ formData, onChange, onVoiceNote, voiceNotes = {},
         name="awareness_topic"
         value={formData.awareness_topic}
         onChange={handleChange}
-        onVoiceNote={onVoiceNote ? (file) => onVoiceNote('awareness_topic', file) : undefined}
+        onVoiceNote={onVoiceNote ? handleVoiceNoteAwareness : undefined}
         draftContext={draftContext}
         existingVoiceNote={voiceNotes.awareness_topic}
         placeholder="Enter awareness topic..."
@@ -34,7 +49,7 @@ const MobilizationSection = ({ formData, onChange, onVoiceNote, voiceNotes = {},
         type="textarea"
         value={formData.traditional_leaders_support}
         onChange={handleChange}
-        onVoiceNote={onVoiceNote ? (file) => onVoiceNote('traditional_leaders_support', file) : undefined}
+        onVoiceNote={onVoiceNote ? handleVoiceNoteTraditional : undefined}
         draftContext={draftContext}
         existingVoiceNote={voiceNotes.traditional_leaders_support}
         placeholder="Describe support needed/given by traditional leaders..."
@@ -48,7 +63,7 @@ const MobilizationSection = ({ formData, onChange, onVoiceNote, voiceNotes = {},
         type="textarea"
         value={formData.religious_leaders_support}
         onChange={handleChange}
-        onVoiceNote={onVoiceNote ? (file) => onVoiceNote('religious_leaders_support', file) : undefined}
+        onVoiceNote={onVoiceNote ? handleVoiceNoteReligious : undefined}
         draftContext={draftContext}
         existingVoiceNote={voiceNotes.religious_leaders_support}
         placeholder="Describe support needed/given by religious leaders..."

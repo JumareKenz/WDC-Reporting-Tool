@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { AlertTriangle, Plus, Trash2 } from 'lucide-react';
 import VoiceRecorder from '../VoiceRecorder';
 
@@ -12,7 +12,9 @@ export const inputErrorClass =
 export const labelClass = 'block text-xs sm:text-sm font-medium text-gray-700 mb-1';
 
 // ── TextInput ─────────────────────────────────────────────────────────────
-export const TextInput = ({
+// Memoized to prevent re-renders during parent component updates
+// This prevents mobile keyboard dismissal while typing
+const TextInput = memo(({
   label,
   name,
   type = 'text',
@@ -76,10 +78,13 @@ export const TextInput = ({
       )}
     </div>
   );
-};
+});
+TextInput.displayName = 'TextInput';
+export { TextInput };
 
 // ── NumberInput ────────────────────────────────────────────────────────────
-export const NumberInput = ({ label, name, value, onChange, min = 0, required, error, ...props }) => {
+// Memoized for consistency with TextInput
+const NumberInput = memo(({ label, name, value, onChange, min = 0, required, error, ...props }) => {
   const handleChange = (e) => {
     const raw = e.target.value;
     if (raw === '' || raw === '-') {
@@ -119,9 +124,11 @@ export const NumberInput = ({ label, name, value, onChange, min = 0, required, e
     )}
   </div>
   );
-};
+});
+NumberInput.displayName = 'NumberInput';
+export { NumberInput };
 
-// ── DynamicTable ──────────────────────────────────────────────────────────
+// ── DynamicTable ─────────────────────────────────────────────────────────-
 export const DynamicTable = ({
   columns,
   rows,
@@ -144,31 +151,29 @@ export const DynamicTable = ({
                 key={idx}
                 className="border border-gray-200 px-2 py-2 text-left text-xs font-semibold text-gray-700"
               >
-                {col.label}
+                {col.label} {col.required && <span className="text-red-500">*</span>}
               </th>
             ))}
-            <th className="border border-gray-200 px-2 py-2 text-center text-xs font-semibold text-gray-700 w-12">
-              Del
-            </th>
+            <th className="border border-gray-200 px-2 py-2 w-10"></th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, rowIdx) => (
-            <tr key={rowIdx} className="hover:bg-gray-50">
-              <td className="border border-gray-200 px-2 py-1 text-center font-medium">
-                {rowIdx + 1}
+          {rows.map((row, ri) => (
+            <tr key={ri}>
+              <td className="border border-gray-200 px-2 py-2 text-center text-xs text-gray-500">
+                {ri + 1}
               </td>
-              {columns.map((col, colIdx) => (
-                <td key={colIdx} className="border border-gray-200 px-1 py-1">
+              {columns.map((col, ci) => (
+                <td key={ci} className="border border-gray-200 px-2 py-1">
                   {col.type === 'select' ? (
                     <select
                       value={row[col.name] || ''}
-                      onChange={(e) => onRowChange(rowIdx, col.name, e.target.value)}
-                      className="w-full px-2 py-1 text-xs border-0 focus:ring-1 focus:ring-green-500 rounded"
+                      onChange={(e) => onRowChange(ri, col.name, e.target.value)}
+                      className="w-full border-0 text-sm focus:ring-0 p-0"
                     >
                       <option value="">Select...</option>
-                      {col.options.map((opt, i) => (
-                        <option key={i} value={opt}>
+                      {col.options.map((opt) => (
+                        <option key={opt} value={opt}>
                           {opt}
                         </option>
                       ))}
@@ -176,8 +181,8 @@ export const DynamicTable = ({
                   ) : col.type === 'textarea' ? (
                     <textarea
                       value={row[col.name] || ''}
-                      onChange={(e) => onRowChange(rowIdx, col.name, e.target.value)}
-                      className="w-full px-2 py-1 text-xs border-0 focus:ring-1 focus:ring-green-500 rounded resize-none"
+                      onChange={(e) => onRowChange(ri, col.name, e.target.value)}
+                      className="w-full border-0 text-sm focus:ring-0 p-0 resize-none"
                       rows={2}
                       placeholder={col.placeholder}
                     />
@@ -185,28 +190,22 @@ export const DynamicTable = ({
                     <input
                       type={col.type || 'text'}
                       value={row[col.name] || ''}
-                      onChange={(e) => {
-                        let val = e.target.value;
-                        if (col.type === 'number' && val !== '' && Number(val) < 0) val = '0';
-                        onRowChange(rowIdx, col.name, val);
-                      }}
-                      min={col.type === 'number' ? 0 : undefined}
-                      className="w-full px-2 py-1 text-xs border-0 focus:ring-1 focus:ring-green-500 rounded"
+                      onChange={(e) => onRowChange(ri, col.name, e.target.value)}
+                      className="w-full border-0 text-sm focus:ring-0 p-0"
                       placeholder={col.placeholder}
                     />
                   )}
                 </td>
               ))}
-              <td className="border border-gray-200 px-1 py-1 text-center">
-                {rows.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => onRemoveRow(rowIdx)}
-                    className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                )}
+              <td className="border border-gray-200 px-2 py-1 text-center">
+                <button
+                  type="button"
+                  onClick={() => onRemoveRow(ri)}
+                  className="p-1 text-red-500 hover:bg-red-50 rounded"
+                  title="Remove row"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </td>
             </tr>
           ))}
@@ -214,70 +213,62 @@ export const DynamicTable = ({
       </table>
     </div>
 
-    {/* Mobile Card Layout */}
-    <div className="sm:hidden space-y-4">
-      {rows.map((row, rowIdx) => (
-        <div key={rowIdx} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-semibold text-green-600">Item #{rowIdx + 1}</span>
-            {rows.length > 1 && (
-              <button
-                type="button"
-                onClick={() => onRemoveRow(rowIdx)}
-                className="p-1 text-red-500 hover:bg-red-100 rounded transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            )}
+    {/* Mobile Cards */}
+    <div className="sm:hidden space-y-3">
+      {rows.map((row, ri) => (
+        <div key={ri} className="bg-white rounded-xl border border-gray-200 p-3 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-gray-500">#{ri + 1}</span>
+            <button
+              type="button"
+              onClick={() => onRemoveRow(ri)}
+              className="p-1 text-red-500 hover:bg-red-50 rounded"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
           </div>
-          <div className="space-y-3">
-            {columns.map((col, colIdx) => (
-              <div key={colIdx}>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
-                  {col.label}
-                </label>
-                {col.type === 'select' ? (
-                  <select
-                    value={row[col.name] || ''}
-                    onChange={(e) => onRowChange(rowIdx, col.name, e.target.value)}
-                    className={inputClass}
-                  >
-                    <option value="">Select...</option>
-                    {col.options.map((opt, i) => (
-                      <option key={i} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                ) : col.type === 'textarea' ? (
-                  <textarea
-                    value={row[col.name] || ''}
-                    onChange={(e) => onRowChange(rowIdx, col.name, e.target.value)}
-                    className={`${inputClass} resize-none`}
-                    rows={2}
-                    placeholder={col.placeholder}
-                  />
-                ) : (
-                  <input
-                    type={col.type || 'text'}
-                    value={row[col.name] || ''}
-                    onChange={(e) => {
-                      let val = e.target.value;
-                      if (col.type === 'number' && val !== '' && Number(val) < 0) val = '0';
-                      onRowChange(rowIdx, col.name, val);
-                    }}
-                    min={col.type === 'number' ? 0 : undefined}
-                    className={inputClass}
-                    placeholder={col.placeholder}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
+          {columns.map((col, ci) => (
+            <div key={ci}>
+              <label className="block text-xs text-gray-500 mb-1">
+                {col.label} {col.required && <span className="text-red-500">*</span>}
+              </label>
+              {col.type === 'select' ? (
+                <select
+                  value={row[col.name] || ''}
+                  onChange={(e) => onRowChange(ri, col.name, e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:border-green-500 focus:ring-1 focus:ring-green-200"
+                >
+                  <option value="">Select...</option>
+                  {col.options.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              ) : col.type === 'textarea' ? (
+                <textarea
+                  value={row[col.name] || ''}
+                  onChange={(e) => onRowChange(ri, col.name, e.target.value)}
+                  className={`${inputClass} resize-none`}
+                  rows={2}
+                  placeholder={col.placeholder}
+                />
+              ) : (
+                <input
+                  type={col.type || 'text'}
+                  value={row[col.name] || ''}
+                  onChange={(e) => onRowChange(ri, col.name, e.target.value)}
+                  className={inputClass}
+                  placeholder={col.placeholder}
+                />
+              )}
+            </div>
+          ))}
         </div>
       ))}
     </div>
 
+    {/* Add Row Button */}
     {rows.length < maxRows && (
       <button
         type="button"
@@ -288,5 +279,19 @@ export const DynamicTable = ({
         Add Row
       </button>
     )}
+  </div>
+);
+
+// ── ActionInput ───────────────────────────────────────────────────────────
+export const ActionInput = ({ label, value, onChange, placeholder }) => (
+  <div className="space-y-1">
+    <label className="block text-xs font-medium text-gray-700">{label}</label>
+    <input
+      type="text"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className={inputClass}
+    />
   </div>
 );

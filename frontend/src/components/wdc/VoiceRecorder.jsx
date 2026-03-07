@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
 import { Mic, Square, Play, Pause, Trash2, Check, Loader2, RotateCcw } from 'lucide-react';
 import { useVoiceNoteDraft } from '../../hooks/useVoiceNoteDraft';
 
@@ -535,4 +535,18 @@ function getExtensionFromMime(mimeType) {
   return 'webm';
 }
 
-export default VoiceRecorder;
+// Memoized to prevent re-renders from parent inline arrow functions
+// that would otherwise cause focus loss in adjacent input fields
+export default memo(VoiceRecorder, (prevProps, nextProps) => {
+  // Custom comparison: only re-render if these props actually change
+  return (
+    prevProps.fieldName === nextProps.fieldName &&
+    prevProps.disabled === nextProps.disabled &&
+    prevProps.compact === nextProps.compact &&
+    prevProps.existingRecording === nextProps.existingRecording &&
+    prevProps.autoSaveDraft === nextProps.autoSaveDraft &&
+    JSON.stringify(prevProps.draftContext) === JSON.stringify(nextProps.draftContext)
+    // Note: onRecordingComplete and onRecordingDelete are intentionally excluded
+    // because they're wrapped in useCallback by parent components
+  );
+});
