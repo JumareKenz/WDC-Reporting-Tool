@@ -1,412 +1,266 @@
 /**
- * usePersistentAuth — Indefinite/Persistent Authentication
+ * usePersistentAuth — Authentication hook for kadwdc backend v2
  *
- * Architecture: Option A (Short-lived access token + Long-lived refresh token)
+ * Supports two sign-in modes:
+ *   - Mobile: phone + 6-digit PIN  (secretary / coordinator)
+ *   - Console: email + password + TOTP  (director)
  *
- * Features:
- * - Persistent login across browser/PWA close, device reboot, offline periods
- * - Access token stored in memory (security), refresh token in IndexedDB
- * - Silent auto-refresh on app load and before API calls
- * - Refresh token rotation for security
- * - Server-side revocation support on logout
- * - Offline mode using cached access token with UI indicator
+ * Token storage:
+ *   - Access token: in-memory only (XSS-safe)
+ *   - Refresh token: Capacitor secureStorage (sessionStorage on web, OS sandbox on native)
+ *   - User profile decoded from JWT payload; cached in Capacitor storage
  *
- * Security Considerations:
- * - HTTPS only
- * - XSS protection via memory-only access token
- * - Refresh token rotation prevents replay attacks
- * - Server-side revocation list for logout
- * - User warning for shared device risks
+ * Every auth call includes a stable per-device `deviceId` so the backend can
+ * scope refresh token revocation to a single device.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { openDB } from 'idb';
+import { secureStorage, storage } from '../plugins/capacitor';
 import { setAuthToken, clearAuthToken, setRefreshFunction } from '../api/client';
+import { STORAGE_KEYS, API_ENDPOINTS, USER_ROLES } from '../utils/constants';
+import { getDeviceId } from '../utils/deviceId';
 
-// IndexedDB configuration
-const AUTH_DB_NAME = 'wdc-auth-db';
-const AUTH_STORE_NAME = 'tokens';
-const DB_VERSION = 1;
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://kadwdc.equily.ng/api/v1';
 
-// Token configuration
-const TOKEN_CONFIG = {
-  accessTokenExpiry: 15 * 60 * 1000, // 15 minutes (client-side buffer)
-  refreshTokenExpiry: 365 * 24 * 60 * 60 * 1000, // 1 year (or server-controlled)
-  refreshBuffer: 60 * 1000, // Refresh 1 minute before expiry
-};
+// In-memory access token (never written to any storage)
+let _accessToken    = null;
+let _tokenExpiresAt = null; // Unix ms from `accessExpiresIn` (seconds)
 
-// In-memory access token (never persisted)
-let memoryAccessToken = null;
-let memoryTokenExpiry = null;
-
-/**
- * Initialize IndexedDB for token storage
- */
-const initAuthDB = async () => {
-  return openDB(AUTH_DB_NAME, DB_VERSION, {
-    upgrade(db) {
-      if (!db.objectStoreNames.contains(AUTH_STORE_NAME)) {
-        db.createObjectStore(AUTH_STORE_NAME);
-      }
-    },
-  });
-};
-
-/**
- * Store refresh token securely in IndexedDB
- */
-const storeRefreshToken = async (token, expiresAt) => {
-  const db = await initAuthDB();
-  await db.put(AUTH_STORE_NAME, { token, expiresAt, createdAt: Date.now() }, 'refreshToken');
-};
-
-/**
- * Retrieve refresh token from IndexedDB
- */
-const getRefreshToken = async () => {
+/** Decode the JWT payload without verifying the signature. */
+const decodeJWT = (token) => {
   try {
-    const db = await initAuthDB();
-    const data = await db.get(AUTH_STORE_NAME, 'refreshToken');
-    if (!data) return null;
-    
-    // Check if refresh token is expired
-    if (data.expiresAt && Date.now() > data.expiresAt) {
-      await clearAuthData();
-      return null;
-    }
-    
-    return data.token;
-  } catch (error) {
-    console.error('[Auth] Failed to retrieve refresh token:', error);
+    const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(b64));
+  } catch {
     return null;
   }
 };
 
-/**
- * Store user profile in IndexedDB (non-sensitive)
- */
-const storeUserProfile = async (user) => {
-  const db = await initAuthDB();
-  await db.put(AUTH_STORE_NAME, user, 'userProfile');
+/** Build a minimal user object from the JWT payload claims. */
+const userFromJWT = (token) => {
+  const claims = decodeJWT(token);
+  if (!claims) return null;
+  return {
+    id:     claims.sub,
+    role:   claims.role,
+    lgaId:  claims.lgaId  ?? null,
+    wardId: claims.wardId ?? null,
+  };
 };
 
-/**
- * Retrieve user profile from IndexedDB
- */
-const getUserProfile = async () => {
-  try {
-    const db = await initAuthDB();
-    return await db.get(AUTH_STORE_NAME, 'userProfile');
-  } catch (error) {
-    return null;
-  }
+/** Route mapping for each role. */
+const DEFAULT_ROUTE = {
+  [USER_ROLES.SECRETARY]:   '/wdc',
+  [USER_ROLES.COORDINATOR]: '/lga',
+  [USER_ROLES.DIRECTOR]:    '/state',
 };
 
-/**
- * Clear all auth data (logout)
- */
-const clearAuthData = async () => {
-  memoryAccessToken = null;
-  memoryTokenExpiry = null;
-  try {
-    const db = await initAuthDB();
-    await db.clear(AUTH_STORE_NAME);
-  } catch (error) {
-    console.error('[Auth] Failed to clear auth data:', error);
-  }
-  clearAuthToken(); // Also clear API client
-};
-
-/**
- * Main authentication hook
- */
-export const usePersistentAuth = (apiBaseUrl) => {
+export const usePersistentAuth = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isOffline, setIsOffline] = useState(false);
-  const [lastAuthError, setLastAuthError] = useState(null);
-  
-  const refreshPromiseRef = useRef(null);
-  const isRefreshingRef = useRef(false);
+  const [user, setUser]                       = useState(null);
+  const [isLoading, setIsLoading]             = useState(true);
+  const [isOffline, setIsOffline]             = useState(false);
+  const [lastAuthError, setLastAuthError]     = useState(null);
 
-  /**
-   * Check if access token needs refresh
-   */
-  const needsRefresh = useCallback(() => {
-    if (!memoryAccessToken || !memoryTokenExpiry) return true;
-    return Date.now() >= (memoryTokenExpiry - TOKEN_CONFIG.refreshBuffer);
+  const isRefreshingRef    = useRef(false);
+  const refreshPromiseRef  = useRef(null);
+
+  // ─── Token helpers ──────────────────────────────────────────────────────────
+
+  const _storeSession = useCallback(async (accessToken, refreshToken, refreshExpiresAt) => {
+    _accessToken    = accessToken;
+    _tokenExpiresAt = Date.now() + (decodeJWT(accessToken)?.exp * 1000 - Date.now());
+    setAuthToken(accessToken);
+
+    await secureStorage.set(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
+
+    const u = userFromJWT(accessToken);
+    if (u) {
+      await storage.set(STORAGE_KEYS.USER_PROFILE, JSON.stringify(u));
+      setUser(u);
+    }
+    setIsAuthenticated(true);
+    setIsOffline(false);
+    setLastAuthError(null);
   }, []);
 
-  /**
-   * Refresh access token using refresh token
-   */
+  const _clearSession = useCallback(async () => {
+    _accessToken    = null;
+    _tokenExpiresAt = null;
+    clearAuthToken();
+    await secureStorage.remove(STORAGE_KEYS.REFRESH_TOKEN);
+    await storage.remove(STORAGE_KEYS.USER_PROFILE);
+    setIsAuthenticated(false);
+    setUser(null);
+  }, []);
+
+  // ─── Refresh ─────────────────────────────────────────────────────────────────
+
   const refreshAccessToken = useCallback(async () => {
-    // Deduplicate concurrent refresh calls
     if (isRefreshingRef.current && refreshPromiseRef.current) {
       return refreshPromiseRef.current;
     }
 
     isRefreshingRef.current = true;
-    
     refreshPromiseRef.current = (async () => {
       try {
-        const refreshToken = await getRefreshToken();
-        
-        if (!refreshToken) {
-          throw new Error('No refresh token available');
-        }
+        const refreshToken = await secureStorage.get(STORAGE_KEYS.REFRESH_TOKEN);
+        if (!refreshToken) throw new Error('No refresh token');
 
-        const response = await fetch(`${apiBaseUrl}/auth/refresh`, {
-          method: 'POST',
+        const deviceId = await getDeviceId();
+
+        const res = await fetch(`${BASE_URL}${API_ENDPOINTS.REFRESH}`, {
+          method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refresh_token: refreshToken }),
+          body:    JSON.stringify({ refreshToken, deviceId }),
         });
 
-        if (!response.ok) {
-          const error = await response.json();
-          
-          // Handle revocation
-          if (response.status === 401) {
-            await clearAuthData();
-            setIsAuthenticated(false);
-            setUser(null);
-            throw new Error('Session revoked. Please log in again.');
-          }
-          
-          throw new Error(error.detail || 'Token refresh failed');
+        if (!res.ok) {
+          if (res.status === 401) await _clearSession();
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.message || 'Token refresh failed');
         }
 
-        const data = await response.json();
-        
-        // Store new access token in memory
-        memoryAccessToken = data.data.access_token;
-        memoryTokenExpiry = Date.now() + TOKEN_CONFIG.accessTokenExpiry;
-        setAuthToken(data.data.access_token); // Sync with API client
-        
-        // Store new refresh token (rotation)
-        if (data.data.refresh_token) {
-          const refreshExpiresAt = data.data.refresh_expires_at 
-            ? new Date(data.data.refresh_expires_at).getTime()
-            : Date.now() + TOKEN_CONFIG.refreshTokenExpiry;
-          await storeRefreshToken(data.data.refresh_token, refreshExpiresAt);
-        }
-        
-        // Update user profile if provided
-        if (data.data.user) {
-          await storeUserProfile(data.data.user);
-          setUser(data.data.user);
-        }
-        
-        setIsAuthenticated(true);
-        setIsOffline(false);
-        setLastAuthError(null);
-        
-        return memoryAccessToken;
-      } catch (error) {
-        console.error('[Auth] Refresh failed:', error);
-        setLastAuthError(error.message);
-        
-        // Check if offline
+        const data = await res.json();
+        await _storeSession(data.accessToken, data.refreshToken, data.refreshExpiresAt);
+        return _accessToken;
+      } catch (err) {
+        setLastAuthError(err.message);
         if (!navigator.onLine) {
           setIsOffline(true);
-          // Allow using cached token if not too stale
-          if (memoryAccessToken && memoryTokenExpiry && Date.now() < memoryTokenExpiry + 5 * 60 * 1000) {
-            return memoryAccessToken; // 5 minute grace period offline
-          }
+          if (_accessToken) return _accessToken; // grace period
         }
-        
-        throw error;
+        throw err;
       } finally {
-        isRefreshingRef.current = false;
+        isRefreshingRef.current   = false;
         refreshPromiseRef.current = null;
       }
     })();
 
     return refreshPromiseRef.current;
-  }, [apiBaseUrl]);
+  }, [_clearSession, _storeSession]);
 
-  /**
-   * Initialize auth state on app load
-   */
+  // ─── Init on mount ────────────────────────────────────────────────────────────
+
   useEffect(() => {
-    const initAuth = async () => {
+    const init = async () => {
+      setIsLoading(true);
       try {
-        setIsLoading(true);
-        
-        // Check for stored refresh token
-        const refreshToken = await getRefreshToken();
-        const cachedUser = await getUserProfile();
-        
-        if (refreshToken) {
-          // Try to refresh access token
-          try {
-            await refreshAccessToken();
-            if (cachedUser) {
-              setUser(cachedUser);
-            }
-          } catch (error) {
-            // If offline, check if we can use stale token
-            if (!navigator.onLine && cachedUser) {
-              setIsOffline(true);
-              setUser(cachedUser);
-              setIsAuthenticated(true); // Allow offline access
-            } else {
-              // Clear invalid auth state
-              await clearAuthData();
-              setIsAuthenticated(false);
-            }
-          }
-        } else {
-          setIsAuthenticated(false);
+        const stored = await secureStorage.get(STORAGE_KEYS.REFRESH_TOKEN);
+        if (!stored) return;
+
+        const cachedUserJson = await storage.get(STORAGE_KEYS.USER_PROFILE);
+        if (cachedUserJson) {
+          try { setUser(JSON.parse(cachedUserJson)); } catch { /* ignore */ }
         }
-      } catch (error) {
-        console.error('[Auth] Init failed:', error);
-        setIsAuthenticated(false);
+
+        await refreshAccessToken();
+      } catch {
+        if (!navigator.onLine) {
+          setIsOffline(true);
+          // Keep previously set user / isAuthenticated if we have a cached token
+          if (_accessToken) setIsAuthenticated(true);
+        } else {
+          await _clearSession();
+        }
       } finally {
         setIsLoading(false);
+        // Signal splash screen / auth-ready listeners
+        window.dispatchEvent(new CustomEvent('wdc:auth-ready'));
       }
     };
+    init();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    initAuth();
-  }, [refreshAccessToken]);
-
-  /**
-   * Register refresh function with API client for 401 auto-retry
-   */
+  // Wire the refresh callback into the Axios 401-retry interceptor
   useEffect(() => {
     setRefreshFunction(refreshAccessToken);
     return () => setRefreshFunction(null);
   }, [refreshAccessToken]);
 
-  /**
-   * Handle online/offline changes
-   */
+  // Network listeners
   useEffect(() => {
-    const handleOnline = () => {
-      setIsOffline(false);
-      // Try to refresh when coming back online
-      if (isAuthenticated) {
-        refreshAccessToken().catch(console.error);
-      }
-    };
-    
-    const handleOffline = () => {
-      setIsOffline(true);
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
+    const online  = () => { setIsOffline(false); if (isAuthenticated) refreshAccessToken().catch(() => {}); };
+    const offline = () => setIsOffline(true);
+    window.addEventListener('online',  online);
+    window.addEventListener('offline', offline);
+    return () => { window.removeEventListener('online', online); window.removeEventListener('offline', offline); };
   }, [isAuthenticated, refreshAccessToken]);
 
+  // ─── Login ────────────────────────────────────────────────────────────────────
+
   /**
-   * Login function
+   * Sign in.
+   * Pass `{ phone, pin }` for mobile (secretary/coordinator) or
+   * `{ email, password, totp }` for console (director).
    */
-  const login = useCallback(async (email, password) => {
+  const login = useCallback(async (credentials) => {
+    setIsLoading(true);
+    setLastAuthError(null);
     try {
-      setIsLoading(true);
-      setLastAuthError(null);
-      
-      const response = await fetch(`${apiBaseUrl}/auth/login`, {
-        method: 'POST',
+      const deviceId  = await getDeviceId();
+      const isMobile  = 'phone' in credentials;
+      const endpoint  = isMobile ? API_ENDPOINTS.SIGN_IN_MOBILE : API_ENDPOINTS.SIGN_IN_CONSOLE;
+      const body      = { ...credentials, deviceId };
+
+      const res = await fetch(`${BASE_URL}${endpoint}`, {
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body:    JSON.stringify(body),
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Login failed');
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || 'Login failed');
       }
 
-      const data = await response.json();
-      const payload = data.data || data;
-      
-      // Store access token in memory
-      memoryAccessToken = payload.access_token;
-      memoryTokenExpiry = Date.now() + TOKEN_CONFIG.accessTokenExpiry;
-      setAuthToken(payload.access_token); // Sync with API client
-      
-      // Store refresh token in IndexedDB
-      if (payload.refresh_token) {
-        const refreshExpiresAt = payload.refresh_expires_at 
-          ? new Date(payload.refresh_expires_at).getTime()
-          : Date.now() + TOKEN_CONFIG.refreshTokenExpiry;
-        await storeRefreshToken(payload.refresh_token, refreshExpiresAt);
-      }
-      
-      // Store user profile
-      if (payload.user) {
-        await storeUserProfile(payload.user);
-        setUser(payload.user);
-      }
-      
-      setIsAuthenticated(true);
-      
-      return { success: true, user: payload.user };
-    } catch (error) {
-      setLastAuthError(error.message);
-      throw error;
+      const data = await res.json();
+      await _storeSession(data.accessToken, data.refreshToken, data.refreshExpiresAt);
+      return { success: true, user: userFromJWT(data.accessToken) };
+    } catch (err) {
+      setLastAuthError(err.message);
+      throw err;
     } finally {
       setIsLoading(false);
     }
-  }, [apiBaseUrl]);
+  }, [_storeSession]);
 
-  /**
-   * Logout function - Only way to end session!
-   */
+  // ─── Logout ───────────────────────────────────────────────────────────────────
+
   const logout = useCallback(async () => {
     try {
-      // Call server to revoke refresh token (best effort)
-      const refreshToken = await getRefreshToken();
-      if (refreshToken) {
-        try {
-          await fetch(`${apiBaseUrl}/auth/logout`, {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${memoryAccessToken || ''}`
-            },
-            body: JSON.stringify({ refresh_token: refreshToken }),
-          });
-        } catch (error) {
-          console.warn('[Auth] Server logout failed (offline?), clearing locally');
-        }
+      const deviceId = await getDeviceId();
+      if (_accessToken) {
+        await fetch(`${BASE_URL}${API_ENDPOINTS.SIGN_OUT}`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${_accessToken}` },
+          body:    JSON.stringify({ deviceId }),
+        }).catch(() => { /* best-effort */ });
       }
     } finally {
-      // Always clear local auth state
-      await clearAuthData();
-      setIsAuthenticated(false);
-      setUser(null);
-      setIsOffline(false);
-      memoryAccessToken = null;
-      memoryTokenExpiry = null;
-      clearAuthToken(); // Clear API client token
+      await _clearSession();
     }
-  }, [apiBaseUrl]);
+  }, [_clearSession]);
 
-  /**
-   * Get current access token (for API calls)
-   * Auto-refreshes if needed
-   */
+  // ─── Helpers ─────────────────────────────────────────────────────────────────
+
   const getAccessToken = useCallback(async () => {
-    if (needsRefresh()) {
-      return await refreshAccessToken();
+    const BUFFER_MS = 60_000;
+    if (!_accessToken || (_tokenExpiresAt && Date.now() >= _tokenExpiresAt - BUFFER_MS)) {
+      return refreshAccessToken();
     }
-    return memoryAccessToken;
-  }, [needsRefresh, refreshAccessToken]);
+    return _accessToken;
+  }, [refreshAccessToken]);
 
-  /**
-   * Check if token is valid for offline use
-   */
   const canUseOffline = useCallback(() => {
-    return isAuthenticated && memoryAccessToken && memoryTokenExpiry && 
-           Date.now() < memoryTokenExpiry + 5 * 60 * 1000; // 5 min grace
+    return isAuthenticated && !!_accessToken;
   }, [isAuthenticated]);
+
+  const getDefaultRoute = useCallback(() => {
+    if (!user) return '/login';
+    return DEFAULT_ROUTE[user.role] || '/';
+  }, [user]);
 
   return {
     isAuthenticated,
@@ -419,6 +273,7 @@ export const usePersistentAuth = (apiBaseUrl) => {
     getAccessToken,
     refreshAccessToken,
     canUseOffline,
+    getDefaultRoute,
   };
 };
 

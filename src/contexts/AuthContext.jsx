@@ -1,68 +1,35 @@
-/**
- * AuthContext — Global Authentication State
- *
- * Provides persistent authentication state to the entire app.
- * Uses usePersistentAuth hook for token management.
- */
-
 import React, { createContext, useContext, useCallback, useMemo } from 'react';
 import { usePersistentAuth } from '../hooks/usePersistentAuth';
+import { USER_ROLES } from '../utils/constants';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
-
-// Create context
 const AuthContext = createContext(null);
 
-/**
- * AuthProvider - Wraps the app with authentication
- */
 export const AuthProvider = ({ children }) => {
-  const auth = usePersistentAuth(API_BASE_URL);
+  const auth = usePersistentAuth();
 
-  // Computed values
-  const isReady = !auth.isLoading;
+  const isReady  = !auth.isLoading;
   const canSubmit = auth.isAuthenticated && (!auth.isOffline || auth.canUseOffline());
 
-  // Get default route based on user role
-  const getDefaultRoute = useCallback(() => {
-    if (!auth.user) return '/login';
-    
-    const routes = {
-      'WDC_SECRETARY': '/wdc',
-      'LGA_COORDINATOR': '/lga',
-      'STATE_OFFICIAL': '/state',
-    };
-    
-    return routes[auth.user.role] || '/';
-  }, [auth.user]);
+  const hasRole = useCallback((role) => auth.user?.role === role, [auth.user]);
 
-  // Check if user has specific role
-  const hasRole = useCallback((role) => {
-    return auth.user?.role === role;
-  }, [auth.user]);
-
-  // Context value
   const value = useMemo(() => ({
-    // State
     isAuthenticated: auth.isAuthenticated,
-    user: auth.user,
-    isLoading: auth.isLoading,
-    isOffline: auth.isOffline,
+    user:            auth.user,
+    isLoading:       auth.isLoading,
+    isOffline:       auth.isOffline,
     isReady,
     canSubmit,
-    lastError: auth.lastAuthError,
-    
-    // Actions
-    login: auth.login,
-    logout: auth.logout,
-    getAccessToken: auth.getAccessToken,
-    refreshToken: auth.refreshAccessToken,
-    
-    // Helpers
-    getDefaultRoute,
+    lastError:       auth.lastAuthError,
+
+    login:           auth.login,
+    logout:          auth.logout,
+    getAccessToken:  auth.getAccessToken,
+    refreshToken:    auth.refreshAccessToken,
+
+    getDefaultRoute: auth.getDefaultRoute,
     hasRole,
-    canUseOffline: auth.canUseOffline,
-  }), [auth, isReady, canSubmit, getDefaultRoute, hasRole]);
+    canUseOffline:   auth.canUseOffline,
+  }), [auth, isReady, canSubmit, hasRole]);
 
   return (
     <AuthContext.Provider value={value}>
@@ -71,19 +38,14 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-/**
- * useAuth hook - Access authentication context
- */
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  return ctx;
 };
 
 /**
- * withAuth HOC - Protect components that require authentication
+ * HOC that guards a component to authenticated users with an optional role list.
  */
 export const withAuth = (Component, allowedRoles = null) => {
   return (props) => {
@@ -102,14 +64,12 @@ export const withAuth = (Component, allowedRoles = null) => {
       return null;
     }
 
-    if (allowedRoles && !allowedRoles.some(role => hasRole(role))) {
+    if (allowedRoles && !allowedRoles.some((r) => hasRole(r))) {
       return (
         <div className="min-h-screen flex items-center justify-center">
           <div className="text-center max-w-md">
             <h1 className="text-2xl font-bold text-neutral-900 mb-2">Access Denied</h1>
-            <p className="text-neutral-600">
-              You don't have permission to access this page.
-            </p>
+            <p className="text-neutral-600">You don't have permission to access this page.</p>
           </div>
         </div>
       );

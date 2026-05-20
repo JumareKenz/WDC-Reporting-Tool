@@ -197,10 +197,9 @@ const StateSubmissionsPage = () => {
         action,
         notes: reviewNotes || undefined,
       });
-      const labels = { REVIEWED: 'approved', DECLINED: 'declined', FLAGGED: 'flagged' };
-      toast.success(`Report ${labels[action] || 'reviewed'} successfully.`);
-      // Update local selected report status for immediate UI feedback
-      setSelectedReport((prev) => prev ? { ...prev, status: action } : prev);
+      const newStatus = action === 'approve' ? 'approved' : 'returned';
+      toast.success(`Report ${newStatus} successfully.`);
+      setSelectedReport((prev) => prev ? { ...prev, status: newStatus } : prev);
       setShowReviewNotes(false);
       setReviewNotes('');
       setReviewAction(null);
@@ -629,7 +628,7 @@ const StateSubmissionsPage = () => {
             {showReviewNotes && (
               <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 space-y-3">
                 <p className="text-sm font-medium text-neutral-700">
-                  Add review notes{reviewAction === 'FLAGGED' ? ' (required for flagging)' : ' (optional)'}:
+                  Add review notes{reviewAction === 'return' ? ' (required)' : ' (optional)'}:
                 </p>
                 <textarea
                   value={reviewNotes}
@@ -642,13 +641,13 @@ const StateSubmissionsPage = () => {
                 <div className="flex gap-2">
                   <Button
                     size="sm"
-                    variant={reviewAction === 'REVIEWED' ? 'primary' : reviewAction === 'DECLINED' ? 'danger' : 'outline'}
+                    variant={reviewAction === 'approve' ? 'primary' : 'outline'}
                     onClick={() => handleReviewSubmit(reviewAction)}
                     loading={reviewMutation.isPending}
-                    disabled={reviewAction === 'FLAGGED' && !reviewNotes.trim()}
-                    className={reviewAction === 'FLAGGED' ? 'border-amber-500 text-amber-700' : ''}
+                    disabled={reviewAction === 'return' && !reviewNotes.trim()}
+                    className={reviewAction === 'return' ? 'border-amber-500 text-amber-700' : ''}
                   >
-                    Confirm {reviewAction === 'REVIEWED' ? 'Approval' : reviewAction === 'DECLINED' ? 'Decline' : 'Flag'}
+                    Confirm {reviewAction === 'approve' ? 'Approval' : 'Return'}
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => { setShowReviewNotes(false); setReviewAction(null); }}>
                     Cancel
@@ -664,14 +663,14 @@ const StateSubmissionsPage = () => {
                 <span>Report ID: #{selectedReport.id}</span>
               </div>
 
-              {/* Review Action Buttons — shown only for submitted/flagged reports */}
-              {!loadingReport && selectedReport.status !== REPORT_STATUS.REVIEWED && (
+              {/* Review Action Buttons — shown for in_review reports */}
+              {!loadingReport && selectedReport.status === REPORT_STATUS.IN_REVIEW && (
                 <div className="flex flex-wrap gap-2">
                   <Button
                     size="sm"
                     variant="primary"
                     icon={CheckCircle}
-                    onClick={() => { setReviewAction('REVIEWED'); setShowReviewNotes(true); }}
+                    onClick={() => { setReviewAction('approve'); setShowReviewNotes(true); }}
                     disabled={reviewMutation.isPending}
                   >
                     Approve
@@ -681,26 +680,14 @@ const StateSubmissionsPage = () => {
                     variant="outline"
                     icon={AlertTriangle}
                     className="border-amber-400 text-amber-700 hover:bg-amber-50"
-                    onClick={() => { setReviewAction('FLAGGED'); setShowReviewNotes(true); }}
+                    onClick={() => { setReviewAction('return'); setShowReviewNotes(true); }}
                     disabled={reviewMutation.isPending}
                   >
-                    Flag
+                    Return
                   </Button>
-                  {selectedReport.status !== REPORT_STATUS.DECLINED && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      icon={XCircle}
-                      className="border-red-300 text-red-600 hover:bg-red-50"
-                      onClick={() => { setReviewAction('DECLINED'); setShowReviewNotes(true); }}
-                      disabled={reviewMutation.isPending}
-                    >
-                      Decline
-                    </Button>
-                  )}
                 </div>
               )}
-              {!loadingReport && selectedReport.status === REPORT_STATUS.REVIEWED && (
+              {!loadingReport && (selectedReport.status === REPORT_STATUS.APPROVED || selectedReport.status === REPORT_STATUS.SEALED) && (
                 <p className="text-xs text-green-700 font-medium flex items-center gap-1.5">
                   <CheckCircle className="w-4 h-4" />
                   This report has been approved.

@@ -83,9 +83,9 @@ const ProtectedRoute = ({ children, allowedRoles = null }) => {
   // Check role permissions
   if (allowedRoles && !allowedRoles.includes(user?.role)) {
     const defaultRoutes = {
-      [USER_ROLES.WDC_SECRETARY]: '/wdc',
-      [USER_ROLES.LGA_COORDINATOR]: '/lga',
-      [USER_ROLES.STATE_OFFICIAL]: '/state',
+      [USER_ROLES.SECRETARY]:   '/wdc',
+      [USER_ROLES.COORDINATOR]: '/lga',
+      [USER_ROLES.DIRECTOR]:    '/state',
     };
     return <Navigate to={defaultRoutes[user.role] || '/'} replace />;
   }
@@ -121,28 +121,28 @@ const AppRoutes = () => (
     <Route path="/reset-password" element={<PublicRoute><ResetPassword /></PublicRoute>} />
 
     {/* WDC Secretary Routes */}
-    <Route path="/wdc" element={<ProtectedRoute allowedRoles={[USER_ROLES.WDC_SECRETARY]}><WDCDashboard /></ProtectedRoute>} />
-    <Route path="/wdc/submit" element={<ProtectedRoute allowedRoles={[USER_ROLES.WDC_SECRETARY]}><SubmitReportPage /></ProtectedRoute>} />
-    <Route path="/wdc/reports" element={<ProtectedRoute allowedRoles={[USER_ROLES.WDC_SECRETARY]}><MyReportsPage /></ProtectedRoute>} />
-    <Route path="/wdc/notifications" element={<ProtectedRoute allowedRoles={[USER_ROLES.WDC_SECRETARY]}><NotificationsPage /></ProtectedRoute>} />
-    <Route path="/wdc/feedback" element={<ProtectedRoute allowedRoles={[USER_ROLES.WDC_SECRETARY]}><MessagesPage /></ProtectedRoute>} />
+    <Route path="/wdc" element={<ProtectedRoute allowedRoles={[USER_ROLES.SECRETARY]}><WDCDashboard /></ProtectedRoute>} />
+    <Route path="/wdc/submit" element={<ProtectedRoute allowedRoles={[USER_ROLES.SECRETARY]}><SubmitReportPage /></ProtectedRoute>} />
+    <Route path="/wdc/reports" element={<ProtectedRoute allowedRoles={[USER_ROLES.SECRETARY]}><MyReportsPage /></ProtectedRoute>} />
+    <Route path="/wdc/notifications" element={<ProtectedRoute allowedRoles={[USER_ROLES.SECRETARY]}><NotificationsPage /></ProtectedRoute>} />
+    <Route path="/wdc/feedback" element={<ProtectedRoute allowedRoles={[USER_ROLES.SECRETARY]}><MessagesPage /></ProtectedRoute>} />
 
     {/* LGA Coordinator Routes */}
-    <Route path="/lga" element={<ProtectedRoute allowedRoles={[USER_ROLES.LGA_COORDINATOR]}><LGADashboard /></ProtectedRoute>} />
-    <Route path="/lga/wards" element={<ProtectedRoute allowedRoles={[USER_ROLES.LGA_COORDINATOR]}><LGAWardsPage /></ProtectedRoute>} />
-    <Route path="/lga/reports" element={<ProtectedRoute allowedRoles={[USER_ROLES.LGA_COORDINATOR]}><LGAReportsPage /></ProtectedRoute>} />
-    <Route path="/lga/notifications" element={<ProtectedRoute allowedRoles={[USER_ROLES.LGA_COORDINATOR]}><NotificationsPage /></ProtectedRoute>} />
-    <Route path="/lga/feedback" element={<ProtectedRoute allowedRoles={[USER_ROLES.LGA_COORDINATOR]}><MessagesPage /></ProtectedRoute>} />
+    <Route path="/lga" element={<ProtectedRoute allowedRoles={[USER_ROLES.COORDINATOR]}><LGADashboard /></ProtectedRoute>} />
+    <Route path="/lga/wards" element={<ProtectedRoute allowedRoles={[USER_ROLES.COORDINATOR]}><LGAWardsPage /></ProtectedRoute>} />
+    <Route path="/lga/reports" element={<ProtectedRoute allowedRoles={[USER_ROLES.COORDINATOR]}><LGAReportsPage /></ProtectedRoute>} />
+    <Route path="/lga/notifications" element={<ProtectedRoute allowedRoles={[USER_ROLES.COORDINATOR]}><NotificationsPage /></ProtectedRoute>} />
+    <Route path="/lga/feedback" element={<ProtectedRoute allowedRoles={[USER_ROLES.COORDINATOR]}><MessagesPage /></ProtectedRoute>} />
 
-    {/* State Official Routes */}
-    <Route path="/state" element={<ProtectedRoute allowedRoles={[USER_ROLES.STATE_OFFICIAL]}><StateDashboard /></ProtectedRoute>} />
-    <Route path="/state/analytics" element={<ProtectedRoute allowedRoles={[USER_ROLES.STATE_OFFICIAL]}><StateAnalyticsPage /></ProtectedRoute>} />
-    <Route path="/state/submissions" element={<ProtectedRoute allowedRoles={[USER_ROLES.STATE_OFFICIAL]}><StateSubmissionsPage /></ProtectedRoute>} />
-    <Route path="/state/lgas" element={<ProtectedRoute allowedRoles={[USER_ROLES.STATE_OFFICIAL]}><StateLGAsPage /></ProtectedRoute>} />
-    <Route path="/state/investigations" element={<ProtectedRoute allowedRoles={[USER_ROLES.STATE_OFFICIAL]}><StateInvestigationsPage /></ProtectedRoute>} />
-    <Route path="/state/forms" element={<ProtectedRoute allowedRoles={[USER_ROLES.STATE_OFFICIAL]}><StateFormsPage /></ProtectedRoute>} />
-    <Route path="/state/users" element={<ProtectedRoute allowedRoles={[USER_ROLES.STATE_OFFICIAL]}><StateUsersPage /></ProtectedRoute>} />
-    <Route path="/state/notifications" element={<ProtectedRoute allowedRoles={[USER_ROLES.STATE_OFFICIAL]}><NotificationsPage /></ProtectedRoute>} />
+    {/* Director Routes */}
+    <Route path="/state" element={<ProtectedRoute allowedRoles={[USER_ROLES.DIRECTOR]}><StateDashboard /></ProtectedRoute>} />
+    <Route path="/state/analytics" element={<ProtectedRoute allowedRoles={[USER_ROLES.DIRECTOR]}><StateAnalyticsPage /></ProtectedRoute>} />
+    <Route path="/state/submissions" element={<ProtectedRoute allowedRoles={[USER_ROLES.DIRECTOR]}><StateSubmissionsPage /></ProtectedRoute>} />
+    <Route path="/state/lgas" element={<ProtectedRoute allowedRoles={[USER_ROLES.DIRECTOR]}><StateLGAsPage /></ProtectedRoute>} />
+    <Route path="/state/investigations" element={<ProtectedRoute allowedRoles={[USER_ROLES.DIRECTOR]}><StateInvestigationsPage /></ProtectedRoute>} />
+    <Route path="/state/forms" element={<ProtectedRoute allowedRoles={[USER_ROLES.DIRECTOR]}><StateFormsPage /></ProtectedRoute>} />
+    <Route path="/state/users" element={<ProtectedRoute allowedRoles={[USER_ROLES.DIRECTOR]}><StateUsersPage /></ProtectedRoute>} />
+    <Route path="/state/notifications" element={<ProtectedRoute allowedRoles={[USER_ROLES.DIRECTOR]}><NotificationsPage /></ProtectedRoute>} />
 
     {/* Shared Routes */}
     <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />

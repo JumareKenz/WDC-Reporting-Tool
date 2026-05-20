@@ -11,7 +11,6 @@ import { useAuth } from '../hooks/useAuth';
 import apiClient from '../api/client';
 import { API_ENDPOINTS } from '../utils/constants';
 import { getSubmissionInfo as getLocalSubmissionInfo } from '../utils/dateUtils';
-import { getSubmissionInfo } from '../api/reports';
 
 const SubmitReportPage = () => {
   const navigate = useNavigate();
@@ -34,15 +33,14 @@ const SubmitReportPage = () => {
         // Refresh user data first to get latest assignments
         await verifyToken().catch(err => console.warn('Background user refresh failed', err));
 
-        // Fetch submission info
-        const infoResponse = await getSubmissionInfo();
-        const info = infoResponse?.data || getLocalSubmissionInfo();
+        // Use local submission info (period calculation)
+        const info = getLocalSubmissionInfo();
         setSubmissionInfo(info);
-        setAlreadySubmitted(info.already_submitted || false);
 
-        // Fetch active form
-        const formResponse = await apiClient.get(API_ENDPOINTS.FORMS_ACTIVE);
-        setActiveForm(formResponse?.data || null);
+        // Fetch forms visible to this secretary
+        const forms = await apiClient.get(API_ENDPOINTS.FORMS_VISIBLE);
+        const form = Array.isArray(forms) ? forms[0] : null;
+        setActiveForm(form || null);
       } catch (error) {
         // Use local submission info if API fails
         const info = getLocalSubmissionInfo();

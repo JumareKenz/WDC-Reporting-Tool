@@ -38,20 +38,20 @@ const Layout = ({ children }) => {
     const role = user?.role;
 
     const navItems = {
-      [USER_ROLES.WDC_SECRETARY]: [
+      [USER_ROLES.SECRETARY]: [
         { path: '/wdc', label: 'Dashboard', icon: LayoutDashboard },
         { path: '/wdc/reports', label: 'My Reports', icon: FileText },
         { path: '/wdc/notifications', label: 'Notifications', icon: Bell },
         { path: '/wdc/feedback', label: 'Messages', icon: MessageSquare },
       ],
-      [USER_ROLES.LGA_COORDINATOR]: [
+      [USER_ROLES.COORDINATOR]: [
         { path: '/lga', label: 'Dashboard', icon: LayoutDashboard },
         { path: '/lga/wards', label: 'Wards', icon: Users },
         { path: '/lga/reports', label: 'Reports', icon: FileText },
         { path: '/lga/notifications', label: 'Notifications', icon: Bell },
         { path: '/lga/feedback', label: 'Messages', icon: MessageSquare },
       ],
-      [USER_ROLES.STATE_OFFICIAL]: [
+      [USER_ROLES.DIRECTOR]: [
         { path: '/state', label: 'Dashboard', icon: LayoutDashboard },
         { path: '/state/analytics', label: 'Analytics', icon: BarChart3 },
         { path: '/state/submissions', label: 'Submissions', icon: FileText },
@@ -193,7 +193,7 @@ const Layout = ({ children }) => {
         {/* Footer with Chat AI (State Officials only), Settings and Logout */}
         <div className="p-3 border-t border-white/30 space-y-1">
           {/* AI Chat Button (State Officials Only) */}
-          {user?.role === USER_ROLES.STATE_OFFICIAL && (
+          {user?.role === USER_ROLES.DIRECTOR && (
             <button
               onClick={() => {
                 mobile && setMobileSidebarOpen(false);

@@ -1,36 +1,14 @@
+/**
+ * Profile — reads/updates the current user's record via the users API.
+ * The user's ID comes from the JWT sub claim (exposed in AuthContext as user.id).
+ */
 import apiClient from './client';
+import { API_ENDPOINTS } from '../utils/constants';
 
-/**
- * Get current user profile
- */
-export const getProfile = async () => {
-  const response = await apiClient.get('/profile/me');
-  return response;
-};
+/** Get the current user's full profile. Pass userId from useAuth().user.id */
+export const getProfile = (userId) =>
+  apiClient.get(API_ENDPOINTS.USER_BY_ID(userId));
 
-/**
- * Update user profile (full_name, phone)
- */
-export const updateProfile = async (data) => {
-  const response = await apiClient.patch('/profile/me', data);
-  return response;
-};
-
-/**
- * Update user email (STATE_OFFICIAL only)
- */
-export const updateEmail = async (email) => {
-  const response = await apiClient.patch('/profile/email', { email });
-  return response;
-};
-
-/**
- * Change user password
- */
-export const changePassword = async (currentPassword, newPassword) => {
-  const response = await apiClient.post('/profile/change-password', {
-    current_password: currentPassword,
-    new_password: newPassword,
-  });
-  return response;
-};
+/** Director: reassign themselves or update assignment. Coordinators/secretaries cannot self-assign. */
+export const updateAssignment = (userId, data) =>
+  apiClient.patch(API_ENDPOINTS.USER_ASSIGNMENT(userId), data);

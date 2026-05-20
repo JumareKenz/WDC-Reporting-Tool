@@ -13,11 +13,11 @@ const Navbar = ({ onMenuToggle }) => {
 
   const getNotificationPath = () => {
     switch (user?.role) {
-      case USER_ROLES.WDC_SECRETARY:
+      case USER_ROLES.SECRETARY:
         return '/wdc/notifications';
-      case USER_ROLES.LGA_COORDINATOR:
+      case USER_ROLES.COORDINATOR:
         return '/lga/notifications';
-      case USER_ROLES.STATE_OFFICIAL:
+      case USER_ROLES.DIRECTOR:
         return '/state/notifications';
       default:
         return '/notifications';

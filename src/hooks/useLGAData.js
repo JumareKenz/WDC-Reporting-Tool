@@ -1,92 +1,64 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  getLGA,
-  getLGAWards,
   getLGAReports,
-  getLGAMissingReports,
+  getLGASecretaries,
+  openReview,
+  approveReport,
+  returnReport,
   sendNotification,
-  reviewReport,
   getFeedback,
-  sendFeedback,
+  markFeedbackRead,
 } from '../api/lga';
 
 export const LGA_QUERY_KEYS = {
-  lga: (id) => ['lga', id],
-  wards: (id) => ['lga-wards', id],
-  reports: (id) => ['lga-reports', id],
-  missingReports: (id) => ['lga-missing-reports', id],
-  feedback: 'lga-feedback',
+  reports:     'lga-reports',
+  secretaries: 'lga-secretaries',
+  feedback:    'lga-feedback',
 };
 
-export const useLGA = (lgaId) => {
-  return useQuery({
-    queryKey: LGA_QUERY_KEYS.lga(lgaId),
-    queryFn: () => getLGA(lgaId),
-    enabled: !!lgaId,
-    staleTime: 60000,
+export const useLGAReports = (params = {}) =>
+  useQuery({
+    queryKey: [LGA_QUERY_KEYS.reports, params],
+    queryFn:  () => getLGAReports(params),
+    staleTime: 30_000,
   });
-};
 
-export const useLGAWards = (lgaId, params = {}) => {
-  return useQuery({
-    queryKey: [...LGA_QUERY_KEYS.wards(lgaId), params],
-    queryFn: () => getLGAWards(lgaId, params),
-    enabled: !!lgaId,
-    staleTime: 30000,
+export const useLGASecretaries = (params = {}) =>
+  useQuery({
+    queryKey: [LGA_QUERY_KEYS.secretaries, params],
+    queryFn:  () => getLGASecretaries(params),
+    staleTime: 60_000,
   });
-};
 
-export const useLGAReports = (lgaId, params = {}) => {
-  return useQuery({
-    queryKey: [...LGA_QUERY_KEYS.reports(lgaId), params],
-    queryFn: () => getLGAReports(lgaId, params),
-    enabled: !!lgaId,
-    staleTime: 30000,
-  });
-};
-
-export const useLGAMissingReports = (lgaId, params = {}) => {
-  return useQuery({
-    queryKey: [...LGA_QUERY_KEYS.missingReports(lgaId), params],
-    queryFn: () => getLGAMissingReports(lgaId, params),
-    enabled: !!lgaId,
-    staleTime: 30000,
-  });
-};
-
-export const useSendNotification = () => {
+/** Open a submitted report for review, then approve or return it. */
+export const useCoordinatorReview = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: sendNotification,
+    mutationFn: ({ reportId, action, notes }) => {
+      if (action === 'open')    return openReview(reportId);
+      if (action === 'approve') return approveReport(reportId);
+      return returnReport(reportId, notes);
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lga-missing-reports'] });
+      queryClient.invalidateQueries({ queryKey: [LGA_QUERY_KEYS.reports] });
     },
   });
 };
 
-export const useReviewReport = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ reportId, data }) => reviewReport(reportId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['lga-reports'] });
-      queryClient.invalidateQueries({ queryKey: ['lga-wards'] });
-    },
-  });
-};
+export const useSendNotification = () =>
+  useMutation({ mutationFn: sendNotification });
 
-export const useFeedback = (params = {}) => {
-  return useQuery({
+export const useFeedback = (params = {}) =>
+  useQuery({
     queryKey: [LGA_QUERY_KEYS.feedback, params],
-    queryFn: () => getFeedback(params),
-    staleTime: 30000,
+    queryFn:  () => getFeedback(params),
+    staleTime: 30_000,
   });
-};
 
-export const useSendFeedback = () => {
+export const useMarkFeedbackRead = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: sendFeedback,
+    mutationFn: markFeedbackRead,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [LGA_QUERY_KEYS.feedback] });
     },

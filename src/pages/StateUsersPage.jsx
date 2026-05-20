@@ -31,7 +31,7 @@ import {
   useToggleUserAccess,
   useAssignUser,
 } from '../hooks/useStateData';
-import { getLGAWards } from '../api/users';
+import { getUsers } from '../api/users';
 import Modal from '../components/common/Modal';
 import Button from '../components/common/Button';
 
@@ -119,7 +119,7 @@ function NoUserState({ type, onAssign }) {
 // Sub-component: detailed user profile card (right panel)
 // ---------------------------------------------------------------------------
 function UserDetailCard({ user, onEdit, onPassword, onAccess, onCopyEmail, copiedEmail }) {
-  const isCoordinator = user.role === 'LGA_COORDINATOR';
+  const isCoordinator = user.role === 'coordinator';
   const initials = (user.full_name || '')
     .split(' ')
     .map((n) => n[0])
@@ -351,8 +351,8 @@ export default function StateUsersPage() {
   const fetchWardsForLGA = useCallback(async (lgaId) => {
     if (cacheRef.current[lgaId]) return;
     try {
-      const wards = await getLGAWards(lgaId);
-      setLgaWardsCache((prev) => ({ ...prev, [lgaId]: wards }));
+      const wards = await getUsers({ lgaId, role: 'secretary' });
+      setLgaWardsCache((prev) => ({ ...prev, [lgaId]: Array.isArray(wards) ? wards : wards?.items || [] }));
     } catch (err) {
       console.error('Failed to load wards:', err);
     }
@@ -487,7 +487,7 @@ export default function StateUsersPage() {
         email: assignForm.email,
         phone: assignForm.phone,
         password: assignForm.password || undefined,  // Auto-generate if empty
-        role: selectedWardId ? 'WDC_SECRETARY' : 'LGA_COORDINATOR',
+        role: selectedWardId ? 'secretary' : 'coordinator',
         lga_id: selectedWardId ? undefined : selectedLGAId,
         ward_id: selectedWardId || undefined,
       });

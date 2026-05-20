@@ -20,11 +20,7 @@ import Button from '../components/common/Button';
 import Alert from '../components/common/Alert';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import SubmissionHistory from '../components/wdc/SubmissionHistory';
-import {
-  useCheckSubmission,
-  useReports,
-  useNotifications,
-} from '../hooks/useWDCData';
+import { useReports, useNotifications } from '../hooks/useWDCData';
 import { useAuth } from '../hooks/useAuth';
 import { formatDate, formatMonth, getCurrentMonth } from '../utils/formatters';
 import { getTargetReportMonth, getSubmissionInfo, formatMonthDisplay } from '../utils/dateUtils';
@@ -37,13 +33,6 @@ const WDCDashboard = () => {
   const targetMonth = getTargetReportMonth();
   const submissionInfo = getSubmissionInfo();
 
-  // Fetch submission status for target month
-  const {
-    data: submissionStatus,
-    isLoading: checkingSubmission,
-    refetch: refetchSubmission,
-  } = useCheckSubmission(targetMonth);
-
   // Fetch reports history
   const {
     data: reportsData,
@@ -55,15 +44,15 @@ const WDCDashboard = () => {
   const { data: notificationsData, isLoading: loadingNotifications } =
     useNotifications({ unread_only: true, limit: 5 });
 
-  const isSubmitted = submissionStatus?.data?.submitted || submissionStatus?.submitted || false;
-  const reports = reportsData?.data?.reports || reportsData?.reports || [];
+  const reports = Array.isArray(reportsData) ? reportsData : reportsData?.items || [];
+  const isSubmitted = reports.some(r => r.state === 'submitted' || r.state === 'in_review' || r.state === 'approved' || r.state === 'sealed');
   const notifications = notificationsData?.data?.notifications || notificationsData?.notifications || [];
 
   // Calculate statistics
   const totalReports = reportsData?.data?.total || reportsData?.total || reports.length;
   const totalMeetings = reports.reduce((sum, report) => sum + (report.meetings_held || 0), 0);
   const totalAttendees = reports.reduce((sum, report) => sum + (report.attendees_count || 0), 0);
-  const reviewedCount = reports.filter(r => r.status === 'REVIEWED').length;
+  const reviewedCount = reports.filter(r => r.status === 'approved' || r.status === 'sealed').length;
 
   // Get ward and LGA names from user object
   const wardName = user?.ward?.name || 'Your Ward';
@@ -79,7 +68,7 @@ const WDCDashboard = () => {
   };
 
 
-  if (checkingSubmission && loadingReports) {
+  if (loadingReports) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <LoadingSpinner size="lg" text="Loading dashboard..." />
@@ -123,7 +112,7 @@ const WDCDashboard = () => {
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Current Month Status Alert */}
-        {!checkingSubmission && (
+        {!loadingReports && (
           <div className="mb-6">
             {isSubmitted ? (
               <Alert
@@ -211,7 +200,7 @@ const WDCDashboard = () => {
               </div>
               <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl">
                 <Clock className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-purple-700">{reports.filter(r => r.status === 'SUBMITTED').length}</p>
+                <p className="text-2xl font-bold text-purple-700">{reports.filter(r => r.status === 'submitted' || r.status === 'in_review').length}</p>
                 <p className="text-xs text-purple-600">Pending Review</p>
               </div>
             </div>

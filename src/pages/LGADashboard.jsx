@@ -39,14 +39,12 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import Modal, { ConfirmModal } from '../components/common/Modal';
 import { useAuth } from '../hooks/useAuth';
 import {
-  useLGA,
-  useLGAWards,
   useLGAReports,
-  useLGAMissingReports,
+  useLGASecretaries,
+  useCoordinatorReview,
   useSendNotification,
-  useReviewReport,
   useFeedback,
-  useSendFeedback,
+  useMarkFeedbackRead,
 } from '../hooks/useLGAData';
 import { formatDate, getStatusColor, formatMonth, getCurrentMonth, formatPercentage } from '../utils/formatters';
 import { getTargetReportMonth, getSubmissionInfo } from '../utils/dateUtils';
@@ -75,23 +73,21 @@ const LGADashboard = () => {
   const [reviewerNotes, setReviewerNotes] = useState('');
 
   // Data fetching
-  const { data: wardsData, isLoading: loadingWards, refetch: refetchWards } = useLGAWards(lgaId, { month: targetMonth });
-  const { data: reportsData, isLoading: loadingReports, refetch: refetchReports } = useLGAReports(lgaId, { limit: 100 });
-  const { data: missingData, isLoading: loadingMissing } = useLGAMissingReports(lgaId, { month: targetMonth });
+  const { data: secretariesData, isLoading: loadingWards, refetch: refetchWards } = useLGASecretaries();
+  const { data: reportsData, isLoading: loadingReports, refetch: refetchReports } = useLGAReports({ limit: 100 });
   const { data: feedbackData, isLoading: loadingFeedback } = useFeedback({ limit: 10 });
-  const { data: lgaData } = useLGA(lgaId);
 
   // Mutations
   const sendNotificationMutation = useSendNotification();
-  const reviewMutation = useReviewReport();
-  const sendFeedbackMutation = useSendFeedback();
+  const reviewMutation = useCoordinatorReview();
+  const markFeedbackReadMutation = useMarkFeedbackRead();
 
   // Extract data with fallbacks
-  const wards = wardsData?.data?.wards || wardsData?.wards || [];
-  const reports = reportsData?.data?.reports || reportsData?.reports || [];
-  const missingReports = missingData?.data?.missing || missingData?.missing || [];
-  const feedback = feedbackData?.data?.messages || feedbackData?.messages || [];
-  const lgaInfo = wardsData?.data?.lga || lgaData?.data || user?.lga || {};
+  const wards = Array.isArray(secretariesData) ? secretariesData : secretariesData?.items || [];
+  const reports = Array.isArray(reportsData) ? reportsData : reportsData?.items || [];
+  const missingReports = reports.filter(r => r.state === 'draft' || !r.submittedAt);
+  const feedback = Array.isArray(feedbackData) ? feedbackData : feedbackData?.items || [];
+  const lgaInfo = user?.lga || {};
 
   // Calculate stats - using actual data only
   const officialWardCount = lgaInfo.num_wards || wards.length;
@@ -99,8 +95,8 @@ const LGADashboard = () => {
   const submittedCount = wards.filter(w => w.submitted).length;
   const missingCount = missingReports.length;
   const submissionRate = totalWards > 0 ? Math.round((submittedCount / totalWards) * 100) : 0;
-  const reviewedCount = reports.filter(r => r.status === 'REVIEWED').length;
-  const flaggedCount = reports.filter(r => r.status === 'FLAGGED').length;
+  const reviewedCount = reports.filter(r => r.status === 'approved' || r.status === 'sealed').length;
+  const flaggedCount = reports.filter(r => r.status === 'returned').length;
 
   // Filter reports
   const filteredReports = reports.filter(r => {
@@ -176,9 +172,10 @@ const LGADashboard = () => {
     if (!feedbackMessage.trim()) return;
 
     try {
-      await sendFeedbackMutation.mutateAsync({
-        message: feedbackMessage,
-        recipient_type: 'WDC',
+      await sendNotificationMutation.mutateAsync({
+        body: feedbackMessage,
+        channels: ['in_app'],
+        scopeKind: 'lga',
       });
       setFeedbackMessage('');
       setAlertMessage({ type: 'success', text: 'Message sent!' });
@@ -659,8 +656,8 @@ const LGADashboard = () => {
                     size="sm"
                     icon={Send}
                     onClick={handleSendFeedback}
-                    disabled={!feedbackMessage.trim() || sendFeedbackMutation.isPending}
-                    loading={sendFeedbackMutation.isPending}
+                    disabled={!feedbackMessage.trim() || sendNotificationMutation.isPending}
+                    loading={sendNotificationMutation.isPending}
                     className="mt-2"
                     fullWidth
                   >

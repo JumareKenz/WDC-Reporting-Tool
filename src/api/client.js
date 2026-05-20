@@ -1,8 +1,7 @@
 import axios from 'axios';
 import { emitToast } from '../hooks/useToast';
 
-// Base API URL — NestJS backend
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://kadwdc.equily.ng/api/v1';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // In-memory token store
@@ -70,16 +69,7 @@ apiClient.interceptors.request.use(
 
 // ── Response interceptor — handle errors + refresh-on-401 ────────────────
 apiClient.interceptors.response.use(
-  (response) => {
-    // The NestJS backend returns raw JSON (no { success, data } envelope).
-    // Callers receive the response body directly.
-    // If a legacy envelope is detected (success boolean present), unwrap it for
-    // backward compatibility — both shapes are accepted by call sites.
-    if (response.data && typeof response.data.success === 'boolean' && 'data' in response.data) {
-      return response.data.data;
-    }
-    return response.data;
-  },
+  (response) => response.data,
   async (error) => {
     const { response, config } = error;
 

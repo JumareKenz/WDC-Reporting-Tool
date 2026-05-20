@@ -1,33 +1,14 @@
-import apiClient from './client';
+import apiClient, { uploadFile } from './client';
+import { API_ENDPOINTS } from '../utils/constants';
 
 /**
- * Send an image for OCR extraction of report fields.
- * @param {File|Blob} imageFile - The image file to process
- * @returns {Promise<Object>} Extracted field values keyed by field name
+ * Upload an attachment for a report.
+ * @param {{ file: File, reportId: string, kind: 'image'|'audio'|'document', caption?: string }} data
+ * @param {(pct: number) => void} [onProgress]
  */
-export const ocrExtract = async (imageFile) => {
-  const formData = new FormData();
-  formData.append('file', imageFile);
-  return apiClient.post('/attachments/ocr', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: 60000,
-  });
-};
+export const uploadAttachment = (data, onProgress = null) =>
+  uploadFile(API_ENDPOINTS.ATTACHMENTS_UPLOAD, data, onProgress);
 
-/**
- * Send audio for ASR (Automatic Speech Recognition) transcription.
- * @param {Blob} audioBlob - The audio recording
- * @param {string} fieldName - The form field this recording answers
- * @param {string} language - 'en' or 'ha' (Hausa)
- * @returns {Promise<Object>} { transcription, value, field_name }
- */
-export const asrTranscribe = async (audioBlob, fieldName, language = 'en') => {
-  const formData = new FormData();
-  formData.append('file', audioBlob, `recording.webm`);
-  formData.append('field_name', fieldName);
-  formData.append('language', language);
-  return apiClient.post('/attachments/asr', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: 30000,
-  });
-};
+/** Get all attachments for a report. */
+export const getReportAttachments = (reportId) =>
+  apiClient.get(API_ENDPOINTS.ATTACHMENTS_BY_REPORT(reportId));

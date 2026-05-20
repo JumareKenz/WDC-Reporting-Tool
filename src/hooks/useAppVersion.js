@@ -30,7 +30,7 @@ import { emitToast } from './useToast';
 
 // Build-time constant injected by Vite.  Falls back to '0.0.0' in dev.
 const CURRENT_VERSION = import.meta.env.VITE_APP_VERSION ?? '0.0.0';
-const API_BASE        = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api';
+const API_BASE        = import.meta.env.VITE_API_BASE_URL ?? 'https://kadwdc.equily.ng/api/v1';
 
 /**
  * Compare two semver strings.
@@ -60,8 +60,11 @@ export function useAppVersion() {
     if (notifiedRef.current) return;
 
     try {
-      const res = await axios.get(`${API_BASE}/app/version`, { timeout: 8000 });
-      const data = res.data?.data ?? res.data;   // handle { success, data } envelope
+      // The new backend doesn't expose /app/version — use the health endpoint
+      // to detect if a forced update is needed via a custom header in future.
+      const res = await axios.get(`${API_BASE.replace('/api/v1', '')}/health/live`, { timeout: 8000 });
+      const data = res.data;
+      // If the backend adds a min_version field later, honour it here.
       const { version: remoteVersion, message } = data ?? {};
 
       if (!remoteVersion) return;

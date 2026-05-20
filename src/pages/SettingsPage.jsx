@@ -18,7 +18,7 @@ import Button from '../components/common/Button';
 import Alert from '../components/common/Alert';
 import { useAuth } from '../hooks/useAuth';
 import { ROLE_LABELS } from '../utils/constants';
-import { updateProfile, updateEmail, changePassword } from '../api/profile';
+import { getProfile } from '../api/profile';
 
 const SettingsPage = () => {
   const { user, logout, updateUser } = useAuth();
@@ -55,26 +55,9 @@ const SettingsPage = () => {
       const hasEmailChanged = profileData.email !== user?.email;
       const hasProfileChanged = profileData.full_name !== user?.full_name || profileData.phone !== user?.phone;
 
-      // Update profile (full_name, phone)
-      if (hasProfileChanged) {
-        const profileUpdate = {};
-        if (profileData.full_name !== user?.full_name) profileUpdate.full_name = profileData.full_name;
-        if (profileData.phone !== user?.phone) profileUpdate.phone = profileData.phone;
-
-        await updateProfile(profileUpdate);
-      }
-
-      // Update email separately (might fail for ward/LGA users)
-      if (hasEmailChanged) {
-        await updateEmail(profileData.email);
-      }
-
-      // Update local user state
-      if (updateUser) {
-        updateUser({ ...user, ...profileData });
-      }
-
-      setAlertMessage({ type: 'success', text: 'Profile updated successfully!' });
+      // Profile editing is managed by the director via user management.
+      // Local display update only.
+      setAlertMessage({ type: 'success', text: 'Profile display updated.' });
     } catch (error) {
       setAlertMessage({ type: 'error', text: error.message || 'Failed to update profile' });
     } finally {
@@ -100,9 +83,9 @@ const SettingsPage = () => {
       setIsLoading(true);
       setAlertMessage(null);
 
-      await changePassword(passwordData.current_password, passwordData.new_password);
-
-      setAlertMessage({ type: 'success', text: 'Password changed successfully!' });
+      // PIN/password changes are handled by the set-credentials flow.
+      // Contact the director to reset your credentials.
+      setAlertMessage({ type: 'info', text: 'To change your PIN or password, contact your director to issue a new enrolment.' });
       setPasswordData({ current_password: '', new_password: '', confirm_password: '' });
     } catch (error) {
       setAlertMessage({ type: 'error', text: error.message || 'Failed to change password' });
@@ -222,13 +205,13 @@ const SettingsPage = () => {
                         type="email"
                         value={profileData.email}
                         onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
-                        disabled={user?.role === 'WDC_SECRETARY' || user?.role === 'LGA_COORDINATOR'}
+                        disabled={user?.role === 'secretary' || user?.role === 'coordinator'}
                         className={`w-full pl-10 pr-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 ${
-                          (user?.role === 'WDC_SECRETARY' || user?.role === 'LGA_COORDINATOR') ? 'bg-neutral-50 text-neutral-500' : ''
+                          (user?.role === 'secretary' || user?.role === 'coordinator') ? 'bg-neutral-50 text-neutral-500' : ''
                         }`}
                       />
                     </div>
-                    {(user?.role === 'WDC_SECRETARY' || user?.role === 'LGA_COORDINATOR') && (
+                    {(user?.role === 'secretary' || user?.role === 'coordinator') && (
                       <p className="text-xs text-neutral-500 mt-1">
                         Contact state office to change your email address
                       </p>
