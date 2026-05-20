@@ -1,0 +1,217 @@
+name: WDC Full Test Suite
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Nightly at 02:00 UTC (full mutation run)
+    - cron: '0 2 * * *'
+
+jobs:
+  # -----------------------------------------------------------------------
+  # 1. Backend: unit + integration + contract + security
+  # -----------------------------------------------------------------------
+  backend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install backend deps
+        working-directory: backend
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-cov httpx jsonschema "httpx>=0.23.0,<0.28.0"
+
+      - name: Run all backend tests (unit + integration + contract + security)
+        working-directory: backend
+        run: |
+          python -m pytest tests/ -v --tb=short --cov=app --cov-report=term-missing
+
+  # -----------------------------------------------------------------------
+  # 2. Frontend: unit tests
+  # -----------------------------------------------------------------------
+  frontend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run frontend unit tests
+        working-directory: frontend
+        run: npm test
+
+  # -----------------------------------------------------------------------
+  # 3. Contract tests (standalone — validates OpenAPI + response shapes)
+  #    Runs after backend-tests to be explicit about ordering intent,
+  #    but is actually self-contained (uses TestClient, no live server).
+  # -----------------------------------------------------------------------
+  contract-tests:
+    runs-on: ubuntu-latest
+    needs: backend-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        working-directory: backend
+        run: |
+          pip install -r requirements.txt
+          pip install pytest httpx jsonschema "httpx>=0.23.0,<0.28.0"
+
+      - name: Run contract tests only
+        working-directory: backend
+        run: python -m pytest tests/test_contracts.py -v --tb=short
+
+  # -----------------------------------------------------------------------
+  # 4. Mutation testing
+  #    PR: quick mode (limit 50 mutants)
+  #    Nightly (schedule): full run
+  # -----------------------------------------------------------------------
+  mutation-tests:
+    runs-on: ubuntu-latest
+    needs: backend-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps + mutmut
+        working-directory: backend
+        run: |
+          pip install -r requirements.txt
+          pip install pytest httpx jsonschema mutmut "httpx>=0.23.0,<0.28.0"
+
+      - name: Run mutation tests (quick on PR targets auth+deps, full nightly adds reports)
+        working-directory: backend
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            python -m mutmut run --CI
+          else
+            # PR: only auth + dependencies (fastest feedback)
+            python -m mutmut run --paths-to-mutate app/auth.py --paths-to-mutate app/dependencies.py --CI
+          fi
+          # Print results (non-zero exit is OK — surviving mutants are expected initially)
+          python -m mutmut results || true
+
+  # -----------------------------------------------------------------------
+  # 5. E2E smoke tests (Playwright)
+  #    Spins up backend + frontend, runs smoke suite headless.
+  # -----------------------------------------------------------------------
+  e2e-smoke:
+    runs-on: ubuntu-latest
+    needs:
+      - backend-tests
+      - frontend-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install backend deps
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Seed test database
+        working-directory: backend
+        run: |
+          python -c "
+          from app.main import app
+          from app.database import engine, Base
+          Base.metadata.create_all(bind=engine)
+          from app.database import SessionLocal
+          from app.models import User, LGA, Ward
+          from app.auth import get_password_hash
+          db = SessionLocal()
+          if not db.query(LGA).first():
+              db.add_all([
+                  LGA(id=1, name='Birnin Gwari', code='BGW', population=214000, num_wards=2),
+                  LGA(id=2, name='Chikun', code='CHK', population=372000, num_wards=2),
+              ])
+              db.commit()
+              db.add_all([
+                  Ward(id=1, lga_id=1, name='Magajin Gari I', code='BGW-01', population=15000),
+                  Ward(id=2, lga_id=1, name='Gayam', code='BGW-02', population=17000),
+                  Ward(id=3, lga_id=2, name='Chikun', code='CHK-01', population=20000),
+                  Ward(id=4, lga_id=2, name='Gwagwada', code='CHK-02', population=22000),
+              ])
+              db.commit()
+              h = get_password_hash('Test123!@#')
+              db.add_all([
+                  User(id=1, email='state@test.com', password_hash=h, full_name='State Official', phone='08011111111', role='STATE_OFFICIAL', is_active=True),
+                  User(id=2, email='lga@test.com', password_hash=h, full_name='LGA Coordinator', phone='08022222222', role='LGA_COORDINATOR', lga_id=1, is_active=True),
+                  User(id=3, email='wdc@test.com', password_hash=h, full_name='WDC Secretary', phone='08033333333', role='WDC_SECRETARY', ward_id=1, is_active=True),
+                  User(id=4, email='wdc2@test.com', password_hash=h, full_name='WDC Secretary 2', phone='08044444444', role='WDC_SECRETARY', ward_id=3, is_active=True),
+              ])
+              db.commit()
+          db.close()
+          print('Seed complete')
+          "
+
+      - name: Start backend server (background)
+        working-directory: backend
+        run: |
+          nohup python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 > /tmp/backend.log 2>&1 &
+          echo $! > /tmp/backend.pid
+          # Wait for it to be ready
+          for i in $(seq 1 10); do
+            curl -sf http://localhost:8000/api/health && break
+            sleep 1
+          done
+
+      - name: Install frontend deps + Playwright
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install-deps chromium
+
+      - name: Start frontend dev server (background)
+        working-directory: frontend
+        run: |
+          nohup npm run dev -- --port 5173 > /tmp/frontend.log 2>&1 &
+          echo $! > /tmp/frontend.pid
+          # Wait for it to be ready
+          for i in $(seq 1 10); do
+            curl -sf http://localhost:5173 && break
+            sleep 1
+          done
+
+      - name: Run Playwright E2E smoke tests
+        working-directory: frontend
+        run: npx playwright test --headless
+        env:
+          BASE_URL: http://localhost:5173
+
+      - name: Upload Playwright report on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/

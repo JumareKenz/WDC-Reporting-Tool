@@ -1,0 +1,259 @@
+/**
+ * Form Configuration Service
+ *
+ * Loads the active deployed form version from the backend and exposes per-field
+ * voice questions and OCR patterns to the OCR/voice services.
+ *
+ * Backend flow (two-step):
+ *   1. GET /forms/visible           → list of forms scoped to this user
+ *   2. GET /forms/:id/versions/:n   → fetches the schema for the form's current version
+ *
+ * The schema is nested by section:
+ *   schema.sections[i].fields[j]    — fields are NOT a flat array on the server
+ * We flatten them client-side and merge with bundled defaults.
+ *
+ * Caching:
+ *   - Active config is persisted via the `storage` plugin (Capacitor Preferences
+ *     on native, localStorage on web) so the app keeps working offline.
+ *   - The cached `formVersionId` is exposed via `getCurrentFormVersionId()` so
+ *     report submissions can reference the exact deployed version.
+ */
+
+import apiClient from '../api/client';
+import { storage } from '../plugins/capacitor';
+import DEFAULT_FIELD_CONFIG from '../data/defaultFieldConfig';
+
+const CACHE_KEY = 'wdc_form_config_cache';
+
+let _activeConfig = null;
+let _activeFormId = null;
+let _activeVersionId = null;
+let _loadPromise = null;
+
+/**
+ * Fetch the active form config from the server, falling back to cached
+ * data, then to bundled defaults.
+ *
+ * @returns {Promise<Object>} Field config keyed by field key/name.
+ */
+export async function loadActiveFieldConfig() {
+  if (_activeConfig) return _activeConfig;
+  if (_loadPromise) return _loadPromise;
+
+  _loadPromise = (async () => {
+    let fields = null;
+    let formId = null;
+    let versionId = null;
+
+    try {
+      const result = await fetchActiveVersion();
+      if (result) {
+        fields = result.fields;
+        formId = result.formId;
+        versionId = result.versionId;
+        await storage.set(CACHE_KEY, JSON.stringify({
+          fetchedAt: Date.now(),
+          fields,
+          formId,
+          versionId,
+        }));
+      }
+    } catch {
+      // Fall through to cache + defaults
+    }
+
+    if (!fields) {
+      try {
+        const cached = await storage.get(CACHE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed.fields)) {
+            fields = parsed.fields;
+            formId = parsed.formId;
+            versionId = parsed.versionId;
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    _activeFormId = formId || null;
+    _activeVersionId = versionId || null;
+    _activeConfig = mergeWithDefaults(fields || []);
+    return _activeConfig;
+  })();
+
+  return _loadPromise;
+}
+
+/**
+ * Two-step fetch: list visible forms → fetch the chosen form's current version.
+ * Returns flattened fields (across sections) plus formId / versionId.
+ */
+async function fetchActiveVersion() {
+  // Step 1: list visible forms
+  const visibleResp = await apiClient.get('/forms/visible');
+  const forms = Array.isArray(visibleResp) ? visibleResp : (visibleResp?.data ?? []);
+  if (!forms || forms.length === 0) return null;
+
+  // Pick the first form that has a deployed version. If multiple forms are
+  // scoped to this user, the backend should have already filtered to relevant
+  // ones via /forms/visible.
+  const form = forms.find((f) => f?.currentVersionId) || forms[0];
+  if (!form?.id || !form?.currentVersionId) return null;
+
+  // Step 2: fetch the version's schema. The backend documents the path as
+  // /forms/:id/versions/:n — we pass the UUID; if the server requires a numeric
+  // version number we'd need a follow-up call to list versions and look it up.
+  const versionResp = await apiClient.get(`/forms/${form.id}/versions/${form.currentVersionId}`);
+  const version = versionResp?.data ?? versionResp;
+  const schema = version?.schema;
+
+  if (!schema?.sections) return null;
+
+  // Flatten fields across all sections, normalising key → name
+  const fields = [];
+  for (const section of schema.sections) {
+    if (!Array.isArray(section?.fields)) continue;
+    for (const field of section.fields) {
+      const name = field.key || field.name;
+      if (!name) continue;
+      fields.push({
+        name,
+        type: field.type,
+        label_en: field.label_en,
+        label_ha: field.label_ha,
+        options: field.options,
+        voice: field.voice,
+        ocr: field.ocr,
+        section: section.key,
+      });
+    }
+  }
+
+  return {
+    fields,
+    formId: form.id,
+    versionId: form.currentVersionId,
+  };
+}
+
+/**
+ * Merge server field overrides on top of bundled defaults.
+ * Server `voice` / `ocr` values win over defaults. Fields present on the
+ * server but missing from defaults are included as-is.
+ */
+function mergeWithDefaults(serverFields) {
+  const merged = {};
+  for (const [name, def] of Object.entries(DEFAULT_FIELD_CONFIG)) {
+    merged[name] = { name, ...def };
+  }
+
+  for (const field of serverFields) {
+    const name = field.name;
+    if (!name) continue;
+    const base = merged[name] || { name, type: field.type || 'text' };
+    merged[name] = {
+      ...base,
+      type: field.type || base.type,
+      options: field.options || base.options,
+      voice: {
+        question_en: field.voice?.question_en ?? base.voice?.question_en ?? '',
+        question_ha: field.voice?.question_ha ?? base.voice?.question_ha ?? '',
+      },
+      ocr: {
+        patterns: field.ocr?.patterns ?? base.ocr?.patterns ?? [],
+        keywords: field.ocr?.keywords ?? base.ocr?.keywords ?? [],
+      },
+    };
+  }
+
+  return merged;
+}
+
+/**
+ * Synchronous access — returns whatever is currently loaded, or just the
+ * bundled defaults.
+ */
+export function getActiveFieldConfigSync() {
+  if (_activeConfig) return _activeConfig;
+  const merged = {};
+  for (const [name, def] of Object.entries(DEFAULT_FIELD_CONFIG)) {
+    merged[name] = { name, ...def };
+  }
+  return merged;
+}
+
+/**
+ * Get the currently loaded form version ID (UUID). Required for report submission.
+ * Returns null if no form has been loaded — caller should await loadActiveFieldConfig() first.
+ */
+export function getCurrentFormVersionId() {
+  return _activeVersionId;
+}
+
+/**
+ * Get the currently loaded form ID (UUID).
+ */
+export function getCurrentFormId() {
+  return _activeFormId;
+}
+
+/**
+ * Force a refresh — used after an admin saves the form.
+ */
+export function invalidateFieldConfig() {
+  _activeConfig = null;
+  _activeFormId = null;
+  _activeVersionId = null;
+  _loadPromise = null;
+}
+
+/**
+ * Get the OCR patterns for every configured field.
+ */
+export function getOcrPatterns(config) {
+  const cfg = config || getActiveFieldConfigSync();
+  const out = [];
+  for (const field of Object.values(cfg)) {
+    const sources = field.ocr?.patterns || [];
+    if (sources.length === 0) continue;
+    const patterns = [];
+    for (const src of sources) {
+      try {
+        patterns.push(new RegExp(src, 'i'));
+      } catch {
+        // Skip malformed regex
+      }
+    }
+    if (patterns.length > 0) {
+      out.push({ field: field.name, patterns, type: field.type });
+    }
+  }
+  return out;
+}
+
+/**
+ * Build the ordered Voice Assistant question script from the active config.
+ * Skips fields already populated in `formData`.
+ */
+export function buildVoiceQuestions(config, formData = {}) {
+  const cfg = config || getActiveFieldConfigSync();
+  const questions = [];
+  for (const field of Object.values(cfg)) {
+    if (!field.voice?.question_en) continue;
+    const existing = formData[field.name];
+    if (existing !== undefined && existing !== null && existing !== '' && existing !== 0) {
+      continue;
+    }
+    questions.push({
+      field: field.name,
+      type: field.type,
+      options: field.options,
+      en: field.voice.question_en,
+      ha: field.voice.question_ha,
+    });
+  }
+  return questions;
+}

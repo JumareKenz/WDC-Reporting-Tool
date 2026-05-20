@@ -1,0 +1,446 @@
+/**
+ * FormWizard Styles — KoboCollect-inspired Design
+ * Mobile-first, touch-optimized
+ */
+
+/* Container */
+.form-wizard {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  max-width: 800px;
+  margin: 0 auto;
+  padding-bottom: 80px; /* Space for fixed nav */
+}
+
+/* Progress Header */
+.form-wizard-progress {
+  background: white;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.form-wizard-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.form-wizard-step-count {
+  font-weight: 500;
+  color: #374151;
+}
+
+.form-wizard-progress-percent {
+  color: #6b7280;
+}
+
+.form-wizard-progress-bar {
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.form-wizard-progress-fill {
+  height: 100%;
+  background: #16a34a;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* Content Area */
+.form-wizard-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+/* Step */
+.form-wizard-step {
+  animation: slideIn 0.3s ease-out;
+}
+
+.form-wizard-step-next {
+  animation: slideInRight 0.3s ease-out;
+}
+
+.form-wizard-step-back {
+  animation: slideInLeft 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Step Header */
+.form-wizard-step-header {
+  margin-bottom: 24px;
+}
+
+.form-wizard-step-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 8px 0;
+}
+
+.form-wizard-step-description {
+  font-size: 16px;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Fields Area */
+.form-wizard-step-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Navigation Bar */
+.form-wizard-navigation {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-top: 1px solid #e5e7eb;
+  padding: 12px 20px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  z-index: 50;
+}
+
+.form-wizard-nav-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 800px;
+  margin: 0 auto;
+  gap: 16px;
+}
+
+.form-wizard-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 24px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  min-height: 52px;
+  touch-action: manipulation;
+}
+
+.form-wizard-nav-btn:disabled,
+.form-wizard-nav-btn.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.form-wizard-nav-back {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.form-wizard-nav-back:not(:disabled):hover {
+  background: #e5e7eb;
+}
+
+.form-wizard-nav-next {
+  background: #16a34a;
+  color: white;
+  margin-left: auto;
+}
+
+.form-wizard-nav-next:not(:disabled):hover {
+  background: #15803d;
+}
+
+.form-wizard-nav-next:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+/* Save Status */
+.form-wizard-save-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+/* Wizard Field */
+.wizard-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wizard-field-label {
+  font-size: 16px;
+  font-weight: 500;
+  color: #111827;
+}
+
+.wizard-field-required {
+  color: #dc2626;
+  margin-left: 2px;
+}
+
+.wizard-field-help {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.wizard-field-input {
+  margin-top: 4px;
+}
+
+.wizard-field-input input,
+.wizard-field-input select,
+.wizard-field-input textarea {
+  width: 100%;
+  padding: 14px 16px;
+  font-size: 16px;
+  border: 2px solid #d1d5db;
+  border-radius: 10px;
+  background: white;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  min-height: 52px;
+}
+
+.wizard-field-input input:focus,
+.wizard-field-input select:focus,
+.wizard-field-input textarea:focus {
+  outline: none;
+  border-color: #16a34a;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+}
+
+.wizard-field-input input[aria-invalid="true"],
+.wizard-field-input select[aria-invalid="true"],
+.wizard-field-input textarea[aria-invalid="true"] {
+  border-color: #dc2626;
+  background: #fef2f2;
+}
+
+/* Review Modal */
+.form-wizard-review-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.form-wizard-review-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.form-wizard-review-content {
+  position: relative;
+  background: white;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.form-wizard-review-header {
+  padding: 24px 24px 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.form-wizard-review-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 8px 0;
+}
+
+.form-wizard-review-subtitle {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.form-wizard-review-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 24px;
+}
+
+.form-wizard-review-section {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.form-wizard-review-section.has-errors {
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+.form-wizard-review-section-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s;
+}
+
+.form-wizard-review-section-header:hover {
+  background: #f9fafb;
+}
+
+.form-wizard-review-section-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 500;
+  color: #111827;
+}
+
+.form-wizard-review-step-number {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #16a34a;
+  color: white;
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.form-wizard-review-section-summary {
+  padding: 0 16px 16px 56px;
+}
+
+.form-wizard-review-errors {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: #fef2f2;
+  color: #dc2626;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.form-wizard-review-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px 24px;
+  border-top: 1px solid #e5e7eb;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .form-wizard-content {
+    padding: 16px;
+  }
+  
+  .form-wizard-step-title {
+    font-size: 20px;
+  }
+  
+  .form-wizard-nav-btn {
+    padding: 12px 16px;
+    font-size: 15px;
+  }
+  
+  .form-wizard-nav-btn span {
+    display: none;
+  }
+  
+  .form-wizard-save-status {
+    font-size: 12px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .form-wizard-progress,
+  .form-wizard-navigation {
+    background: #1f2937;
+    border-color: #374151;
+  }
+  
+  .form-wizard-step-title {
+    color: #f9fafb;
+  }
+  
+  .form-wizard-step-description {
+    color: #9ca3af;
+  }
+  
+  .wizard-field-label {
+    color: #f9fafb;
+  }
+  
+  .form-wizard-review-content {
+    background: #1f2937;
+  }
+  
+  .form-wizard-review-title {
+    color: #f9fafb;
+  }
+}
