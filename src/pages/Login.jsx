@@ -24,7 +24,14 @@ const VIEW = {
   CONSOLE: 'console',
 };
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://kadwdc.equily.ng/api/v1';
+const normalizeBaseUrl = (raw) => {
+  if (!raw) return 'https://kadwdc.equily.ng/api/v1';
+  const trimmed = raw.replace(/\/$/, '');
+  if (/\/api\/v\d+$/.test(trimmed)) return trimmed;
+  if (/\/api$/.test(trimmed)) return `${trimmed}/v1`;
+  return trimmed;
+};
+const BASE_URL = normalizeBaseUrl(import.meta.env.VITE_API_BASE_URL);
 
 const fetchJSON = async (path) => {
   const res = await fetch(`${BASE_URL}${path}`, {

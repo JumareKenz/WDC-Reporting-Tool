@@ -2,8 +2,16 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import axios from 'axios';
 import { STORAGE_KEYS } from '../utils/constants';
 
+const normalizeBaseUrl = (raw) => {
+  if (!raw) return null;
+  const trimmed = raw.replace(/\/$/, '');
+  if (/\/api\/v\d+$/.test(trimmed)) return trimmed;
+  if (/\/api$/.test(trimmed)) return `${trimmed}/v1`;
+  return trimmed;
+};
+
 const BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ||
+  normalizeBaseUrl(import.meta.env.VITE_API_BASE_URL) ||
   (import.meta.env.DEV ? 'http://localhost:8000/api/v1' : 'https://kadwdc.equily.ng/api/v1');
 
 // Activity tracking configuration
