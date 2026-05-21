@@ -109,8 +109,9 @@ const LGADashboard = () => {
   const submittedCount = wards.filter(w => w.submitted).length;
   const missingCount = missingReports.length;
   const submissionRate = totalWards > 0 ? Math.round((submittedCount / totalWards) * 100) : 0;
-  const reviewedCount = reports.filter(r => r.status === 'REVIEWED').length;
-  const flaggedCount = reports.filter(r => r.status === 'FLAGGED').length;
+  const approvedCount = reports.filter(r => r.status === 'approved' || r.status === 'REVIEWED').length;
+  const returnedCount = reports.filter(r => r.status === 'returned' || r.status === 'FLAGGED' || r.status === 'DECLINED').length;
+  const inReviewCount = reports.filter(r => r.status === 'in_review').length;
 
   // Filter reports
   const filteredReports = reports.filter(r => {
@@ -122,9 +123,9 @@ const LGADashboard = () => {
 
   // Chart data
   const statusDistribution = [
-    { name: 'Submitted', value: submittedCount - reviewedCount - flaggedCount, color: '#3b82f6' },
-    { name: 'Reviewed', value: reviewedCount, color: '#16a34a' },
-    { name: 'Flagged', value: flaggedCount, color: '#f59e0b' },
+    { name: 'Approved', value: approvedCount, color: '#16a34a' },
+    { name: 'In Review', value: inReviewCount, color: '#3b82f6' },
+    { name: 'Returned', value: returnedCount, color: '#f59e0b' },
     { name: 'Missing', value: missingCount, color: '#ef4444' },
   ].filter(item => item.value > 0);
 
@@ -163,15 +164,32 @@ const LGADashboard = () => {
     }
   };
 
-  const handleReviewReport = async (status) => {
+  const handleReviewReport = async (action) => {
     if (!selectedReport) return;
+
+    // Validate notes for reject action
+    if (action === 'return' && !reviewerNotes.trim()) {
+      setAlertMessage({ type: 'error', text: 'Please provide notes when returning a report' });
+      return;
+    }
 
     try {
       await reviewMutation.mutateAsync({
         reportId: selectedReport.id,
-        data: { status, reviewer_notes: reviewerNotes },
+        data: {
+          action,
+          status: action === 'approve' ? 'approved' : action === 'return' ? 'returned' : 'in_review',
+          reviewer_notes: reviewerNotes.trim() || undefined,
+        },
       });
-      setAlertMessage({ type: 'success', text: `Report marked as ${STATUS_LABELS[status]}` });
+
+      const actionLabels = {
+        approve: 'approved',
+        return: 'returned to secretary for revision',
+        in_review: 'marked as in review',
+      };
+
+      setAlertMessage({ type: 'success', text: `Report ${actionLabels[action]}` });
       setShowReviewModal(false);
       setSelectedReport(null);
       setReviewerNotes('');
@@ -231,11 +249,11 @@ const LGADashboard = () => {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-white">
-                LGA Alliance Chairman Dashboard
+                {lgaName} LGA Coordinator Dashboard
               </h1>
               <div className="flex items-center gap-3 mt-1">
                 <p className="text-sm text-blue-200">
-                  {lgaName} • {submissionInfo.month_name}
+                  Review submissions, monitor performance • {submissionInfo.month_name}
                 </p>
                 <DataFreshness
                   dataUpdatedAt={latestUpdatedAt}
@@ -332,20 +350,20 @@ const LGADashboard = () => {
             className="card-lift"
           />
           <IconCard
-            icon={Activity}
-            iconColor="info"
-            title="Reviewed"
-            value={reviewedCount}
-            subtitle="Reports reviewed"
+            icon={CheckCircle}
+            iconColor="success"
+            title="Approved"
+            value={approvedCount}
+            subtitle="Reports approved"
             variant="glass"
             className="card-lift"
           />
           <IconCard
-            icon={FileText}
-            iconColor="neutral"
-            title="Flagged"
-            value={flaggedCount}
-            subtitle="Need attention"
+            icon={AlertTriangle}
+            iconColor="warning"
+            title="Returned"
+            value={returnedCount}
+            subtitle="Need revision"
             variant="glass"
             className="card-lift"
           />
@@ -515,8 +533,9 @@ const LGADashboard = () => {
                   >
                     <option value="all">All Status</option>
                     <option value={REPORT_STATUS.SUBMITTED}>Submitted</option>
-                    <option value={REPORT_STATUS.REVIEWED}>Reviewed</option>
-                    <option value={REPORT_STATUS.FLAGGED}>Flagged</option>
+                    <option value={REPORT_STATUS.IN_REVIEW}>In Review</option>
+                    <option value={REPORT_STATUS.APPROVED}>Approved</option>
+                    <option value={REPORT_STATUS.RETURNED}>Returned</option>
                   </select>
                 </div>
               }
@@ -741,87 +760,137 @@ const LGADashboard = () => {
           setSelectedReport(null);
           setReviewerNotes('');
         }}
-        title="Review Report"
-        size="lg"
+        title="Review Ward Report"
+        size="xl"
       >
         {selectedReport && (
-          <div className="space-y-4">
+          <div className="space-y-6">
+            {/* Report Header */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="p-3 bg-neutral-50 rounded-lg">
-                <p className="text-sm text-neutral-500">Ward</p>
-                <p className="font-medium text-neutral-900">{selectedReport.ward_name}</p>
+              <div className="p-4 bg-neutral-50 rounded-lg">
+                <p className="text-sm text-neutral-500 mb-1">Ward</p>
+                <p className="font-semibold text-neutral-900 text-lg">{selectedReport.ward_name}</p>
               </div>
-              <div className="p-3 bg-neutral-50 rounded-lg">
-                <p className="text-sm text-neutral-500">Month</p>
-                <p className="font-medium text-neutral-900">{formatMonth(selectedReport.report_month)}</p>
-              </div>
-              <div className="p-3 bg-green-50 rounded-lg">
-                <p className="text-sm text-green-600">Meetings Held</p>
-                <p className="font-bold text-2xl text-green-700">{selectedReport.meetings_held || 0}</p>
-              </div>
-              <div className="p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-600">Attendees</p>
-                <p className="font-bold text-2xl text-blue-700">{selectedReport.attendees_count || 0}</p>
+              <div className="p-4 bg-neutral-50 rounded-lg">
+                <p className="text-sm text-neutral-500 mb-1">Report Month</p>
+                <p className="font-semibold text-neutral-900 text-lg">{formatMonth(selectedReport.report_month)}</p>
               </div>
             </div>
 
-            {selectedReport.issues_identified && (
-              <div>
-                <p className="text-sm text-neutral-500 mb-1">Issues Identified</p>
-                <p className="text-sm bg-neutral-50 p-3 rounded-lg">{selectedReport.issues_identified}</p>
+            {/* Current Status */}
+            <div className="p-4 bg-blue-50 border-l-4 border-blue-500 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-blue-600 font-medium">Current Status</p>
+                  <p className="text-lg font-semibold text-blue-900 mt-1">
+                    {STATUS_LABELS[selectedReport.status] || 'Unknown'}
+                  </p>
+                </div>
+                <span className={`px-4 py-2 text-sm font-medium rounded-full ${getStatusColor(selectedReport.status)}`}>
+                  {STATUS_LABELS[selectedReport.status]}
+                </span>
               </div>
-            )}
+            </div>
 
-            {selectedReport.actions_taken && (
-              <div>
-                <p className="text-sm text-neutral-500 mb-1">Actions Taken</p>
-                <p className="text-sm bg-neutral-50 p-3 rounded-lg">{selectedReport.actions_taken}</p>
+            {/* Key Metrics */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200">
+                <p className="text-sm text-green-600 font-medium mb-1">Meetings Held</p>
+                <p className="font-bold text-3xl text-green-700">{selectedReport.meetings_held || 0}</p>
               </div>
-            )}
-
-            {selectedReport.challenges && (
-              <div>
-                <p className="text-sm text-neutral-500 mb-1">Challenges</p>
-                <p className="text-sm bg-yellow-50 p-3 rounded-lg text-yellow-800">{selectedReport.challenges}</p>
+              <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200">
+                <p className="text-sm text-blue-600 font-medium mb-1">Total Attendees</p>
+                <p className="font-bold text-3xl text-blue-700">{selectedReport.attendees_count || 0}</p>
               </div>
-            )}
+            </div>
 
-            <div className="pt-2">
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
+            {/* Report Details */}
+            <div className="space-y-4 border-t border-neutral-200 pt-4">
+              <h3 className="text-sm font-semibold text-neutral-700 uppercase tracking-wide">Report Details</h3>
+
+              {selectedReport.issues_identified && (
+                <div>
+                  <p className="text-sm font-medium text-neutral-700 mb-2">Issues Identified</p>
+                  <div className="bg-neutral-50 p-4 rounded-lg border border-neutral-200">
+                    <p className="text-sm text-neutral-900 whitespace-pre-wrap">{selectedReport.issues_identified}</p>
+                  </div>
+                </div>
+              )}
+
+              {selectedReport.actions_taken && (
+                <div>
+                  <p className="text-sm font-medium text-neutral-700 mb-2">Actions Taken</p>
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <p className="text-sm text-blue-900 whitespace-pre-wrap">{selectedReport.actions_taken}</p>
+                  </div>
+                </div>
+              )}
+
+              {selectedReport.challenges && (
+                <div>
+                  <p className="text-sm font-medium text-neutral-700 mb-2">Challenges Faced</p>
+                  <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                    <p className="text-sm text-yellow-900 whitespace-pre-wrap">{selectedReport.challenges}</p>
+                  </div>
+                </div>
+              )}
+
+              {selectedReport.support_required && (
+                <div>
+                  <p className="text-sm font-medium text-neutral-700 mb-2">Support Required</p>
+                  <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                    <p className="text-sm text-orange-900 whitespace-pre-wrap">{selectedReport.support_required}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Reviewer Notes */}
+            <div className="border-t border-neutral-200 pt-4">
+              <label className="block text-sm font-semibold text-neutral-700 mb-2">
                 Reviewer Notes / Feedback
+                <span className="text-red-500 ml-1">*</span>
+                <span className="text-xs font-normal text-neutral-500 ml-2">(Required when returning report)</span>
               </label>
               <textarea
                 value={reviewerNotes}
                 onChange={(e) => setReviewerNotes(e.target.value)}
-                placeholder="Add comments, feedback, or reasons for flagging..."
-                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 text-sm"
-                rows={3}
+                placeholder="Provide feedback, comments, or reasons for returning the report..."
+                className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 text-sm bg-white text-gray-900"
+                rows={4}
               />
+              <p className="text-xs text-neutral-500 mt-1">
+                {reviewerNotes.length}/2000 characters
+              </p>
             </div>
 
+            {/* Action Buttons */}
             <div className="flex gap-3 pt-4 border-t border-neutral-200">
               <Button
                 variant="success"
                 icon={CheckCircle}
-                onClick={() => handleReviewReport(REPORT_STATUS.REVIEWED)}
+                onClick={() => handleReviewReport('approve')}
                 loading={reviewMutation.isPending}
-                className="flex-1"
+                className="flex-1 shadow-lg"
               >
-                Mark Reviewed
+                Approve Report
               </Button>
               <Button
                 variant="danger"
                 icon={AlertTriangle}
-                onClick={() => handleReviewReport(REPORT_STATUS.FLAGGED)}
+                onClick={() => handleReviewReport('return')}
                 loading={reviewMutation.isPending}
-                className="flex-1"
+                disabled={!reviewerNotes.trim()}
+                className="flex-1 shadow-lg"
               >
-                Flag Report
+                Return for Revision
               </Button>
             </div>
+            <p className="text-xs text-center text-neutral-500">
+              Approving the report will move it to the state level. Returning it will send it back to the secretary with your feedback.
+            </p>
           </div>
-        )
-        }
+        )}
       </Modal>
 
       {/* Notify Modal */}
