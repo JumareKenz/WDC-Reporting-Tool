@@ -1,267 +1,201 @@
-import apiClient, { uploadFile, downloadFile, buildQueryString } from './client';
+import apiClient, { uploadFile, buildQueryString } from './client';
 import { API_ENDPOINTS } from '../utils/constants';
 
 /**
- * Submit a new report
- * @param {Object} data - Report data including voice note
- * @returns {Promise} Response with report data
+ * Reports API — backend uses an append-only op-log model.
+ * - Create a draft with POST /reports
+ * - Append field updates with POST /reports/:id/fields (field_set ops)
+ * - State transitions are explicit endpoints (submit, open-review, approve, return, edit-returned)
+ * - All payloads are camelCase. forbidNonWhitelisted: true → no extra fields.
  */
-export const submitReport = async (data) => {
-  // Use uploadFile helper for multipart/form-data
-  return uploadFile(API_ENDPOINTS.REPORTS, data);
-};
 
-/**
- * Get reports for current user's ward
- * @param {Object} params - Query parameters (limit, offset)
- * @returns {Promise} Response with reports array
- */
+export const createReport = async (data = {}) =>
+  apiClient.post(API_ENDPOINTS.REPORTS, data);
+
 export const getReports = async (params = {}) => {
   const queryString = buildQueryString(params);
   return apiClient.get(`${API_ENDPOINTS.REPORTS}${queryString}`);
 };
 
-/**
- * Get report by ID
- * @param {number} reportId - Report ID
- * @returns {Promise} Response with report details
- */
-export const getReportById = async (reportId) => {
-  return apiClient.get(API_ENDPOINTS.REPORT_BY_ID(reportId));
-};
+export const getReportById = async (reportId) =>
+  apiClient.get(API_ENDPOINTS.REPORT_BY_ID(reportId));
+
+export const getReportOps = async (reportId) =>
+  apiClient.get(API_ENDPOINTS.REPORT_OPS(reportId));
+
+export const appendFieldOp = async (reportId, fields) =>
+  apiClient.post(API_ENDPOINTS.REPORT_FIELDS(reportId), { fields });
+
+export const submitReport = async (reportId) =>
+  apiClient.post(API_ENDPOINTS.REPORT_SUBMIT(reportId));
+
+export const openReview = async (reportId) =>
+  apiClient.post(API_ENDPOINTS.REPORT_OPEN_REVIEW(reportId));
+
+export const approveReport = async (reportId, notes = undefined) =>
+  apiClient.post(API_ENDPOINTS.REPORT_APPROVE(reportId), notes ? { notes } : {});
+
+export const returnReport = async (reportId, notes = '') =>
+  apiClient.post(API_ENDPOINTS.REPORT_RETURN(reportId), { notes });
+
+export const editReturned = async (reportId) =>
+  apiClient.post(API_ENDPOINTS.REPORT_EDIT_RETURNED(reportId));
+
+export const sealDue = async () =>
+  apiClient.post(API_ENDPOINTS.REPORTS_SEAL_DUE);
 
 /**
- * Update an existing report
- * @param {number} reportId - Report ID
- * @param {Object} data - Updated report data
- * @returns {Promise} Response with updated report
+ * Submit a brand-new report by creating a draft, appending all fields,
+ * uploading any voice notes/attachments, and submitting it in one go.
+ * Returns the final report.
  */
-export const updateReport = async (reportId, data) => {
-  return apiClient.put(API_ENDPOINTS.REPORT_BY_ID(reportId), data);
-};
-
-/**
- * Check if report has been submitted for a given month
- * @param {string} month - Month in YYYY-MM format
- * @returns {Promise} Response with submission status
- */
-export const checkSubmitted = async (month) => {
-  const queryString = buildQueryString({ month });
-  return apiClient.get(`${API_ENDPOINTS.CHECK_SUBMITTED}${queryString}`);
-};
-
-/**
- * Get submission info for current period
- * @returns {Promise} Response with target month, period info, and submission status
- */
-export const getSubmissionInfo = async (reportMonth = null) => {
-  const queryString = reportMonth ? buildQueryString({ report_month: reportMonth }) : '';
-  return apiClient.get(`/reports/submission-info${queryString}`, {
-    _silentError: true, // Don't show "offline" toast — caller handles errors gracefully
-  });
-};
-
-/**
- * Review a report (LGA Coordinator/State Official)
- * @param {number} reportId - Report ID
- * @param {string} status - New status (REVIEWED, FLAGGED)
- * @returns {Promise} Response with updated report
- */
-export const reviewReport = async (reportId, status) => {
-  return apiClient.patch(API_ENDPOINTS.REVIEW_REPORT(reportId), { status });
-};
-
-/**
- * Download voice note
- * @param {number} voiceNoteId - Voice note ID
- * @param {string} filename - Optional filename
- * @returns {Promise} Download result
- */
-export const downloadVoiceNote = async (voiceNoteId, filename = null) => {
-  return downloadFile(API_ENDPOINTS.VOICE_NOTE_DOWNLOAD(voiceNoteId), filename);
-};
-
-/**
- * Delete voice note
- * @param {number} voiceNoteId - Voice note ID
- * @returns {Promise} Response
- */
-export const deleteVoiceNote = async (voiceNoteId) => {
-  return apiClient.delete(API_ENDPOINTS.VOICE_NOTE_DELETE(voiceNoteId));
-};
-
-/**
- * Get AI suggestions for a report's voice note
- * @param {number} reportId - Report ID
- * @returns {Promise} Response with transcription status and suggestions
- */
-export const getAISuggestions = async (reportId) => {
-  return apiClient.get(API_ENDPOINTS.AI_SUGGESTIONS(reportId));
-};
-
-/**
- * Accept selected AI suggestions and apply to report
- * @param {number} reportId - Report ID
- * @param {string[]} fields - Array of field names to accept
- * @returns {Promise} Response with update confirmation
- */
-export const acceptAISuggestions = async (reportId, fields) => {
-  return apiClient.post(API_ENDPOINTS.AI_SUGGESTIONS_ACCEPT(reportId), { fields });
-};
-
-/**
- * Save a draft report
- * @param {Object} data - Draft report data including report_month and report_data
- * @returns {Promise} Response with saved draft data
- */
-export const saveDraft = async (data) => {
-  return uploadFile('/reports/draft', data);
-};
-
-/**
- * Get existing draft for a specific month
- * @param {string} reportMonth - Month in YYYY-MM format (optional, defaults to current month)
- * @param {number} timeoutMs - Timeout in milliseconds (default: 10000)
- * @returns {Promise} Response with draft data if exists
- */
-export const getExistingDraft = async (reportMonth = null, timeoutMs = 10000) => {
-  const queryString = buildQueryString(reportMonth ? { report_month: reportMonth } : {});
-  
-  // Create an abort controller for timeout
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-  
-  try {
-    const response = await apiClient.get(`/reports/draft/existing${queryString}`, {
-      signal: controller.signal,
-      timeout: timeoutMs,
-      _silentError: true, // Don't show "offline" toast for background draft loading
-    });
-    clearTimeout(timeoutId);
-    return response;
-  } catch (error) {
-    clearTimeout(timeoutId);
-    
-    // Enhance error message for timeout
-    if (error.name === 'AbortError' || error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-      const timeoutError = new Error('Request timed out while loading draft. Please try again.');
-      timeoutError.isTimeout = true;
-      timeoutError.isNetworkError = true;
-      throw timeoutError;
-    }
-    
-    // Handle 404 - endpoint not found
-    if (error.status === 404) {
-      const notFoundError = new Error('Draft service is temporarily unavailable. Please try again later.');
-      notFoundError.status = 404;
-      notFoundError.isNetworkError = false;
-      throw notFoundError;
-    }
-    
-    throw error;
+export const submitNewReport = async ({ formId, formVersion, fields = {}, attachments = [], voiceNotes = [] } = {}) => {
+  const draft = await createReport({ formId, formVersion });
+  const reportId = draft?.id ?? draft?.report?.id;
+  if (!reportId) {
+    throw new Error('Failed to create draft report');
   }
+  if (Object.keys(fields).length) {
+    await appendFieldOp(reportId, fields);
+  }
+  for (const att of attachments) {
+    await uploadAttachment(reportId, att);
+  }
+  for (const vn of voiceNotes) {
+    await uploadAttachment(reportId, { ...vn, kind: 'voice_note' });
+  }
+  return submitReport(reportId);
 };
 
 /**
- * Delete a draft report
- * @param {number} draftId - Draft report ID
- * @returns {Promise} Response with deletion confirmation
+ * Upload an attachment (photo, voice note, etc) tied to a report.
+ * Expects either a File/Blob in `file`, or an object with { file, kind, fieldName }.
  */
-export const deleteDraft = async (draftId) => {
-  return apiClient.delete(`/reports/draft/${draftId}`);
+export const uploadAttachment = async (reportId, payload) => {
+  const data = payload instanceof File || payload instanceof Blob
+    ? { file: payload, reportId }
+    : { reportId, ...payload };
+  return uploadFile(API_ENDPOINTS.ATTACHMENTS_UPLOAD, data);
 };
 
-/**
- * Get all submitted months and reports for the current user (batch)
- * @returns {Promise} Response with submitted_months array and reports array
- */
+export const listAttachments = async (reportId) =>
+  apiClient.get(API_ENDPOINTS.ATTACHMENTS_BY_REPORT(reportId));
+
+// ---------------------------------------------------------------------------
+// Legacy shims — these mirror older call signatures (used across the UI) but
+// route to the current backend contract. They return shapes that callers
+// expect, and silently degrade for features the new backend does not yet
+// support (transcription, AI suggestions). Remove once callers migrate.
+// ---------------------------------------------------------------------------
+
+const isVoiceNote = (att) =>
+  att?.kind === 'voice_note' ||
+  /^audio\//.test(att?.mimeType || att?.mime_type || '') ||
+  /\.(mp3|m4a|wav|ogg|webm)$/i.test(att?.url || att?.fileName || att?.file_name || '');
+
 export const getMySubmissions = async () => {
-  console.log('API: getMySubmissions called');
+  const reports = await getReports();
+  const list = Array.isArray(reports) ? reports : reports?.reports || [];
+  const submittedMonths = [...new Set(list.map((r) => r.reportMonth || r.report_month).filter(Boolean))];
+  return { reports: list, submitted_months: submittedMonths, submittedMonths };
+};
+
+export const getSubmissionInfo = async (reportMonth = null) => {
   try {
-    const result = await apiClient.get('/reports/my-submissions');
-    console.log('API: getMySubmissions success:', result);
-    return result;
-  } catch (error) {
-    console.error('API: getMySubmissions error:', error.message, error.status, error.details);
-    throw error;
+    const params = reportMonth ? { reportMonth } : {};
+    const reports = await getReports(params);
+    const list = Array.isArray(reports) ? reports : reports?.reports || [];
+    const match = reportMonth ? list.find((r) => (r.reportMonth || r.report_month) === reportMonth) : list[0];
+    return {
+      submitted: !!match && match.state !== 'draft',
+      report: match || null,
+      reportMonth: reportMonth || match?.reportMonth || match?.report_month || null,
+    };
+  } catch {
+    return { submitted: false, report: null, reportMonth };
   }
 };
 
-/**
- * Upload attendance photo for a report
- * Backend expects the photo as part of a PUT /reports/{id} with multipart form-data.
- * @param {number} reportId - Report ID
- * @param {File} file - Image file to upload
- * @returns {Promise} Response with updated report (includes attendance_photo_url)
- */
-export const uploadAttendancePhoto = async (reportId, file) => {
-  const formData = new FormData();
-  formData.append('attendance_photo', file);
-
-  return apiClient.put(`/reports/${reportId}`, formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  });
+export const checkSubmitted = async (month) => {
+  const info = await getSubmissionInfo(month);
+  return { submitted: info.submitted, month };
 };
 
-/**
- * Upload a voice note for a specific field in a report
- * @param {number} reportId - Report ID
- * @param {string} fieldName - Field name/key
- * @param {Blob} audioBlob - Audio blob to upload
- * @param {string} mimeType - MIME type of the audio (e.g., 'audio/webm')
- * @returns {Promise} Response with { id, field_name, status, audio_url }
- */
-export const uploadVoiceNote = async (reportId, fieldName, audioBlob, mimeType) => {
-  const formData = new FormData();
-  formData.append('field_name', fieldName);
-  
-  // Determine file extension from mimeType
-  const extension = mimeType === 'audio/webm' ? 'webm' : 
-                    mimeType === 'audio/mp4' ? 'mp4' : 
-                    mimeType === 'audio/ogg' ? 'ogg' : 'webm';
-  
-  const file = new File([audioBlob], `voice_${fieldName}.${extension}`, { type: mimeType });
-  formData.append('file', file);
-  
-  return apiClient.post(`/reports/${reportId}/voice-notes`, formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  });
+export const getExistingDraft = async (reportMonth = null) => {
+  try {
+    const params = { state: 'draft' };
+    if (reportMonth) params.reportMonth = reportMonth;
+    const reports = await getReports(params);
+    const list = Array.isArray(reports) ? reports : reports?.reports || [];
+    return list[0] || null;
+  } catch {
+    return null;
+  }
 };
 
-/**
- * Fetch all voice notes for a report
- * @param {number} reportId - Report ID
- * @returns {Promise} Response with array of voice note objects
- */
+export const saveDraft = async (data = {}) => {
+  const { reportId, id, ...fields } = data;
+  if (reportId || id) {
+    await appendFieldOp(reportId || id, fields);
+    return getReportById(reportId || id);
+  }
+  const draft = await createReport({ formId: data.formId, formVersion: data.formVersion });
+  const newId = draft?.id ?? draft?.report?.id;
+  if (newId && Object.keys(fields).length) {
+    await appendFieldOp(newId, fields);
+  }
+  return draft;
+};
+
+export const deleteDraft = async (_draftId) => {
+  // Backend has no delete-draft endpoint; drafts are sealed by the backend on schedule.
+  return { ok: true };
+};
+
+export const updateReport = async (reportId, data) => {
+  await appendFieldOp(reportId, data);
+  return getReportById(reportId);
+};
+
+export const reviewReport = async (reportId, status, notes = '') => {
+  if (status === 'approved' || status === 'REVIEWED') return approveReport(reportId, notes);
+  if (status === 'returned' || status === 'FLAGGED' || status === 'DECLINED') return returnReport(reportId, notes);
+  if (status === 'in_review') return openReview(reportId);
+  return getReportById(reportId);
+};
+
+export const uploadAttendancePhoto = async (reportId, file) =>
+  uploadAttachment(reportId, { file, kind: 'attendance_photo' });
+
+export const uploadVoiceNote = async (reportId, fieldName, audioBlob, mimeType = 'audio/webm') => {
+  const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
+  const file = new File([audioBlob], `voice_${fieldName}.${ext}`, { type: mimeType });
+  return uploadAttachment(reportId, { file, kind: 'voice_note', fieldName });
+};
+
 export const fetchVoiceNotes = async (reportId) => {
-  return apiClient.get(`/reports/${reportId}/voice-notes`);
+  const list = await listAttachments(reportId);
+  const arr = Array.isArray(list) ? list : list?.attachments || [];
+  return arr.filter(isVoiceNote);
 };
 
-/**
- * Trigger transcription for a voice note
- * @param {number} voiceNoteId - Voice note ID
- * @returns {Promise} Response with { id, transcription_text, status }
- */
-export const triggerTranscription = async (voiceNoteId) => {
-  return apiClient.post(`/voice-notes/${voiceNoteId}/transcribe`);
+export const fetchVoiceNoteAudio = async (_voiceNoteId) => {
+  // Attachment download is direct via the URL returned by listAttachments; no separate audio endpoint.
+  return null;
 };
 
-/**
- * Fetch voice note audio as blob URL
- * @param {number} voiceNoteId - Voice note ID
- * @returns {Promise} Blob URL for audio playback
- */
-export const fetchVoiceNoteAudio = async (voiceNoteId) => {
-  const response = await apiClient.get(`/voice-notes/${voiceNoteId}/audio`, {
-    responseType: 'blob',
-  });
-  
-  // The response interceptor returns response.data, so we need to handle the raw response
-  // We'll use the apiClient's underlying axios instance for blob requests
-  const blob = response instanceof Blob ? response : response.data;
-  return URL.createObjectURL(blob);
+export const downloadVoiceNote = async (_voiceNoteId) => {
+  return null;
 };
+
+export const deleteVoiceNote = async (_voiceNoteId) => {
+  return { ok: true };
+};
+
+export const triggerTranscription = async (_voiceNoteId) => {
+  return { status: 'unsupported' };
+};
+
+export const getAISuggestions = async (_reportId) => ({ suggestions: [], status: 'unsupported' });
+export const acceptAISuggestions = async (_reportId, _fields) => ({ ok: false, status: 'unsupported' });
+

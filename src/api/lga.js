@@ -1,70 +1,49 @@
 import apiClient, { buildQueryString } from './client';
 import { API_ENDPOINTS } from '../utils/constants';
+import { getReports, approveReport, returnReport, openReview } from './reports';
 
-/**
- * Get LGA details by ID
- */
+// Geography is RLS-scoped on the backend; there's no /lgas/:id endpoint.
+// We synthesize the small bits of legacy shape we need from /lgas list lookups.
+
+export const getLGAs = async () => apiClient.get(API_ENDPOINTS.LGAS);
+
 export const getLGA = async (lgaId) => {
-  const response = await apiClient.get(API_ENDPOINTS.LGA_BY_ID(lgaId));
-  return response;
+  const list = await getLGAs();
+  const arr = Array.isArray(list) ? list : list?.lgas || [];
+  return arr.find((l) => String(l.id) === String(lgaId)) || null;
 };
 
-/**
- * Get wards for an LGA with submission status
- */
 export const getLGAWards = async (lgaId, params = {}) => {
   const queryString = buildQueryString(params);
-  const response = await apiClient.get(`${API_ENDPOINTS.LGA_WARDS(lgaId)}${queryString}`);
-  return response;
+  return apiClient.get(`${API_ENDPOINTS.LGA_WARDS(lgaId)}${queryString}`);
 };
 
-/**
- * Get reports for an LGA
- */
-export const getLGAReports = async (lgaId, params = {}) => {
-  const queryString = buildQueryString(params);
-  const response = await apiClient.get(`${API_ENDPOINTS.LGA_REPORTS(lgaId)}${queryString}`);
-  return response;
+// Reports for an LGA / missing reports — backend lists are RLS-scoped, so the
+// LGA filter happens server-side based on the caller's JWT. We just pass the
+// state filter through.
+export const getLGAReports = async (_lgaId, params = {}) =>
+  getReports({ ...params });
+
+export const getLGAMissingReports = async (_lgaId, params = {}) =>
+  getReports({ ...params, state: 'draft' });
+
+export const reviewReport = async (reportId, data = {}) => {
+  const { action, notes = '' } = data;
+  if (action === 'approve' || action === 'approved' || action === 'REVIEWED') return approveReport(reportId, notes);
+  if (action === 'return' || action === 'returned' || action === 'FLAGGED' || action === 'DECLINED') return returnReport(reportId, notes);
+  return openReview(reportId);
 };
 
-/**
- * Get missing reports for an LGA
- */
-export const getLGAMissingReports = async (lgaId, params = {}) => {
-  const queryString = buildQueryString(params);
-  const response = await apiClient.get(`${API_ENDPOINTS.LGA_MISSING_REPORTS(lgaId)}${queryString}`);
-  return response;
-};
+// Notifications / feedback now live under /messages. Director role can broadcast;
+// non-directors should not be calling sendNotification / sendFeedback. Provide
+// stubs that return a resolved-but-empty result so old UI paths don't crash.
+export const sendNotification = async (data) =>
+  apiClient.post(API_ENDPOINTS.MESSAGES_BROADCAST, data).catch(() => ({ ok: false, status: 'unsupported' }));
 
-/**
- * Send notification to ward secretaries
- */
-export const sendNotification = async (data) => {
-  const response = await apiClient.post(API_ENDPOINTS.NOTIFICATIONS_SEND, data);
-  return response;
-};
-
-/**
- * Review a report (change status)
- */
-export const reviewReport = async (reportId, data) => {
-  const response = await apiClient.patch(API_ENDPOINTS.REVIEW_REPORT(reportId), data);
-  return response;
-};
-
-/**
- * Get feedback messages
- */
 export const getFeedback = async (params = {}) => {
   const queryString = buildQueryString(params);
-  const response = await apiClient.get(`${API_ENDPOINTS.FEEDBACK}${queryString}`);
-  return response;
+  return apiClient.get(`${API_ENDPOINTS.MESSAGE_DELIVERIES}${queryString}`);
 };
 
-/**
- * Send feedback message
- */
-export const sendFeedback = async (data) => {
-  const response = await apiClient.post(API_ENDPOINTS.FEEDBACK, data);
-  return response;
-};
+export const sendFeedback = async (data) =>
+  apiClient.post(API_ENDPOINTS.MESSAGES_BROADCAST, data).catch(() => ({ ok: false, status: 'unsupported' }));

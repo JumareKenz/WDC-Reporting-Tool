@@ -1,72 +1,72 @@
-import apiClient, { buildQueryString } from './client';
+import apiClient from './client';
 import { API_ENDPOINTS } from '../utils/constants';
+import { getReports } from './reports';
 
-/**
- * Get state-wide overview statistics
- */
+// Backend has no dedicated /analytics/* routes yet. We compute lightweight
+// aggregates client-side from /reports (RLS-scoped) so the state dashboard
+// can still render. Heavier analytics (AI report generation, monthly report,
+// service-delivery breakdowns) gracefully degrade to empty results so the UI
+// shows "no data" instead of crashing.
+
+const ZERO_OVERVIEW = {
+  totalReports: 0,
+  submitted: 0,
+  inReview: 0,
+  approved: 0,
+  returned: 0,
+  byMonth: [],
+};
+
+const summarize = (list) => {
+  const arr = Array.isArray(list) ? list : list?.reports || [];
+  const overview = { ...ZERO_OVERVIEW, totalReports: arr.length };
+  for (const r of arr) {
+    const state = r.state || r.status;
+    if (state === 'submitted') overview.submitted++;
+    else if (state === 'in_review') overview.inReview++;
+    else if (state === 'approved' || state === 'sealed') overview.approved++;
+    else if (state === 'returned') overview.returned++;
+  }
+  return overview;
+};
+
 export const getOverview = async (params = {}) => {
-  const queryString = buildQueryString(params);
-  const response = await apiClient.get(`${API_ENDPOINTS.ANALYTICS_OVERVIEW}${queryString}`);
-  return response?.data || response;
+  try {
+    const list = await getReports(params);
+    return summarize(list);
+  } catch {
+    return ZERO_OVERVIEW;
+  }
 };
 
-/**
- * Get LGA comparison data
- */
-export const getLGAComparison = async (params = {}) => {
-  const queryString = buildQueryString(params);
-  const response = await apiClient.get(`${API_ENDPOINTS.ANALYTICS_LGA_COMPARISON}${queryString}`);
-  return response?.data || response;
+export const getLGAComparison = async () => {
+  try {
+    const list = await getReports();
+    const arr = Array.isArray(list) ? list : list?.reports || [];
+    const byLga = new Map();
+    for (const r of arr) {
+      const lgaId = r.lgaId || r.lga_id || r.lga?.id;
+      if (!lgaId) continue;
+      if (!byLga.has(lgaId)) byLga.set(lgaId, { lgaId, total: 0, approved: 0 });
+      const row = byLga.get(lgaId);
+      row.total++;
+      if (r.state === 'approved' || r.state === 'sealed') row.approved++;
+    }
+    return Array.from(byLga.values());
+  } catch {
+    return [];
+  }
 };
 
-/**
- * Get submission trends over time
- */
-export const getTrends = async (params = {}) => {
-  const queryString = buildQueryString(params);
-  const response = await apiClient.get(`${API_ENDPOINTS.ANALYTICS_TRENDS}${queryString}`);
-  return response?.data || response;
-};
+export const getTrends = async () => [];
+export const generateAIReport = async () => ({ report: '', status: 'unsupported' });
+export const getServiceDelivery = async () => [];
+export const generateMonthlyReport = async () => ({ report: '', status: 'unsupported' });
 
-/**
- * Generate AI-powered report
- */
-export const generateAIReport = async (data = {}) => {
-  // Longer timeout for LLM-powered report generation
-  const response = await apiClient.post(API_ENDPOINTS.ANALYTICS_AI_REPORT, data, { timeout: 90000 });
-  return response?.data || response;
-};
+export const getLGAs = async () => apiClient.get(API_ENDPOINTS.LGAS);
 
-/**
- * Get aggregated service delivery data
- */
-export const getServiceDelivery = async (params = {}) => {
-  const queryString = buildQueryString(params);
-  const response = await apiClient.get(`${API_ENDPOINTS.ANALYTICS_SERVICE_DELIVERY}${queryString}`);
-  return response?.data || response;
-};
-
-/**
- * Generate comprehensive monthly report
- */
-export const generateMonthlyReport = async (data = {}) => {
-  const response = await apiClient.post(API_ENDPOINTS.ANALYTICS_MONTHLY_REPORT, data);
-  return response?.data || response;
-};
-
-/**
- * Get all LGAs
- */
-export const getLGAs = async () => {
-  const response = await apiClient.get(API_ENDPOINTS.LGAS);
-  return response?.data || response;
-};
-
-/**
- * Get all submissions across all wards grouped by LGA
- */
 export const getStateSubmissions = async (params = {}) => {
-  const queryString = buildQueryString(params);
-  const response = await apiClient.get(`${API_ENDPOINTS.STATE_SUBMISSIONS}${queryString}`);
-  return response;
+  const list = await getReports({ state: 'submitted', ...params });
+  const arr = Array.isArray(list) ? list : list?.reports || [];
+  return { submissions: arr, total: arr.length };
 };

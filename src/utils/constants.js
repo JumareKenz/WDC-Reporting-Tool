@@ -11,29 +11,38 @@ export const ROLE_LABELS = {
   [USER_ROLES.STATE_OFFICIAL]: 'State Official',
 };
 
-// Report Statuses
+// Report Statuses — must match backend op-log state machine.
+// Legacy aliases (REVIEWED/FLAGGED/DECLINED) are kept so older screens keep
+// rendering correctly while their copy is migrated to APPROVED/RETURNED.
 export const REPORT_STATUS = {
-  DRAFT: 'DRAFT',
-  SUBMITTED: 'SUBMITTED',
-  REVIEWED: 'REVIEWED',
-  FLAGGED: 'FLAGGED',
-  DECLINED: 'DECLINED',
+  DRAFT: 'draft',
+  SUBMITTED: 'submitted',
+  IN_REVIEW: 'in_review',
+  APPROVED: 'approved',
+  RETURNED: 'returned',
+  SEALED: 'sealed',
+  // Aliases
+  REVIEWED: 'approved',
+  FLAGGED: 'returned',
+  DECLINED: 'returned',
 };
 
 export const STATUS_LABELS = {
   [REPORT_STATUS.DRAFT]: 'Draft',
   [REPORT_STATUS.SUBMITTED]: 'Submitted',
-  [REPORT_STATUS.REVIEWED]: 'Approved',
-  [REPORT_STATUS.FLAGGED]: 'Flagged',
-  [REPORT_STATUS.DECLINED]: 'Declined',
+  [REPORT_STATUS.IN_REVIEW]: 'In Review',
+  [REPORT_STATUS.APPROVED]: 'Approved',
+  [REPORT_STATUS.RETURNED]: 'Returned',
+  [REPORT_STATUS.SEALED]: 'Sealed',
 };
 
 export const STATUS_COLORS = {
   [REPORT_STATUS.DRAFT]: 'neutral',
   [REPORT_STATUS.SUBMITTED]: 'info',
-  [REPORT_STATUS.REVIEWED]: 'success',
-  [REPORT_STATUS.FLAGGED]: 'warning',
-  [REPORT_STATUS.DECLINED]: 'error',
+  [REPORT_STATUS.IN_REVIEW]: 'info',
+  [REPORT_STATUS.APPROVED]: 'success',
+  [REPORT_STATUS.RETURNED]: 'warning',
+  [REPORT_STATUS.SEALED]: 'neutral',
 };
 
 // Notification Types
@@ -46,80 +55,85 @@ export const NOTIFICATION_TYPES = {
   SYSTEM: 'SYSTEM',
 };
 
-// API Endpoints (relative to base URL)
+// API Endpoints — all relative to /api/v1, must match backend contract
 export const API_ENDPOINTS = {
   // Auth
-  LOGIN: '/auth/login',
-  ME: '/auth/me',
+  SIGN_IN_MOBILE: '/auth/sign-in/mobile',
+  SIGN_IN_CONSOLE: '/auth/sign-in/console',
+  ENROL: '/auth/enrol',
+  REFRESH: '/auth/refresh',
+  SET_CREDENTIALS: '/auth/set-credentials',
+  SIGN_OUT: '/auth/sign-out',
 
-  // Reports
+  // Geography
+  LGAS: '/lgas',
+  LGA_WARDS: (lgaId) => `/lgas/${lgaId}/wards`,
+
+  // Reports (op-log model)
   REPORTS: '/reports',
   REPORT_BY_ID: (id) => `/reports/${id}`,
-  CHECK_SUBMITTED: '/reports/check-submitted',
-  REVIEW_REPORT: (id) => `/reports/${id}/review`,
-  AI_SUGGESTIONS: (id) => `/reports/${id}/ai-suggestions`,
-  AI_SUGGESTIONS_ACCEPT: (id) => `/reports/${id}/ai-suggestions/accept`,
+  REPORT_OPS: (id) => `/reports/${id}/ops`,
+  REPORT_FIELDS: (id) => `/reports/${id}/fields`,
+  REPORT_SUBMIT: (id) => `/reports/${id}/submit`,
+  REPORT_OPEN_REVIEW: (id) => `/reports/${id}/open-review`,
+  REPORT_APPROVE: (id) => `/reports/${id}/approve`,
+  REPORT_RETURN: (id) => `/reports/${id}/return`,
+  REPORT_EDIT_RETURNED: (id) => `/reports/${id}/edit-returned`,
+  REPORTS_SEAL_DUE: '/reports/seal-due',
 
-  // Voice Notes
-  VOICE_NOTE_DOWNLOAD: (id) => `/voice-notes/${id}/download`,
-  VOICE_NOTE_DELETE: (id) => `/voice-notes/${id}`,
-
-  // LGA
-  LGA_WARDS: (id) => `/lgas/${id}/wards`,
-  LGA_REPORTS: (id) => `/lgas/${id}/reports`,
-  LGA_MISSING_REPORTS: (id) => `/lgas/${id}/missing-reports`,
-  LGAS: '/lgas',
-  LGA_BY_ID: (id) => `/lgas/${id}`,
-
-  // Wards
-  WARD_BY_ID: (id) => `/wards/${id}`,
-
-  // Notifications
-  NOTIFICATIONS: '/notifications',
-  NOTIFICATION_READ: (id) => `/notifications/${id}/read`,
-  NOTIFICATIONS_MARK_ALL_READ: '/notifications/mark-all-read',
-  NOTIFICATIONS_SEND: '/notifications/send',
-
-  // Feedback
-  FEEDBACK: '/feedback',
-  FEEDBACK_READ: (id) => `/feedback/${id}/read`,
-
-  // State Submissions
-  STATE_SUBMISSIONS: '/reports/state-submissions',
-
-  // Analytics (State)
-  ANALYTICS_OVERVIEW: '/analytics/overview',
-  ANALYTICS_LGA_COMPARISON: '/analytics/lga-comparison',
-  ANALYTICS_TRENDS: '/analytics/trends',
-  ANALYTICS_AI_REPORT: '/analytics/ai-report',
-  ANALYTICS_SERVICE_DELIVERY: '/analytics/service-delivery',
-  ANALYTICS_MONTHLY_REPORT: '/analytics/monthly-report',
+  // Attachments
+  ATTACHMENTS_UPLOAD: '/attachments/upload',
+  ATTACHMENTS_BY_REPORT: (reportId) => `/attachments/report/${reportId}`,
 
   // Forms
   FORMS: '/forms',
-  FORMS_ACTIVE: '/forms/active',
+  FORMS_VISIBLE: '/forms/visible',
   FORM_BY_ID: (id) => `/forms/${id}`,
   FORM_DEPLOY: (id) => `/forms/${id}/deploy`,
+  FORM_ARCHIVE: (id) => `/forms/${id}/archive`,
+  FORM_VERSIONS: (id) => `/forms/${id}/versions`,
+  FORM_VERSION_BY_N: (id, n) => `/forms/${id}/versions/${n}`,
 
-  // User Management
-  USERS_SUMMARY: '/users/summary',
-  USER_LGA_WARDS: (lgaId) => `/users/lga-wards/${lgaId}`,
-  USER_COORDINATOR: (lgaId) => `/users/coordinator/${lgaId}`,
-  USER_SECRETARY: (wardId) => `/users/secretary/${wardId}`,
+  // Users
+  USERS: '/users',
   USER_BY_ID: (id) => `/users/${id}`,
-  USER_PASSWORD: (id) => `/users/${id}/password`,
-  USER_PIN: (id) => `/users/${id}/pin`,
-  USER_ACCESS: (id) => `/users/${id}/access`,
-  USER_ASSIGN: '/users/assign',
+  USER_ASSIGNMENT: (id) => `/users/${id}/assignment`,
+  USER_SUSPEND: (id) => `/users/${id}/suspend`,
+  USER_REACTIVATE: (id) => `/users/${id}/reactivate`,
 
-  // Health
-  HEALTH: '/health',
+  // Messages (replaces notifications/feedback)
+  MESSAGES_BROADCAST: '/messages/broadcast',
+  MESSAGE_DELIVERIES: '/messages/deliveries',
+  MESSAGE_DELIVERY_BY_ID: (id) => `/messages/deliveries/${id}`,
+  MESSAGE_DELIVERY_READ: (id) => `/messages/deliveries/${id}/read`,
 
-  // Chat (AI Assistant)
-  CHAT_SESSIONS: '/chat/sessions',
-  CHAT_HISTORY: (sessionId) => `/chat/sessions/${sessionId}/messages`,
-  CHAT_SEND: '/chat/message',
-  CHAT_CLEAR: '/chat/history',
+  // Investigations (director only)
+  INVESTIGATIONS: '/investigations',
+  INVESTIGATION_BY_ID: (id) => `/investigations/${id}`,
+  INVESTIGATION_CLOSE: (id) => `/investigations/${id}/close`,
+  INVESTIGATION_REOPEN: (id) => `/investigations/${id}/reopen`,
+  INVESTIGATION_EVIDENCE: (id) => `/investigations/${id}/evidence`,
+  INVESTIGATION_EVIDENCE_DEL: (id, evId) => `/investigations/${id}/evidence/${evId}`,
+  INVESTIGATION_TIMELINE: (id) => `/investigations/${id}/timeline`,
+
+  // Sync (offline-first batch)
+  SYNC_BATCH: '/sync/batch',
+
+  // AI
+  AI_ASK: '/ai/ask',
+
+  // Audit (director/system)
+  AUDIT_ANCHOR: '/audit/anchor',
+  AUDIT_ANCHORS: '/audit/anchors',
+  AUDIT_EXPORT: '/audit/export',
+
+  // Telemetry
+  TELEMETRY: '/telemetry',
+
+  // Health (no /api/v1 prefix; consumers must use absolute path)
+  HEALTH_LIVE: '/health/live',
+  HEALTH_READY: '/health/ready',
+  HEALTH_METRICS: '/health/metrics',
 };
 
 // Demo Credentials

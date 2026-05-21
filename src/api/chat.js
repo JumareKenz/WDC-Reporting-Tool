@@ -1,73 +1,62 @@
 /**
  * Chat API Client
- * Interfaces with backend AI chat endpoints (Groq-powered)
+ *
+ * Backend exposes only POST /ai/ask (director role). There is no session
+ * persistence — each call is stateless. We keep an in-memory session cache so
+ * the existing UI (which expects sessions + history) keeps working.
  */
 
-import apiClient, { buildQueryString } from './client';
+import apiClient from './client';
 import { API_ENDPOINTS } from '../utils/constants';
 
-// ==================== Session Management ====================
+const sessions = new Map(); // sessionId -> { id, title, messages: [{ role, content, createdAt }] }
 
-/**
- * Get all chat sessions for current user
- * GET /api/chat/sessions
- */
-export const getChatSessions = async () => {
-  const response = await apiClient.get(API_ENDPOINTS.CHAT_SESSIONS);
-  return response;
-};
+const newSessionId = () =>
+  (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : `sess_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
-/**
- * Create a new chat session
- * POST /api/chat/sessions
- */
-export const createChatSession = async (title = null) => {
-  const response = await apiClient.post(API_ENDPOINTS.CHAT_SESSIONS, { title });
-  return response;
-};
-
-/**
- * Delete a chat session
- * DELETE /api/chat/sessions/{id}
- */
-export const deleteChatSession = async (sessionId) => {
-  const response = await apiClient.delete(`${API_ENDPOINTS.CHAT_SESSIONS}/${sessionId}`);
-  return response;
-};
-
-// ==================== Message Management ====================
-
-/**
- * Get chat message history for a session
- * GET /api/chat/sessions/{id}/messages
- */
-export const getChatHistory = async (sessionId, limit = 50, offset = 0) => {
-  const queryString = buildQueryString({ limit, offset });
-  const response = await apiClient.get(`${API_ENDPOINTS.CHAT_HISTORY(sessionId)}${queryString}`);
-  return response;
-};
-
-/**
- * Send a message and get AI response
- * POST /api/chat/message
- */
-export const sendMessage = async (message, sessionId = null) => {
-  const payload = { message };
-  if (sessionId) {
-    payload.session_id = sessionId;
+const ensureSession = (sessionId, title = null) => {
+  let s = sessions.get(sessionId);
+  if (!s) {
+    const id = sessionId || newSessionId();
+    s = { id, title: title || 'New chat', messages: [], createdAt: new Date().toISOString() };
+    sessions.set(id, s);
   }
-  // Longer timeout for AI processing (NLQ-to-SQL + Groq inference)
-  const response = await apiClient.post(API_ENDPOINTS.CHAT_SEND, payload, { timeout: 60000 });
-  return response;
+  return s;
 };
 
-// ==================== Cleanup ====================
+export const getChatSessions = async () => ({ sessions: Array.from(sessions.values()) });
 
-/**
- * Clear all chat history for current user
- * DELETE /api/chat/history
- */
+export const createChatSession = async (title = null) => {
+  const id = newSessionId();
+  return ensureSession(id, title);
+};
+
+export const deleteChatSession = async (sessionId) => {
+  sessions.delete(sessionId);
+  return { ok: true };
+};
+
+export const getChatHistory = async (sessionId, _limit = 50, _offset = 0) => {
+  const s = sessions.get(sessionId);
+  return { messages: s?.messages || [] };
+};
+
+export const sendMessage = async (message, sessionId = null) => {
+  const s = ensureSession(sessionId);
+  s.messages.push({ role: 'user', content: message, createdAt: new Date().toISOString() });
+  const response = await apiClient.post(
+    API_ENDPOINTS.AI_ASK,
+    { question: message, sessionId: s.id },
+    { timeout: 60000 }
+  );
+  const answer = response?.answer || response?.message || response?.content || '';
+  s.messages.push({ role: 'assistant', content: answer, createdAt: new Date().toISOString() });
+  return { sessionId: s.id, message: answer, raw: response };
+};
+
 export const clearAllChatHistory = async () => {
-  const response = await apiClient.delete(API_ENDPOINTS.CHAT_CLEAR);
-  return response;
+  sessions.clear();
+  return { ok: true };
 };

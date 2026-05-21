@@ -71,23 +71,30 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
 
     try {
-      const response = await apiClient.post(API_ENDPOINTS.LOGIN, {
+      const response = await apiClient.post(API_ENDPOINTS.SIGN_IN_CONSOLE, {
         email,
         password,
       });
 
-      // Handle both wrapped { success, data } and direct { access_token, user } formats
       const data = response.data || response;
-      const access_token = data.access_token;
-      const refresh_token = data.refresh_token;
-      const userData = data.user;
+      const accessToken = data.accessToken || data.access_token;
+      const refreshToken = data.refreshToken || data.refresh_token;
 
-      if (access_token && userData) {
-        // Store tokens and user data
-        localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, access_token);
-        if (refresh_token) {
-          localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, refresh_token);
+      if (accessToken) {
+        localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, accessToken);
+        if (refreshToken) {
+          localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
         }
+
+        // Decode JWT payload (no /auth/me endpoint exists)
+        const payload = JSON.parse(atob(accessToken.split('.')[1]));
+        const userData = {
+          id: payload.sub,
+          role: normalizeRole(payload.role),
+          ward: { id: payload.wardId, lga_id: payload.lgaId },
+          lga: { id: payload.lgaId },
+          mustChangePin: payload.mustChangePin,
+        };
         localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData));
 
         setUser(userData);
@@ -127,23 +134,26 @@ export const AuthProvider = ({ children }) => {
   };
 
   /**
-   * Verify token with backend
+   * Re-verify the JWT locally (no /auth/me endpoint on backend).
+   * Decodes the stored access token and rebuilds the user object.
    */
   const verifyToken = async () => {
     try {
-      const response = await apiClient.get(API_ENDPOINTS.ME);
+      const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+      if (!token) throw new Error('No access token');
 
-      // Handle both wrapped { success, data } and direct user object formats
-      const userData = response.data?.user || response.data || response.user || response;
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const userData = {
+        id: payload.sub,
+        role: normalizeRole(payload.role),
+        ward: { id: payload.wardId, lga_id: payload.lgaId },
+        lga: { id: payload.lgaId },
+        mustChangePin: payload.mustChangePin,
+      };
 
-      if (userData && userData.id) {
-        // Update user data
-        localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData));
-        setUser(userData);
-        return userData;
-      }
-
-      throw new Error('Invalid user data');
+      localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData));
+      setUser(userData);
+      return userData;
     } catch (err) {
       console.error('Token verification failed:', err);
       logout();
