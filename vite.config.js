@@ -33,10 +33,8 @@ export default defineConfig({
     exclude: ['**/e2e/**', '**/node_modules/**'],
   },
 
-  // ── Base path ─────────────────────────────────────────────────────────────
-  // CRITICAL: Capacitor's Android WebView requires relative asset paths.
-  // '/' breaks asset loading inside the WebView; './' works for both web & native.
-  base: './',
+  // Use '/' for web (Vercel), './' for Capacitor native builds
+  base: process.env.VITE_BUILD_TARGET === 'native' ? './' : '/',
 
   // ── Plugins ───────────────────────────────────────────────────────────────
   plugins: [
