@@ -3,22 +3,27 @@
 ## Build Details
 - **App Name**: Kaduna WDC Reports
 - **Package ID**: ng.gov.kaduna.wdc.reporting
-- **Version**: 1.0.1 (Latest)
+- **Version**: 1.0.2-FINAL ✅ **LATEST & RECOMMENDED**
 - **Build Date**: May 21, 2026
 - **Build Type**: Release (Unsigned)
 - **APK Size**: 47 MB
 
 ## APK Location
 ```
-C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.1.apk  ← LATEST (Voice assistant fix)
+C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.2-FINAL.apk  ← USE THIS ONE ✅
+C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.1.apk  (Voice fix)
 C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.0.apk  (Initial build)
 ```
 
-## What's New in v1.0.1
-✅ **Fixed**: Voice assistant now starts from the beginning (meeting details)
-- Previously skipped to "OPD general attendance" (section 3A)
-- Now starts with "What type of meeting?" and "What date?" (section 0/1)
-- All fields are now asked in the correct order
+## What's New in v1.0.2-FINAL
+✅ **Voice Assistant**: Now starts from the beginning (Section 0: Meeting Details)
+- Asks "What type of meeting?" → "What date?" → then Health Data
+- Previously skipped to Section 3A (OPD general attendance)
+- All individual fields from Sections 1, 3, 4, 6, 8 are asked in voice
+- **Note**: Sections 2 (Action Tracker), 5 (VDC Reports), 7 (Action Plan) have table structures with multiple columns - these are best filled manually in the wizard UI after voice assistant completes
+
+✅ **Array Field Support**: Voice answers are properly transformed
+- If voice assistant gets extended to ask table columns, the app now knows how to convert them to proper table rows
 
 ## What's Included in This Build
 
