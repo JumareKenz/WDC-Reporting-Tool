@@ -173,6 +173,10 @@ export const API_ENDPOINTS = {
   // Sync
   SYNC_BATCH: '/sync/batch',
 
+  // LGAs / Wards (used by login selector — backend must allow these unauthenticated)
+  LGAS:        '/lgas',
+  LGA_WARDS:   (lgaId) => `/lgas/${lgaId}/wards`,
+
   // AI
   AI_ASK: '/ai/ask',
 

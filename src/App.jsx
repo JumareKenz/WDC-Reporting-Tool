@@ -9,7 +9,7 @@
  * - Toast notifications
  */
 
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider } from './hooks/useToast';
@@ -19,6 +19,7 @@ import { isNative } from './plugins/capacitor';
 
 // Pages
 import Login from './pages/Login';
+import ChangePin from './pages/ChangePin';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import WDCDashboard from './pages/WDCDashboard';
@@ -67,8 +68,9 @@ const queryClient = new QueryClient({
 // ─────────────────────────────────────────────────────────────────────────────
 // Protected Route — Requires Authentication
 // ─────────────────────────────────────────────────────────────────────────────
-const ProtectedRoute = ({ children, allowedRoles = null }) => {
+const ProtectedRoute = ({ children, allowedRoles = null, bypassPinGuard = false, wrapInLayout = true }) => {
   const { user, isLoading, isAuthenticated, isReady } = useAuth();
+  const location = useLocation();
 
   // Show loading while auth state initializes
   if (isLoading || !isReady) {
@@ -78,6 +80,11 @@ const ProtectedRoute = ({ children, allowedRoles = null }) => {
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Force PIN change before anything else (secretary first sign-in)
+  if (user?.mustChangePin && !bypassPinGuard && location.pathname !== '/change-pin') {
+    return <Navigate to="/change-pin" replace />;
   }
 
   // Check role permissions
@@ -90,7 +97,7 @@ const ProtectedRoute = ({ children, allowedRoles = null }) => {
     return <Navigate to={defaultRoutes[user.role] || '/'} replace />;
   }
 
-  return <Layout>{children}</Layout>;
+  return wrapInLayout ? <Layout>{children}</Layout> : children;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -119,6 +126,16 @@ const AppRoutes = () => (
     <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
     <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
     <Route path="/reset-password" element={<PublicRoute><ResetPassword /></PublicRoute>} />
+
+    {/* Change PIN — authenticated but bypasses the mustChangePin guard */}
+    <Route
+      path="/change-pin"
+      element={
+        <ProtectedRoute bypassPinGuard wrapInLayout={false}>
+          <ChangePin />
+        </ProtectedRoute>
+      }
+    />
 
     {/* WDC Secretary Routes */}
     <Route path="/wdc" element={<ProtectedRoute allowedRoles={[USER_ROLES.SECRETARY]}><WDCDashboard /></ProtectedRoute>} />

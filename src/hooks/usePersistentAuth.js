@@ -2,7 +2,7 @@
  * usePersistentAuth — Authentication hook for kadwdc backend v2
  *
  * Supports two sign-in modes:
- *   - Mobile: phone + 6-digit PIN  (secretary / coordinator)
+ *   - Mobile: LGA + Ward + 4-digit PIN  (WDC secretary)
  *   - Console: email + password + TOTP  (director)
  *
  * Token storage:
@@ -41,10 +41,11 @@ const userFromJWT = (token) => {
   const claims = decodeJWT(token);
   if (!claims) return null;
   return {
-    id:     claims.sub,
-    role:   claims.role,
-    lgaId:  claims.lgaId  ?? null,
-    wardId: claims.wardId ?? null,
+    id:             claims.sub,
+    role:           claims.role,
+    lgaId:          claims.lgaId  ?? null,
+    wardId:         claims.wardId ?? null,
+    mustChangePin:  claims.mustChangePin === true,
   };
 };
 
@@ -192,7 +193,7 @@ export const usePersistentAuth = () => {
 
   /**
    * Sign in.
-   * Pass `{ phone, pin }` for mobile (secretary/coordinator) or
+   * Pass `{ lgaId, wardId, pin }` for mobile (WDC secretary) or
    * `{ email, password, totp }` for console (director).
    */
   const login = useCallback(async (credentials) => {
@@ -200,7 +201,7 @@ export const usePersistentAuth = () => {
     setLastAuthError(null);
     try {
       const deviceId  = await getDeviceId();
-      const isMobile  = 'phone' in credentials;
+      const isMobile  = !('email' in credentials);
       const endpoint  = isMobile ? API_ENDPOINTS.SIGN_IN_MOBILE : API_ENDPOINTS.SIGN_IN_CONSOLE;
       const body      = { ...credentials, deviceId };
 
