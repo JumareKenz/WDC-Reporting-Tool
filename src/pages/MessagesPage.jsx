@@ -16,7 +16,7 @@ import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Alert from '../components/common/Alert';
-import { useFeedback, useMarkFeedbackRead } from '../hooks/useLGAData';
+import { useFeedback, useSendFeedback } from '../hooks/useLGAData';
 import { useAuth } from '../hooks/useAuth';
 import { formatDate } from '../utils/formatters';
 import { USER_ROLES, ROLE_LABELS } from '../utils/constants';
@@ -34,21 +34,21 @@ const MessagesPage = () => {
 
   const { data: feedbackData, isLoading, refetch } = useFeedback({ limit: 100 });
 
-  const messages = Array.isArray(feedbackData) ? feedbackData : feedbackData?.items || [];
+  const messages = feedbackData?.data?.messages || feedbackData?.messages || [];
 
   // Determine available recipient options based on user role
   const getRecipientOptions = () => {
-    if (user?.role === 'secretary') {
+    if (user?.role === 'WDC_SECRETARY') {
       return [
         { value: 'LGA', label: 'LGA Chairman', icon: Building2 },
         { value: 'STATE', label: 'State Leadership', icon: Shield },
       ];
-    } else if (user?.role === 'coordinator') {
+    } else if (user?.role === 'LGA_COORDINATOR') {
       return [
         { value: 'WDC', label: 'Ward Secretaries', icon: Users },
         { value: 'STATE', label: 'State Leadership', icon: Shield },
       ];
-    } else if (user?.role === 'director') {
+    } else if (user?.role === 'STATE_OFFICIAL') {
       return [
         { value: 'LGA', label: 'LGA Chairmen', icon: Building2 },
         { value: 'WDC', label: 'Ward Secretaries', icon: Users },
@@ -78,11 +78,7 @@ const MessagesPage = () => {
         payload.recipient_id = replyTo.sender?.id;
       }
 
-      await apiClient.post('/messages/broadcast', {
-        body: newMessage,
-        channels: ['in_app'],
-        scopeKind: 'ward',
-      });
+      await apiClient.post('/feedback', payload);
       setNewMessage('');
       setRecipientType('');
       setReplyTo(null);
@@ -97,7 +93,7 @@ const MessagesPage = () => {
 
   const markAsRead = async (messageId) => {
     try {
-      await apiClient.post(`/messages/deliveries/${messageId}/read`);
+      await apiClient.patch(`/feedback/${messageId}/read`);
       await refetch();
     } catch (error) {
       console.error('Failed to mark as read:', error);

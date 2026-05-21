@@ -1,36 +1,72 @@
-/**
- * Analytics — derived from reports data via the AI endpoint and reports queries.
- *
- * The new backend has no dedicated analytics endpoints. Director analytics come from:
- *   - POST /ai/ask  — ask AI questions about reports data
- *   - GET /reports  — filter/aggregate client-side or via AI
- *
- * The functions below delegate to the appropriate endpoints.
- */
 import apiClient, { buildQueryString } from './client';
 import { API_ENDPOINTS } from '../utils/constants';
-import { askAI } from './ai';
 
-/** Ask the AI for an analytics overview summary. */
-export const getOverview = (params = {}) =>
-  askAI(`Give me a state-wide overview of WDC report submissions${params.month ? ` for ${params.month}` : ''}.`);
+/**
+ * Get state-wide overview statistics
+ */
+export const getOverview = async (params = {}) => {
+  const queryString = buildQueryString(params);
+  const response = await apiClient.get(`${API_ENDPOINTS.ANALYTICS_OVERVIEW}${queryString}`);
+  return response?.data || response;
+};
 
-/** Ask the AI for LGA comparison. */
-export const getLGAComparison = (params = {}) =>
-  askAI(`Compare submission rates across all LGAs${params.month ? ` for ${params.month}` : ''}.`);
+/**
+ * Get LGA comparison data
+ */
+export const getLGAComparison = async (params = {}) => {
+  const queryString = buildQueryString(params);
+  const response = await apiClient.get(`${API_ENDPOINTS.ANALYTICS_LGA_COMPARISON}${queryString}`);
+  return response?.data || response;
+};
 
-/** Ask the AI for submission trends. */
-export const getTrends = (params = {}) =>
-  askAI(`Show submission trends over time${params.months ? ` for the last ${params.months} months` : ''}.`);
+/**
+ * Get submission trends over time
+ */
+export const getTrends = async (params = {}) => {
+  const queryString = buildQueryString(params);
+  const response = await apiClient.get(`${API_ENDPOINTS.ANALYTICS_TRENDS}${queryString}`);
+  return response?.data || response;
+};
 
-/** Ask the AI for a custom report based on a question. */
-export const generateAIReport = ({ question }) =>
-  askAI(question || 'Summarize the overall performance of WDC secretaries.');
+/**
+ * Generate AI-powered report
+ */
+export const generateAIReport = async (data = {}) => {
+  // Longer timeout for LLM-powered report generation
+  const response = await apiClient.post(API_ENDPOINTS.ANALYTICS_AI_REPORT, data, { timeout: 90000 });
+  return response?.data || response;
+};
 
-/** Get all reports for state-level view (RLS-scoped as director). */
-export const getStateSubmissions = (params = {}) =>
-  apiClient.get(API_ENDPOINTS.REPORTS + buildQueryString(params));
+/**
+ * Get aggregated service delivery data
+ */
+export const getServiceDelivery = async (params = {}) => {
+  const queryString = buildQueryString(params);
+  const response = await apiClient.get(`${API_ENDPOINTS.ANALYTICS_SERVICE_DELIVERY}${queryString}`);
+  return response?.data || response;
+};
 
-/** Get users (RLS-scoped as director — sees all). */
-export const getLGAUsers = (params = {}) =>
-  apiClient.get(API_ENDPOINTS.USERS + buildQueryString(params));
+/**
+ * Generate comprehensive monthly report
+ */
+export const generateMonthlyReport = async (data = {}) => {
+  const response = await apiClient.post(API_ENDPOINTS.ANALYTICS_MONTHLY_REPORT, data);
+  return response?.data || response;
+};
+
+/**
+ * Get all LGAs
+ */
+export const getLGAs = async () => {
+  const response = await apiClient.get(API_ENDPOINTS.LGAS);
+  return response?.data || response;
+};
+
+/**
+ * Get all submissions across all wards grouped by LGA
+ */
+export const getStateSubmissions = async (params = {}) => {
+  const queryString = buildQueryString(params);
+  const response = await apiClient.get(`${API_ENDPOINTS.STATE_SUBMISSIONS}${queryString}`);
+  return response;
+};

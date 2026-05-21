@@ -19,7 +19,7 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import Alert from '../components/common/Alert';
 import Modal from '../components/common/Modal';
 import { useAuth } from '../hooks/useAuth';
-import { useLGASecretaries, useSendNotification } from '../hooks/useLGAData';
+import { useLGAWards, useSendNotification } from '../hooks/useLGAData';
 import { formatDate, formatMonth, getCurrentMonth, formatPercentage } from '../utils/formatters';
 
 const LGAWardsPage = () => {
@@ -33,7 +33,7 @@ const LGAWardsPage = () => {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [alertMessage, setAlertMessage] = useState(null);
 
-  const { data: wardsData, isLoading, refetch } = useLGASecretaries();
+  const { data: wardsData, isLoading, refetch } = useLGAWards(lgaId, { month: currentMonth });
   const sendNotificationMutation = useSendNotification();
 
   const wards = wardsData?.data?.wards || wardsData?.wards || [];

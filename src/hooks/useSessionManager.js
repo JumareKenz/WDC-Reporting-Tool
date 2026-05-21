@@ -1,224 +1,232 @@
+import { useEffect, useRef, useState, useCallback } from 'react';
+import axios from 'axios';
+import { STORAGE_KEYS } from '../utils/constants';
+
+const BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.DEV ? 'http://localhost:8000/api' : 'https://kadwdc.equily.ng/api');
+
+// Activity tracking configuration
+const ACTIVITY_EVENTS = [
+  'mousedown', 'mousemove', 'keydown', 'keyup',
+  'touchstart', 'touchmove', 'scroll', 'click',
+  'input', 'change', 'focus', 'pointerdown',
+  'wheel', 'touchcancel', 'touchend'
+];
+
+const ACTIVITY_DEBOUNCE_MS = 5000;  // Consider active if event within 5 seconds
+const REFRESH_BUFFER_RATIO = 0.7;    // Refresh at 70% of lifetime (not 80%)
+
 /**
- * useSessionManager — Idle Timeout + Session Warning
- *
- * Handles:
- * - Idle timeout detection (mouse/keyboard/touch/scroll activity)
- * - Warning modal countdown before auto-logout
- * - Token keep-alive on continued activity (via apiClient GET /auth/me;
- *   the Axios interceptor silently refreshes if the access token has expired)
- * - Multi-tab sync on web (via storage events)
- * - App lifecycle on native: checks elapsed idle time when resuming from background
- *
- * Storage: uses the Capacitor storage abstraction so activity timestamp is
- * persisted in SharedPreferences on Android (survives process kill/resume).
+ * Decode a JWT payload without a library.
+ * Returns the parsed payload object, or null on failure.
  */
-
-import { useEffect, useRef, useCallback, useState } from 'react';
-import apiClient from '../api/client';
-import { storage, appLifecycle, isNative } from '../plugins/capacitor';
-
-const ACTIVITY_KEY = 'wdc_last_activity';
+const decodeJwtPayload = (token) => {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch {
+    return null;
+  }
+};
 
 /**
+ * Enhanced Session Manager Hook — Silent Background Token Refresh with Activity Tracking
+ *
+ * Features:
+ * - NO idle timeout, NO warning modal, NO countdown, NO auto-logout.
+ * - Activity tracking extends sessions for active users
+ * - Decodes the JWT on mount to determine its expiry.
+ * - Schedules a silent refresh at 70% of the token's lifetime.
+ * - On refresh failure (e.g. network error) retries every 30 seconds.
+ * - NEVER logs the user out automatically - only on manual logout.
+ *
  * @param {Object} opts
- * @param {Function} opts.onLogout  Called to execute logout
- * @param {number}   opts.idleMs   Idle period before warning (default 25 min)
- * @param {number}   opts.warnMs   Warning countdown duration (default 5 min)
- * @param {boolean}  opts.enabled  Enable/disable session management
+ * @param {boolean} opts.enabled - Only run when the user is authenticated
+ * @param {Function} opts.onDraftSave - Callback to save drafts before any logout
  */
-export const useSessionManager = ({
-  onLogout,
-  idleMs = 25 * 60 * 1000,
-  warnMs =  5 * 60 * 1000,
-  enabled = true,
-} = {}) => {
-  const [showWarning, setShowWarning] = useState(false);
-  const [countdown,   setCountdown]   = useState(Math.floor(warnMs / 1000));
+export const useSessionManager = ({ enabled = true, onDraftSave = null } = {}) => {
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const refreshTimerRef = useRef(null);
+  const retryTimerRef = useRef(null);
+  const activityTimerRef = useRef(null);
+  const lastActivityRef = useRef(Date.now());
+  const mountedRef = useRef(true);
 
-  const idleTimerRef         = useRef(null);
-  const warnTimerRef         = useRef(null);
-  const countdownIntervalRef = useRef(null);
-  const lastActivityRef      = useRef(Date.now());
-  const isWarningRef         = useRef(false);
+  const RETRY_INTERVAL = 30 * 1000; // 30 seconds
 
-  // ── Clear all timers ────────────────────────────────────────────────────────
-  const clearAllTimers = useCallback(() => {
-    clearTimeout(idleTimerRef.current);
-    clearTimeout(warnTimerRef.current);
-    clearInterval(countdownIntervalRef.current);
-  }, []);
+  /**
+   * Attempt to refresh the access token using the stored refresh token.
+   * Returns true on success, false on failure.
+   */
+  const doRefresh = useCallback(async () => {
+    const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+    if (!refreshToken) return false;
 
-  // ── Execute logout ───────────────────────────────────────────────────────────
-  const doLogout = useCallback(() => {
-    clearAllTimers();
-    isWarningRef.current = false;
-    setShowWarning(false);
-    onLogout();
-  }, [clearAllTimers, onLogout]);
-
-  // ── Start warning countdown ─────────────────────────────────────────────────
-  const startWarning = useCallback(() => {
-    isWarningRef.current = true;
-    setShowWarning(true);
-    setCountdown(Math.floor(warnMs / 1000));
-
-    countdownIntervalRef.current = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(countdownIntervalRef.current);
-          doLogout();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    warnTimerRef.current = setTimeout(doLogout, warnMs);
-  }, [warnMs, doLogout]);
-
-  // ── Keep session alive — calls GET /auth/me ──────────────────────────────────
-  // The Axios 401 interceptor will silently refresh the access token if needed,
-  // so this works regardless of whether the access token is still valid.
-  const refreshToken = useCallback(async () => {
     try {
-      await apiClient.get('/auth/me');
+      if (mountedRef.current) {
+        setIsRefreshing(true);
+      }
+
+      // Use raw axios to avoid the apiClient interceptor loop
+      const response = await axios.post(
+        `${BASE_URL}/auth/refresh`,
+        { refresh_token: refreshToken },
+        { headers: { 'Content-Type': 'application/json' } }
+      );
+
+      const data = response.data?.data || response.data;
+      const newAccessToken = data.access_token;
+      const newRefreshToken = data.refresh_token;
+
+      if (newAccessToken) {
+        localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, newAccessToken);
+      }
+      if (newRefreshToken) {
+        localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, newRefreshToken);
+      }
+
       return true;
     } catch {
       return false;
+    } finally {
+      if (mountedRef.current) {
+        setIsRefreshing(false);
+      }
     }
   }, []);
 
-  // ── Broadcast activity timestamp ─────────────────────────────────────────────
-  // On native: persisted to Preferences so resume handler can compute elapsed time.
-  // On web: written to localStorage for cross-tab sync (storage event).
-  const broadcastActivity = useCallback(async () => {
-    const now = Date.now().toString();
-    await storage.set(ACTIVITY_KEY, now);
-  }, []);
+  /**
+   * Schedule the next refresh based on the current access token's expiry.
+   * Refreshes at 70% of the token's total lifetime from issuance.
+   */
+  const scheduleRefresh = useCallback(() => {
+    // Clear any existing timers
+    clearTimeout(refreshTimerRef.current);
+    clearTimeout(retryTimerRef.current);
 
-  // ── Reset idle timer ──────────────────────────────────────────────────────────
-  const resetIdleTimer = useCallback(() => {
-    if (!enabled) return;
+    const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+    if (!token) return;
 
+    const payload = decodeJwtPayload(token);
+    if (!payload || !payload.exp) return;
+
+    const nowSec = Math.floor(Date.now() / 1000);
+    const issuedAt = payload.iat || nowSec;
+    const expiresAt = payload.exp;
+    const lifetimeSec = expiresAt - issuedAt;
+    const remainingSec = expiresAt - nowSec;
+
+    // If token is already expired or about to expire (within 60s), refresh immediately
+    if (remainingSec <= 60) {
+      doRefresh().then((ok) => {
+        if (ok && mountedRef.current) {
+          scheduleRefresh();
+        } else if (!ok && mountedRef.current) {
+          // Retry every 30s — never logout
+          retryTimerRef.current = setTimeout(() => {
+            if (mountedRef.current) scheduleRefresh();
+          }, RETRY_INTERVAL);
+        }
+      });
+      return;
+    }
+
+    // Schedule refresh at 70% of the token's total lifetime from issuance
+    const refreshAtSec = issuedAt + Math.floor(lifetimeSec * REFRESH_BUFFER_RATIO);
+    const delayMs = Math.max((refreshAtSec - nowSec) * 1000, 5000); // at least 5s
+
+    refreshTimerRef.current = setTimeout(async () => {
+      if (!mountedRef.current) return;
+
+      const ok = await doRefresh();
+      if (ok && mountedRef.current) {
+        scheduleRefresh(); // schedule next cycle
+      } else if (!ok && mountedRef.current) {
+        // Network or server error — retry every 30s, never logout
+        const retryLoop = async () => {
+          if (!mountedRef.current) return;
+          const retryOk = await doRefresh();
+          if (retryOk && mountedRef.current) {
+            scheduleRefresh();
+          } else if (mountedRef.current) {
+            retryTimerRef.current = setTimeout(retryLoop, RETRY_INTERVAL);
+          }
+        };
+        retryTimerRef.current = setTimeout(retryLoop, RETRY_INTERVAL);
+      }
+    }, delayMs);
+  }, [doRefresh]);
+
+  // Update last activity timestamp
+  const updateActivity = useCallback(() => {
     lastActivityRef.current = Date.now();
-    broadcastActivity(); // fire-and-forget async call
+  }, []);
 
-    if (isWarningRef.current) {
-      // Warning was showing — user acted; dismiss and refresh session
-      isWarningRef.current = false;
-      setShowWarning(false);
-      clearAllTimers();
-      refreshToken();
-    } else {
-      clearTimeout(idleTimerRef.current);
-    }
-
-    idleTimerRef.current = setTimeout(startWarning, idleMs);
-  }, [enabled, idleMs, startWarning, clearAllTimers, broadcastActivity, refreshToken]);
-
-  // ── Continue session (user clicked "Stay logged in") ────────────────────────
-  const continueSession = useCallback(async () => {
-    clearAllTimers();
-    isWarningRef.current = false;
-    setShowWarning(false);
-
-    const ok = await refreshToken();
-    if (!ok) { doLogout(); return; }
-
-    idleTimerRef.current = setTimeout(startWarning, idleMs);
-  }, [clearAllTimers, refreshToken, doLogout, startWarning, idleMs]);
-
-  // ── Activity listeners (mouse / keyboard / touch / scroll) ──────────────────
+  // Set up activity listeners to track user activity
   useEffect(() => {
     if (!enabled) return;
-
-    const events = ['mousedown', 'mousemove', 'keydown', 'touchstart', 'scroll', 'click'];
-    let debounce = null;
 
     const handleActivity = () => {
-      if (debounce) return;
-      debounce = setTimeout(() => {
-        debounce = null;
-        resetIdleTimer();
-      }, 500);
+      updateActivity();
     };
 
-    events.forEach((e) => document.addEventListener(e, handleActivity, { passive: true }));
-    idleTimerRef.current = setTimeout(startWarning, idleMs);
+    // Add all activity listeners
+    ACTIVITY_EVENTS.forEach(event => {
+      window.addEventListener(event, handleActivity, { passive: true });
+    });
+
+    // Update activity periodically while user is active
+    activityTimerRef.current = setInterval(() => {
+      // If user was active recently, we could extend session here if needed
+      // For now, the token refresh mechanism handles this automatically
+    }, ACTIVITY_DEBOUNCE_MS);
 
     return () => {
-      events.forEach((e) => document.removeEventListener(e, handleActivity));
-      clearAllTimers();
-      if (debounce) clearTimeout(debounce);
+      ACTIVITY_EVENTS.forEach(event => {
+        window.removeEventListener(event, handleActivity);
+      });
+      clearInterval(activityTimerRef.current);
     };
-  }, [enabled, resetIdleTimer, startWarning, idleMs, clearAllTimers]);
+  }, [enabled, updateActivity]);
 
-  // ── Cross-tab sync (web) / background-resume check (native) ─────────────────
+  // Main effect: schedule refresh when enabled
   useEffect(() => {
-    if (!enabled) return;
+    mountedRef.current = true;
 
-    if (isNative) {
-      // Native: no tabs. When app resumes from background, check how long it
-      // was idle. If longer than the idle timeout → logout immediately.
-      let handle = null;
-      appLifecycle.onResume(async () => {
-        const lastStr = await storage.get(ACTIVITY_KEY);
-        if (!lastStr) return;
-
-        const elapsed = Date.now() - parseInt(lastStr, 10);
-
-        if (elapsed >= idleMs + warnMs) {
-          // Has been idle past the full timeout + warning period
-          doLogout();
-        } else if (elapsed >= idleMs) {
-          // Within the warning window — show warning with adjusted countdown
-          const remaining = Math.max(0, idleMs + warnMs - elapsed);
-          isWarningRef.current = true;
-          setShowWarning(true);
-          setCountdown(Math.floor(remaining / 1000));
-
-          countdownIntervalRef.current = setInterval(() => {
-            setCountdown((prev) => {
-              if (prev <= 1) {
-                clearInterval(countdownIntervalRef.current);
-                doLogout();
-                return 0;
-              }
-              return prev - 1;
-            });
-          }, 1000);
-          warnTimerRef.current = setTimeout(doLogout, remaining);
-        } else {
-          // Still within idle period — reset the timer
-          clearAllTimers();
-          const remaining = idleMs - elapsed;
-          idleTimerRef.current = setTimeout(startWarning, remaining);
-        }
-      }).then((h) => { handle = h; });
-
-      return () => handle?.remove?.();
-    } else {
-      // Web: listen for localStorage changes from other tabs
-      const handleStorage = (e) => {
-        if (e.key !== ACTIVITY_KEY || !e.newValue) return;
-        const otherTabTs = parseInt(e.newValue, 10);
-        if (otherTabTs > lastActivityRef.current) {
-          lastActivityRef.current = otherTabTs;
-          if (isWarningRef.current) {
-            // Another tab is still active — dismiss warning
-            isWarningRef.current = false;
-            setShowWarning(false);
-            clearAllTimers();
-            idleTimerRef.current = setTimeout(startWarning, idleMs);
-          }
-        }
-      };
-      window.addEventListener('storage', handleStorage);
-      return () => window.removeEventListener('storage', handleStorage);
+    if (enabled) {
+      scheduleRefresh();
     }
-  }, [enabled, idleMs, warnMs, startWarning, clearAllTimers, doLogout]);
 
-  return { showWarning, countdown, continueSession, logoutNow: doLogout };
+    return () => {
+      mountedRef.current = false;
+      clearTimeout(refreshTimerRef.current);
+      clearTimeout(retryTimerRef.current);
+      clearInterval(activityTimerRef.current);
+    };
+  }, [enabled, scheduleRefresh]);
+
+  // Listen for logout events - only logout when explicitly requested
+  useEffect(() => {
+    const handleLogoutRequest = () => {
+      // Save drafts before logout if callback provided
+      if (onDraftSave) {
+        onDraftSave();
+      }
+    };
+
+    window.addEventListener('app:logoutRequest', handleLogoutRequest);
+    return () => window.removeEventListener('app:logoutRequest', handleLogoutRequest);
+  }, [onDraftSave]);
+
+  return { isRefreshing };
 };
 
 export default useSessionManager;

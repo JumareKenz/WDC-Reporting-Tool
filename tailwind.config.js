@@ -1,7 +1,5 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  // 'class' strategy: dark mode is controlled by the 'dark' class on <html>.
-  // useDarkMode hook reads the saved preference (or OS default) and applies it.
   darkMode: 'class',
   content: [
     "./index.html",

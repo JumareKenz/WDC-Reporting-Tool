@@ -2,12 +2,29 @@ import { Link } from 'react-router-dom';
 import { APP_CONFIG } from '../../utils/constants';
 
 const LogoIcon = ({ className = '' }) => (
-  <img
-    src="/app-icon.png"
-    alt=""
-    aria-hidden="true"
-    className={`${className} object-contain rounded-2xl`}
-  />
+  <svg viewBox="0 0 44 44" className={className} fill="none">
+    <defs>
+      <linearGradient id="logoGrad" x1="0" y1="0" x2="44" y2="44" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="#22c55e" />
+        <stop offset="100%" stopColor="#15803d" />
+      </linearGradient>
+    </defs>
+    <rect width="44" height="44" rx="12" fill="url(#logoGrad)" />
+    <path
+      d="M22 8 L35 13 L35 24 C35 30.5 29.5 35.5 22 37 C14.5 35.5 9 30.5 9 24 L9 13 Z"
+      fill="rgba(255,255,255,0.13)"
+      stroke="rgba(255,255,255,0.55)"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M15 24 L19.5 28.5 L29 19"
+      stroke="white"
+      strokeWidth="3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
 );
 
 const Logo = ({ size = 'default', showText = true, className = '', linkTo = '/' }) => {

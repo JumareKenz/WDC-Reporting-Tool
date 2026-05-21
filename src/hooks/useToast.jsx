@@ -27,12 +27,17 @@ export const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
   const counterRef = useRef(0);
 
-  const add = useCallback((variant, message, { duration = 5000, title } = {}) => {
-    const id = ++counterRef.current;
-    setToasts((prev) => [...prev, { id, variant, message, title }]);
+  const add = useCallback((variant, message, { duration, title, actions } = {}) => {
+    // Error toasts never auto-dismiss (duration: 0) unless explicitly overridden
+    const resolvedDuration = duration !== undefined
+      ? duration
+      : variant === 'error' ? 0 : 5000;
 
-    if (duration > 0) {
-      setTimeout(() => remove(id), duration);
+    const id = ++counterRef.current;
+    setToasts((prev) => [...prev, { id, variant, message, title, actions }]);
+
+    if (resolvedDuration > 0) {
+      setTimeout(() => remove(id), resolvedDuration);
     }
     return id;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -43,7 +48,7 @@ export const ToastProvider = ({ children }) => {
 
   const toast = {
     success: (msg, opts) => add('success', msg, opts),
-    error: (msg, opts) => add('error', msg, { duration: 8000, ...opts }),
+    error: (msg, opts) => add('error', msg, opts),
     warning: (msg, opts) => add('warning', msg, opts),
     info: (msg, opts) => add('info', msg, opts),
   };

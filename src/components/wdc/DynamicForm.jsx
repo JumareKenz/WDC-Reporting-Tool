@@ -184,6 +184,7 @@ const TableInput = ({ field, value, onChange, readOnly }) => {
                   ) : (
                     <input type={col.type === 'number' ? 'number' : 'text'} value={row[col.name] || ''}
                       onChange={e => updateCell(ri, col.name, e.target.value)} disabled={readOnly} placeholder={col.placeholder}
+                      min={col.type === 'number' ? 0 : undefined}
                       className="w-full border border-neutral-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:bg-neutral-50" />
                   )}
                 </td>
@@ -330,7 +331,7 @@ const DynamicForm = ({ definition, onSuccess, onCancel, readOnly, initialData })
 
         {field.type === 'number' && (
           <input type="number" value={formData[field.name] ?? 0}
-            onChange={e => updateFormData(field.name, e.target.value === '' ? 0 : Number(e.target.value))}
+            onChange={e => updateFormData(field.name, e.target.value === '' ? 0 : Math.max(0, Number(e.target.value)))}
             disabled={readOnly} placeholder={field.placeholder} min={0} required={isRequired}
             className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-neutral-50" />
         )}

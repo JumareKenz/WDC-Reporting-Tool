@@ -3,7 +3,6 @@ import { X, Plus, ChevronUp, ChevronDown, Trash2, Save, Rocket, Eye, List } from
 import { useCreateForm, useUpdateForm, useDeployForm } from '../../hooks/useStateData';
 import ConditionGroupBuilder from './ConditionGroupBuilder';
 import DynamicForm from '../wdc/DynamicForm';
-import { invalidateFieldConfig } from '../../services/formConfigService';
 
 const FIELD_TYPES = [
   { value: 'text', label: 'Text' },
@@ -189,7 +188,6 @@ const FormBuilder = ({ form, onSave, onClose }) => {
         setFormId(result.id);
         setFormStatus(result.status || 'DRAFT');
       }
-      invalidateFieldConfig();
       onSave();
     } catch (e) {
       setError(e.message || 'Save failed');
@@ -206,7 +204,6 @@ const FormBuilder = ({ form, onSave, onClose }) => {
       await deployMutation.mutateAsync(formId);
       setFormStatus('DEPLOYED');
       setShowDeployConfirm(false);
-      invalidateFieldConfig();
       onSave();
     } catch (e) {
       setError(e.message || 'Deploy failed');
@@ -415,73 +412,6 @@ const FormBuilder = ({ form, onSave, onClose }) => {
             </div>
           </>
         )}
-
-        {/* Voice Assistant Questions */}
-        <div className="border-t border-neutral-200 pt-3">
-          <label className="block text-xs font-semibold text-neutral-700 mb-2">Voice Assistant</label>
-          <p className="text-[11px] text-neutral-500 mb-2">
-            What should the assistant speak aloud when asking for this field?
-          </p>
-          <div className="space-y-2">
-            <div>
-              <label className="block text-[11px] text-neutral-500 mb-1">English question</label>
-              <textarea
-                rows={2}
-                value={f.voice?.question_en || ''}
-                onChange={e => updateField(f.id, { voice: { ...(f.voice || {}), question_en: e.target.value } })}
-                placeholder="e.g. How many children received the Penta 1 vaccine this month?"
-                className="w-full border border-neutral-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] text-neutral-500 mb-1">Hausa question</label>
-              <textarea
-                rows={2}
-                value={f.voice?.question_ha || ''}
-                onChange={e => updateField(f.id, { voice: { ...(f.voice || {}), question_ha: e.target.value } })}
-                placeholder="e.g. Yara nawa suka karbi allurar Penta 1 a wannan watan?"
-                className="w-full border border-neutral-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* OCR Configuration */}
-        <div className="border-t border-neutral-200 pt-3">
-          <label className="block text-xs font-semibold text-neutral-700 mb-2">OCR Extraction</label>
-          <p className="text-[11px] text-neutral-500 mb-2">
-            Configure how this field is found in scanned forms. Keywords are matched against label text;
-            patterns are advanced regex (capture group <code>(\d+)</code> for numbers).
-          </p>
-          <div className="space-y-2">
-            <div>
-              <label className="block text-[11px] text-neutral-500 mb-1">Keywords (comma-separated)</label>
-              <input
-                type="text"
-                value={(f.ocr?.keywords || []).join(', ')}
-                onChange={e => {
-                  const keywords = e.target.value.split(',').map(k => k.trim()).filter(Boolean);
-                  updateField(f.id, { ocr: { ...(f.ocr || {}), keywords } });
-                }}
-                placeholder="e.g. PENTA 1, Penta1, Pentavalent 1"
-                className="w-full border border-neutral-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] text-neutral-500 mb-1">Regex patterns (one per line)</label>
-              <textarea
-                rows={3}
-                value={(f.ocr?.patterns || []).join('\n')}
-                onChange={e => {
-                  const patterns = e.target.value.split('\n').map(p => p.trim()).filter(Boolean);
-                  updateField(f.id, { ocr: { ...(f.ocr || {}), patterns } });
-                }}
-                placeholder={'penta\\s*1[:\\s]*(\\d+)\npenta1[:\\s]*(\\d+)'}
-                className="w-full border border-neutral-300 rounded-lg px-3 py-1.5 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
-              />
-            </div>
-          </div>
-        </div>
 
         {/* Logic Rules */}
         <div className="border-t border-neutral-200 pt-3">

@@ -37,14 +37,14 @@ const VoiceNoteUpload = ({ onChange, disabled = false, uploadProgress = null, up
   // Validate file
   const validateFile = (file) => {
     // Check file type
-    if (!FILE_UPLOAD.AUDIO_MIME_TYPES.includes(file.type)) {
-      const acceptedFormats = FILE_UPLOAD.AUDIO_FORMATS.join(', ');
+    if (!FILE_UPLOAD.VOICE_NOTE_MIME_TYPES.includes(file.type)) {
+      const acceptedFormats = FILE_UPLOAD.VOICE_NOTE_FORMATS.join(', ');
       return `Invalid file type. Please upload an audio file (${acceptedFormats})`;
     }
 
     // Check file size
-    if (file.size > FILE_UPLOAD.AUDIO_MAX_SIZE) {
-      const maxSizeMB = FILE_UPLOAD.AUDIO_MAX_SIZE / (1024 * 1024);
+    if (file.size > FILE_UPLOAD.VOICE_NOTE_MAX_SIZE) {
+      const maxSizeMB = FILE_UPLOAD.VOICE_NOTE_MAX_SIZE / (1024 * 1024);
       return `File size exceeds ${maxSizeMB}MB limit. Please choose a smaller file.`;
     }
 
@@ -125,8 +125,8 @@ const VoiceNoteUpload = ({ onChange, disabled = false, uploadProgress = null, up
         ref={fileInputRef}
         type="file"
         accept={[
-          ...FILE_UPLOAD.AUDIO_FORMATS,
-          ...FILE_UPLOAD.AUDIO_MIME_TYPES,
+          ...FILE_UPLOAD.VOICE_NOTE_FORMATS,
+          ...FILE_UPLOAD.VOICE_NOTE_MIME_TYPES,
         ].join(',')}
         onChange={handleFileInputChange}
         className="hidden"

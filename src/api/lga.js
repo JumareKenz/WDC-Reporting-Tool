@@ -1,44 +1,70 @@
-/**
- * LGA-scoped API helpers.
- *
- * The new backend has no explicit /lgas endpoints.
- * All data is fetched through RLS-scoped generic endpoints:
- *   - Reports:  GET /reports  (returns coordinator's LGA reports automatically)
- *   - Users:    GET /users?role=secretary  (returns coordinator's LGA secretaries)
- *   - Messages: POST /messages/broadcast
- */
-
 import apiClient, { buildQueryString } from './client';
 import { API_ENDPOINTS } from '../utils/constants';
 
-/** Get all reports for the coordinator's LGA (RLS-scoped). */
-export const getLGAReports = (params = {}) =>
-  apiClient.get(API_ENDPOINTS.REPORTS + buildQueryString(params));
+/**
+ * Get LGA details by ID
+ */
+export const getLGA = async (lgaId) => {
+  const response = await apiClient.get(API_ENDPOINTS.LGA_BY_ID(lgaId));
+  return response;
+};
 
-/** Get secretaries in the coordinator's LGA. */
-export const getLGASecretaries = (params = {}) =>
-  apiClient.get(API_ENDPOINTS.USERS + buildQueryString({ role: 'secretary', ...params }));
+/**
+ * Get wards for an LGA with submission status
+ */
+export const getLGAWards = async (lgaId, params = {}) => {
+  const queryString = buildQueryString(params);
+  const response = await apiClient.get(`${API_ENDPOINTS.LGA_WARDS(lgaId)}${queryString}`);
+  return response;
+};
 
-/** Coordinator opens a submitted report for review. */
-export const openReview = (reportId) =>
-  apiClient.post(API_ENDPOINTS.REPORT_OPEN_REVIEW(reportId));
+/**
+ * Get reports for an LGA
+ */
+export const getLGAReports = async (lgaId, params = {}) => {
+  const queryString = buildQueryString(params);
+  const response = await apiClient.get(`${API_ENDPOINTS.LGA_REPORTS(lgaId)}${queryString}`);
+  return response;
+};
 
-/** Coordinator approves a report. */
-export const approveReport = (reportId) =>
-  apiClient.post(API_ENDPOINTS.REPORT_APPROVE(reportId));
+/**
+ * Get missing reports for an LGA
+ */
+export const getLGAMissingReports = async (lgaId, params = {}) => {
+  const queryString = buildQueryString(params);
+  const response = await apiClient.get(`${API_ENDPOINTS.LGA_MISSING_REPORTS(lgaId)}${queryString}`);
+  return response;
+};
 
-/** Coordinator returns a report with notes. */
-export const returnReport = (reportId, notes) =>
-  apiClient.post(API_ENDPOINTS.REPORT_RETURN(reportId), { notes });
+/**
+ * Send notification to ward secretaries
+ */
+export const sendNotification = async (data) => {
+  const response = await apiClient.post(API_ENDPOINTS.NOTIFICATIONS_SEND, data);
+  return response;
+};
 
-/** Director: send a broadcast message. */
-export const sendNotification = (data) =>
-  apiClient.post(API_ENDPOINTS.MESSAGES_BROADCAST, data);
+/**
+ * Review a report (change status)
+ */
+export const reviewReport = async (reportId, data) => {
+  const response = await apiClient.patch(API_ENDPOINTS.REVIEW_REPORT(reportId), data);
+  return response;
+};
 
-/** Get message deliveries (in-app notifications) for the current user. */
-export const getFeedback = (params = {}) =>
-  apiClient.get(API_ENDPOINTS.MESSAGE_DELIVERIES + buildQueryString(params));
+/**
+ * Get feedback messages
+ */
+export const getFeedback = async (params = {}) => {
+  const queryString = buildQueryString(params);
+  const response = await apiClient.get(`${API_ENDPOINTS.FEEDBACK}${queryString}`);
+  return response;
+};
 
-/** Mark a delivery as read. */
-export const markFeedbackRead = (id) =>
-  apiClient.post(API_ENDPOINTS.MESSAGE_DELIVERY_READ(id));
+/**
+ * Send feedback message
+ */
+export const sendFeedback = async (data) => {
+  const response = await apiClient.post(API_ENDPOINTS.FEEDBACK, data);
+  return response;
+};

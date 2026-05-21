@@ -5,13 +5,11 @@ import {
   Bell,
   FileText,
   Users,
-  BarChart3,
   MessageSquare,
   Settings,
   ChevronLeft,
   ChevronRight,
   LogOut,
-  Search,
   Bot,
   Sparkles,
   FormInput,
@@ -38,27 +36,24 @@ const Layout = ({ children }) => {
     const role = user?.role;
 
     const navItems = {
-      [USER_ROLES.SECRETARY]: [
+      [USER_ROLES.WDC_SECRETARY]: [
         { path: '/wdc', label: 'Dashboard', icon: LayoutDashboard },
         { path: '/wdc/reports', label: 'My Reports', icon: FileText },
         { path: '/wdc/notifications', label: 'Notifications', icon: Bell },
         { path: '/wdc/feedback', label: 'Messages', icon: MessageSquare },
       ],
-      [USER_ROLES.COORDINATOR]: [
+      [USER_ROLES.LGA_COORDINATOR]: [
         { path: '/lga', label: 'Dashboard', icon: LayoutDashboard },
         { path: '/lga/wards', label: 'Wards', icon: Users },
         { path: '/lga/reports', label: 'Reports', icon: FileText },
         { path: '/lga/notifications', label: 'Notifications', icon: Bell },
         { path: '/lga/feedback', label: 'Messages', icon: MessageSquare },
       ],
-      [USER_ROLES.DIRECTOR]: [
+      [USER_ROLES.STATE_OFFICIAL]: [
         { path: '/state', label: 'Dashboard', icon: LayoutDashboard },
-        { path: '/state/analytics', label: 'Analytics', icon: BarChart3 },
         { path: '/state/submissions', label: 'Submissions', icon: FileText },
-        { path: '/state/lgas', label: 'LGAs', icon: Users },
         { path: '/state/forms', label: 'Form Builder', icon: FormInput },
         { path: '/state/users', label: 'User Management', icon: UserCog },
-        { path: '/state/investigations', label: 'Investigations', icon: Search },
         { path: '/state/notifications', label: 'Notifications', icon: Bell },
       ],
     };
@@ -193,7 +188,7 @@ const Layout = ({ children }) => {
         {/* Footer with Chat AI (State Officials only), Settings and Logout */}
         <div className="p-3 border-t border-white/30 space-y-1">
           {/* AI Chat Button (State Officials Only) */}
-          {user?.role === USER_ROLES.DIRECTOR && (
+          {user?.role === USER_ROLES.STATE_OFFICIAL && (
             <button
               onClick={() => {
                 mobile && setMobileSidebarOpen(false);

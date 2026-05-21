@@ -1,30 +1,38 @@
-import apiClient, { buildQueryString } from './client';
+import apiClient from './client';
 import { API_ENDPOINTS } from '../utils/constants';
 
-/** Director: create a user. Returns user + enrolmentToken. */
-export const createUser = (data) =>
-  apiClient.post(API_ENDPOINTS.USERS, data);
+export const getUsersSummary = async () => {
+  return await apiClient.get(API_ENDPOINTS.USERS_SUMMARY);
+};
 
-/** List users (RLS-scoped). Query: ?role=&lgaId=&wardId=&cursor=&limit= */
-export const getUsers = (params = {}) =>
-  apiClient.get(API_ENDPOINTS.USERS + buildQueryString(params));
+export const getLGAWards = async (lgaId) => {
+  return await apiClient.get(API_ENDPOINTS.USER_LGA_WARDS(lgaId));
+};
 
-/** Get a single user by ID. */
-export const getUserById = (id) =>
-  apiClient.get(API_ENDPOINTS.USER_BY_ID(id));
+export const getLGACoordinator = async (lgaId) => {
+  return await apiClient.get(API_ENDPOINTS.USER_COORDINATOR(lgaId));
+};
 
-/** Director: reassign a user to a different LGA / ward. */
-export const reassignUser = (id, data) =>
-  apiClient.patch(API_ENDPOINTS.USER_ASSIGNMENT(id), data);
+export const getWardSecretary = async (wardId) => {
+  return await apiClient.get(API_ENDPOINTS.USER_SECRETARY(wardId));
+};
 
-/** Director: suspend a user. */
-export const suspendUser = (id) =>
-  apiClient.post(API_ENDPOINTS.USER_SUSPEND(id));
+export const updateUser = async (userId, data) => {
+  return await apiClient.patch(API_ENDPOINTS.USER_BY_ID(userId), data);
+};
 
-/** Director: reactivate a suspended user. */
-export const reactivateUser = (id) =>
-  apiClient.post(API_ENDPOINTS.USER_REACTIVATE(id));
+export const changeUserPassword = async (userId, data) => {
+  return await apiClient.patch(API_ENDPOINTS.USER_PASSWORD(userId), data);
+};
 
-/** Director: soft-delete a user (204). */
-export const deleteUser = (id) =>
-  apiClient.delete(API_ENDPOINTS.USER_BY_ID(id));
+export const changeUserPin = async (userId, data) => {
+  return await apiClient.patch(API_ENDPOINTS.USER_PIN(userId), data);
+};
+
+export const toggleUserAccess = async (userId, data) => {
+  return await apiClient.patch(API_ENDPOINTS.USER_ACCESS(userId), data);
+};
+
+export const assignUser = async (data) => {
+  return await apiClient.post(API_ENDPOINTS.USER_ASSIGN, data);
+};

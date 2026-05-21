@@ -36,15 +36,18 @@ import Card, { IconCard, EmptyCard } from '../components/common/Card';
 import Button from '../components/common/Button';
 import Alert from '../components/common/Alert';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import DataFreshness from '../components/common/DataFreshness';
 import Modal, { ConfirmModal } from '../components/common/Modal';
 import { useAuth } from '../hooks/useAuth';
 import {
+  useLGA,
+  useLGAWards,
   useLGAReports,
-  useLGASecretaries,
-  useCoordinatorReview,
+  useLGAMissingReports,
   useSendNotification,
+  useReviewReport,
   useFeedback,
-  useMarkFeedbackRead,
+  useSendFeedback,
 } from '../hooks/useLGAData';
 import { formatDate, getStatusColor, formatMonth, getCurrentMonth, formatPercentage } from '../utils/formatters';
 import { getTargetReportMonth, getSubmissionInfo } from '../utils/dateUtils';
@@ -73,21 +76,32 @@ const LGADashboard = () => {
   const [reviewerNotes, setReviewerNotes] = useState('');
 
   // Data fetching
-  const { data: secretariesData, isLoading: loadingWards, refetch: refetchWards } = useLGASecretaries();
-  const { data: reportsData, isLoading: loadingReports, refetch: refetchReports } = useLGAReports({ limit: 100 });
+  const { data: wardsData, isLoading: loadingWards, refetch: refetchWards, dataUpdatedAt: wardsUpdatedAt, isRefetching: isRefetchingWards } = useLGAWards(lgaId, { month: targetMonth });
+  const { data: reportsData, isLoading: loadingReports, refetch: refetchReports, dataUpdatedAt: reportsUpdatedAt, isRefetching: isRefetchingReports } = useLGAReports(lgaId, { limit: 100 });
+  const { data: missingData, isLoading: loadingMissing, refetch: refetchMissing } = useLGAMissingReports(lgaId, { month: targetMonth });
   const { data: feedbackData, isLoading: loadingFeedback } = useFeedback({ limit: 10 });
+  const { data: lgaData } = useLGA(lgaId);
+
+  // Combine refetching state for DataFreshness
+  const latestUpdatedAt = Math.max(wardsUpdatedAt || 0, reportsUpdatedAt || 0);
+  const isRefetchingAny = isRefetchingWards || isRefetchingReports;
+  const handleRefreshAll = () => {
+    refetchWards();
+    refetchReports();
+    refetchMissing();
+  };
 
   // Mutations
   const sendNotificationMutation = useSendNotification();
-  const reviewMutation = useCoordinatorReview();
-  const markFeedbackReadMutation = useMarkFeedbackRead();
+  const reviewMutation = useReviewReport();
+  const sendFeedbackMutation = useSendFeedback();
 
   // Extract data with fallbacks
-  const wards = Array.isArray(secretariesData) ? secretariesData : secretariesData?.items || [];
-  const reports = Array.isArray(reportsData) ? reportsData : reportsData?.items || [];
-  const missingReports = reports.filter(r => r.state === 'draft' || !r.submittedAt);
-  const feedback = Array.isArray(feedbackData) ? feedbackData : feedbackData?.items || [];
-  const lgaInfo = user?.lga || {};
+  const wards = wardsData?.data?.wards || wardsData?.wards || [];
+  const reports = reportsData?.data?.reports || reportsData?.reports || [];
+  const missingReports = missingData?.data?.missing || missingData?.missing || [];
+  const feedback = feedbackData?.data?.messages || feedbackData?.messages || [];
+  const lgaInfo = wardsData?.data?.lga || lgaData?.data || user?.lga || {};
 
   // Calculate stats - using actual data only
   const officialWardCount = lgaInfo.num_wards || wards.length;
@@ -95,8 +109,8 @@ const LGADashboard = () => {
   const submittedCount = wards.filter(w => w.submitted).length;
   const missingCount = missingReports.length;
   const submissionRate = totalWards > 0 ? Math.round((submittedCount / totalWards) * 100) : 0;
-  const reviewedCount = reports.filter(r => r.status === 'approved' || r.status === 'sealed').length;
-  const flaggedCount = reports.filter(r => r.status === 'returned').length;
+  const reviewedCount = reports.filter(r => r.status === 'REVIEWED').length;
+  const flaggedCount = reports.filter(r => r.status === 'FLAGGED').length;
 
   // Filter reports
   const filteredReports = reports.filter(r => {
@@ -172,10 +186,9 @@ const LGADashboard = () => {
     if (!feedbackMessage.trim()) return;
 
     try {
-      await sendNotificationMutation.mutateAsync({
-        body: feedbackMessage,
-        channels: ['in_app'],
-        scopeKind: 'lga',
+      await sendFeedbackMutation.mutateAsync({
+        message: feedbackMessage,
+        recipient_type: 'WDC',
       });
       setFeedbackMessage('');
       setAlertMessage({ type: 'success', text: 'Message sent!' });
@@ -220,15 +233,22 @@ const LGADashboard = () => {
               <h1 className="text-2xl font-bold text-white">
                 LGA Alliance Chairman Dashboard
               </h1>
-              <p className="mt-1 text-sm text-blue-200">
-                {lgaName} • {submissionInfo.month_name}
-              </p>
+              <div className="flex items-center gap-3 mt-1">
+                <p className="text-sm text-blue-200">
+                  {lgaName} • {submissionInfo.month_name}
+                </p>
+                <DataFreshness
+                  dataUpdatedAt={latestUpdatedAt}
+                  onRefresh={handleRefreshAll}
+                  isRefetching={isRefetchingAny}
+                />
+              </div>
             </div>
             <div className="flex gap-3">
               <Button
                 variant="outline"
                 icon={RefreshCw}
-                onClick={() => { refetchWards(); refetchReports(); }}
+                onClick={handleRefreshAll}
                 className="bg-white/90 text-blue-700 border-white/50 hover:bg-white transition-all"
               >
                 Refresh
@@ -656,8 +676,8 @@ const LGADashboard = () => {
                     size="sm"
                     icon={Send}
                     onClick={handleSendFeedback}
-                    disabled={!feedbackMessage.trim() || sendNotificationMutation.isPending}
-                    loading={sendNotificationMutation.isPending}
+                    disabled={!feedbackMessage.trim() || sendFeedbackMutation.isPending}
+                    loading={sendFeedbackMutation.isPending}
                     className="mt-2"
                     fullWidth
                   >

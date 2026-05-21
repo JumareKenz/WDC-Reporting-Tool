@@ -21,7 +21,7 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import Alert from '../components/common/Alert';
 import Modal from '../components/common/Modal';
 import { useAuth } from '../hooks/useAuth';
-import { useLGAReports, useCoordinatorReview } from '../hooks/useLGAData';
+import { useLGAReports, useReviewReport } from '../hooks/useLGAData';
 import { formatDate, formatMonth, getStatusColor } from '../utils/formatters';
 import { REPORT_STATUS, STATUS_LABELS } from '../utils/constants';
 
@@ -38,8 +38,8 @@ const LGAReportsPage = () => {
   const [showDeclineModal, setShowDeclineModal] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
 
-  const { data: reportsData, isLoading, refetch } = useLGAReports({ limit: 100 });
-  const reviewMutation = useCoordinatorReview();
+  const { data: reportsData, isLoading, refetch } = useLGAReports(lgaId, { limit: 100 });
+  const reviewMutation = useReviewReport();
 
   const reports = reportsData?.data?.reports || reportsData?.reports || [];
 
@@ -65,14 +65,17 @@ const LGAReportsPage = () => {
   const submittedCount = reports.filter(r => r.status === REPORT_STATUS.SUBMITTED).length;
   const reviewedCount = reports.filter(r => r.status === REPORT_STATUS.REVIEWED).length;
   const flaggedCount = reports.filter(r => r.status === REPORT_STATUS.FLAGGED).length;
-  const declinedCount = reports.filter(r => r.status === REPORT_STATUS.RETURNED).length;
+  const declinedCount = reports.filter(r => r.status === REPORT_STATUS.DECLINED).length;
   const totalMeetings = reports.reduce((sum, r) => sum + (r.meetings_held || 0), 0);
   const totalAttendees = reports.reduce((sum, r) => sum + (r.attendees_count || 0), 0);
 
-  const handleReviewReport = async (reportId, action, notes = null) => {
+  const handleReviewReport = async (reportId, action, reason = null) => {
     try {
-      await reviewMutation.mutateAsync({ reportId, action, notes });
-      const actionLabel = action === 'approve' ? 'approved' : 'returned';
+      await reviewMutation.mutateAsync({
+        reportId,
+        data: { action, decline_reason: reason },
+      });
+      const actionLabel = action === 'approve' ? 'approved' : 'declined';
       setAlertMessage({ type: 'success', text: `Report ${actionLabel} successfully` });
       setShowDetailsModal(false);
       setShowDeclineModal(false);
