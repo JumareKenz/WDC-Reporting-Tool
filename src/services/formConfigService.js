@@ -270,35 +270,42 @@ export function buildVoiceQuestions(config, formData = {}) {
     if (formData?.[gate] === 'No') deps.forEach((d) => skipDependents.add(d));
   }
 
-  // Define explicit section order
+  // Define explicit section order matching the form wizard
+  // Section 0: Meeting details, Section 1: Agenda, Section 2: Action Tracker
+  // Section 3: Health Data (3A, 3B, 3C, 3D), Section 4: Community Feedback
+  // Section 5: VDC Reports, Section 6: Mobilization, Section 7: Action Plan, Section 8: Conclusion
   const SECTION_ORDER = {
-    'meeting': 0,
-    'health_data': 1,
-    'action_tracker': 2,
-    'facility_support': 3,
-    'transportation': 4,
-    'cmpdsr': 5,
-    'community_feedback': 6,
-    'vdc_reports': 7,
-    'achievements': 8,
-    'action_plan': 9,
-    'conclusion': 10,
+    'meeting': 0,              // Section 0: Meeting type, date, time
+    'agenda': 1,               // Section 1: Agenda & Governance
+    'action_tracker': 2,       // Section 2: Action Tracker
+    'health_data': 3,          // Section 3A: Health Data
+    'facility_support': 4,     // Section 3B: Facility Support
+    'transport': 5,            // Section 3C: Transportation
+    'cmpdsr': 6,               // Section 3D: cMPDSR (deaths)
+    'community_feedback': 7,   // Section 4: Community Feedback (quarter-end)
+    'vdc_reports': 8,          // Section 5: VDC Reports
+    'mobilization': 9,         // Section 6: Community Mobilization
+    'action_plan': 10,         // Section 7: Community Action Plan
+    'conclusion': 11,          // Section 8: Support & Conclusion
   };
 
   const questions = [];
 
-  // Convert to array and sort by section order
-  const fieldsArray = Object.values(cfg).map(field => ({
+  // Convert to array and add section order + preserve definition order
+  const fieldsArray = Object.entries(cfg).map(([fieldName, field], index) => ({
     ...field,
+    name: fieldName, // Ensure name is set
     sectionOrder: SECTION_ORDER[field.section] ?? 999,
+    definitionOrder: index, // Preserve order from defaultFieldConfig.js
   }));
 
-  // Sort by section order first, then by field name for consistent ordering within section
+  // Sort by section order first, then by definition order (NOT alphabetically)
+  // This preserves the field order as defined in defaultFieldConfig.js within each section
   fieldsArray.sort((a, b) => {
     if (a.sectionOrder !== b.sectionOrder) {
       return a.sectionOrder - b.sectionOrder;
     }
-    return (a.name || '').localeCompare(b.name || '');
+    return a.definitionOrder - b.definitionOrder;
   });
 
   for (const field of fieldsArray) {

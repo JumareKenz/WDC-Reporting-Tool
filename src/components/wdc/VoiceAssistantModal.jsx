@@ -22,7 +22,24 @@ const VoiceAssistantModal = ({ isOpen, onClose, formData, onFieldsCollected }) =
     (async () => {
       const config = await loadActiveFieldConfig();
       if (cancelled) return;
-      setFilteredQuestions(buildVoiceQuestions(config, formData || {}));
+      const questions = buildVoiceQuestions(config, formData || {});
+
+      // DEBUG: Log what fields are being skipped
+      console.log('[Voice Assistant] Total questions generated:', questions.length);
+      if (questions.length > 0) {
+        console.log('[Voice Assistant] First question:', questions[0].field, '-', questions[0].en);
+        console.log('[Voice Assistant] First 5 fields:', questions.slice(0, 5).map(q => q.field));
+      }
+
+      // Log some formData to see what's pre-filled
+      const sampleFields = ['meeting_type', 'report_date', 'health_general_attendance_total', 'health_anc_eighth_visit'];
+      const fieldValues = sampleFields.reduce((acc, field) => {
+        acc[field] = formData?.[field];
+        return acc;
+      }, {});
+      console.log('[Voice Assistant] Sample field values:', fieldValues);
+
+      setFilteredQuestions(questions);
     })();
     return () => { cancelled = true; };
   }, [formData, isOpen]);

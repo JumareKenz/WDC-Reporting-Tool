@@ -3,20 +3,43 @@
 ## Build Details
 - **App Name**: Kaduna WDC Reports
 - **Package ID**: ng.gov.kaduna.wdc.reporting
-- **Version**: 1.0.5-FINAL ✅ **LATEST & RECOMMENDED**
+- **Version**: 1.0.7-FINAL ✅ **LATEST & RECOMMENDED**
 - **Build Date**: May 21, 2026
 - **Build Type**: Release (Unsigned)
 - **APK Size**: 47 MB
 
 ## APK Location
 ```
-C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.5-FINAL.apk  ← USE THIS ONE ✅
+C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.7-FINAL.apk  ← USE THIS ONE ✅
+C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.6-DEBUG.apk  (Debug with logging)
+C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.5-FINAL.apk  (Section order attempt 1)
 C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.4-FINAL.apk  (Console login fixed)
 C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.3-FINAL.apk  (Console login attempt 1)
 C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.2-FINAL.apk  (Voice + table sections)
 C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.1.apk  (Voice fix attempt)
 C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.0.apk  (Initial build)
 ```
+
+## What's New in v1.0.7-FINAL
+✅ **Voice Assistant FULLY FIXED**: Questions now follow exact form wizard order
+- Section 0: Meeting (type, date, time)
+- Section 1: Agenda & Governance
+- Section 2: Action Tracker (row-by-row)
+- Section 3: Health Data
+  - 3A: Health services (OPD, immunization, ANC, deliveries, etc.)
+  - 3B: Facility Support (renovations, donations, repairs)
+  - 3C: Transportation (women & children transported)
+  - 3D: cMPDSR (maternal & perinatal deaths)
+- Section 4: Community Feedback (quarter-end only)
+- Section 5: VDC Reports (row-by-row)
+- Section 6: Community Mobilization
+- Section 7: Community Action Plan (row-by-row)
+- Section 8: Support & Conclusion
+
+✅ **Root cause fixed**: 
+1. Fields were being sorted alphabetically within sections (v1.0.5 issue)
+2. Section order didn't match form wizard structure (agenda was missing)
+3. Now preserves definition order from defaultFieldConfig.js + correct section mapping
 
 ## What's New in v1.0.5-FINAL
 ✅ **Voice Assistant Section Ordering FIXED**: Now asks questions from ALL sections 1-8 in correct order
