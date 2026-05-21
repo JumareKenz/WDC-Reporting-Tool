@@ -949,8 +949,58 @@ const SubmitReportPage = () => {
   // aren't blown away by partial extractions.
   const handleBulkFieldsApply = useCallback((fields, source) => {
     if (!fields || typeof fields !== 'object') return;
+
+    // Transform special array fields from voice assistant format to form format
+    const transformed = { ...fields };
+    const arrayFields = {
+      action_tracker: ['action_point', 'status', 'challenges', 'timeline', 'responsible_person'],
+      vdc_reports: ['vdc_name', 'issues', 'action_taken'],
+      action_plan: ['issue', 'action', 'timeline', 'responsible_person'],
+    };
+
+    // Process each array field type
+    Object.entries(arrayFields).forEach(([arrayName, columns]) => {
+      const rows = [];
+      let rowIndex = 1;
+
+      // Collect all rows until we hit a "no more" answer
+      while (true) {
+        const prefix = `${arrayName}_${rowIndex}_`;
+        const hasAnyData = columns.some(col => transformed[`${prefix}${col}`]);
+
+        if (!hasAnyData) break;
+
+        const row = {};
+        columns.forEach(col => {
+          const key = `${prefix}${col}`;
+          if (transformed[key]) {
+            row[col] = transformed[key];
+            delete transformed[key]; // Remove the flattened field
+          }
+        });
+
+        if (Object.keys(row).length > 0) {
+          rows.push(row);
+        }
+
+        // Check if user said "no more"
+        const hasMoreKey = `${arrayName}_has_more`;
+        if (transformed[hasMoreKey] === 'No' || rowIndex >= 10) {
+          delete transformed[hasMoreKey];
+          break;
+        }
+        delete transformed[hasMoreKey];
+        rowIndex++;
+      }
+
+      // Add the constructed array to formData if we have rows
+      if (rows.length > 0) {
+        transformed[arrayName] = rows;
+      }
+    });
+
     const cleaned = Object.fromEntries(
-      Object.entries(fields).filter(([, v]) => v !== undefined && v !== null && v !== '')
+      Object.entries(transformed).filter(([, v]) => v !== undefined && v !== null && v !== '')
     );
     if (!Object.keys(cleaned).length) return;
     setFormData((prev) => ({ ...prev, ...cleaned }));
