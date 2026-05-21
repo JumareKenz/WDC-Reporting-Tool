@@ -9,7 +9,6 @@ import {
   getLGAs,
   getStateSubmissions,
 } from '../api/analytics';
-import apiClient from '../api/client';
 import {
   getForms,
   createForm,
@@ -26,6 +25,7 @@ import {
   toggleUserAccess,
   assignUser,
 } from '../api/users';
+import { reviewReport } from '../api/lga';
 
 export const STATE_QUERY_KEYS = {
   overview: 'state-overview',
@@ -220,14 +220,14 @@ export const useAssignUser = () => {
 };
 
 /**
- * Review a report: approve (REVIEWED), decline (DECLINED), or flag (FLAGGED).
- * PATCH /reports/{report_id}/review
+ * Review a report: approve or return. Routes through reviewReport from api/lga.js,
+ * which auto-calls /open-review first, then /approve or /return.
+ * Accepts { reportId, action, status, decision, notes, reviewer_notes, reviewerNotes, decline_reason }.
  */
 export const useReviewReport = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ reportId, action, notes, decline_reason }) =>
-      apiClient.patch(`/reports/${reportId}/review`, { action, notes, decline_reason }),
+    mutationFn: ({ reportId, ...data }) => reviewReport(reportId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [STATE_QUERY_KEYS.stateSubmissions] });
       queryClient.invalidateQueries({ queryKey: [STATE_QUERY_KEYS.overview] });

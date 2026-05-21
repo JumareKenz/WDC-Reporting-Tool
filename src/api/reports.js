@@ -32,11 +32,43 @@ export const submitReport = async (reportId) =>
 export const openReview = async (reportId) =>
   apiClient.post(API_ENDPOINTS.REPORT_OPEN_REVIEW(reportId));
 
-export const approveReport = async (reportId, notes = undefined) =>
-  apiClient.post(API_ENDPOINTS.REPORT_APPROVE(reportId), notes ? { notes } : {});
+// Backend contract: /approve takes no body.
+export const approveReport = async (reportId) =>
+  apiClient.post(API_ENDPOINTS.REPORT_APPROVE(reportId), {});
 
-export const returnReport = async (reportId, notes = '') =>
-  apiClient.post(API_ENDPOINTS.REPORT_RETURN(reportId), { notes });
+// Backend contract: /return requires { notes } (1-2000 chars, mandatory).
+export const returnReport = async (reportId, notes) => {
+  const trimmed = (notes ?? '').toString().trim();
+  if (!trimmed) {
+    const err = new Error('Reviewer notes are required when returning a report.');
+    err.status = 400;
+    err.code = 'NOTES_REQUIRED';
+    throw err;
+  }
+  if (trimmed.length > 2000) {
+    const err = new Error('Reviewer notes must be 2000 characters or fewer.');
+    err.status = 400;
+    err.code = 'NOTES_TOO_LONG';
+    throw err;
+  }
+  return apiClient.post(API_ENDPOINTS.REPORT_RETURN(reportId), { notes: trimmed });
+};
+
+// Combines open-review + approve/return into a single coordinator action.
+// Backend state machine: submitted -> in_review -> approved | returned.
+// /open-review on a report that is already in_review returns 409 — we swallow
+// that so coordinators can re-decide without the UI tracking state.
+export const reviewAndDecide = async (reportId, decision, notes = '') => {
+  try {
+    await openReview(reportId);
+  } catch (err) {
+    const status = err?.status || err?.response?.status;
+    if (status !== 409) throw err;
+  }
+  if (decision === 'approve') return approveReport(reportId);
+  if (decision === 'return') return returnReport(reportId, notes);
+  throw new Error(`Unknown review decision: ${decision}`);
+};
 
 export const editReturned = async (reportId) =>
   apiClient.post(API_ENDPOINTS.REPORT_EDIT_RETURNED(reportId));
@@ -158,8 +190,8 @@ export const updateReport = async (reportId, data) => {
 };
 
 export const reviewReport = async (reportId, status, notes = '') => {
-  if (status === 'approved' || status === 'REVIEWED') return approveReport(reportId, notes);
-  if (status === 'returned' || status === 'FLAGGED' || status === 'DECLINED') return returnReport(reportId, notes);
+  if (status === 'approved' || status === 'REVIEWED') return reviewAndDecide(reportId, 'approve');
+  if (status === 'returned' || status === 'FLAGGED' || status === 'DECLINED') return reviewAndDecide(reportId, 'return', notes);
   if (status === 'in_review') return openReview(reportId);
   return getReportById(reportId);
 };

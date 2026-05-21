@@ -1,6 +1,6 @@
 import apiClient, { buildQueryString } from './client';
 import { API_ENDPOINTS } from '../utils/constants';
-import { getReports, approveReport, returnReport, openReview } from './reports';
+import { getReports, reviewAndDecide } from './reports';
 
 // Geography is RLS-scoped on the backend; there's no /lgas/:id endpoint.
 // We synthesize the small bits of legacy shape we need from /lgas list lookups.
@@ -27,11 +27,26 @@ export const getLGAReports = async (_lgaId, params = {}) =>
 export const getLGAMissingReports = async (_lgaId, params = {}) =>
   getReports({ ...params, state: 'draft' });
 
+/**
+ * Coordinator/state review action. Accepts the legacy
+ *   { status, reviewer_notes }
+ * or canonical
+ *   { decision, notes }
+ * shape. Resolves to /approve or /return via reviewAndDecide which
+ * transparently calls /open-review first when the report is still in
+ * the "submitted" state.
+ */
 export const reviewReport = async (reportId, data = {}) => {
-  const { action, notes = '' } = data;
-  if (action === 'approve' || action === 'approved' || action === 'REVIEWED') return approveReport(reportId, notes);
-  if (action === 'return' || action === 'returned' || action === 'FLAGGED' || action === 'DECLINED') return returnReport(reportId, notes);
-  return openReview(reportId);
+  const rawStatus = data.status ?? data.decision ?? data.action;
+  const notes = data.reviewer_notes ?? data.reviewerNotes ?? data.notes ?? '';
+
+  const APPROVE_VALUES = new Set(['approve', 'approved', 'REVIEWED', 'reviewed']);
+  const RETURN_VALUES = new Set(['return', 'returned', 'FLAGGED', 'flagged', 'DECLINED', 'declined', 'decline', 'reject', 'rejected']);
+
+  if (APPROVE_VALUES.has(rawStatus)) return reviewAndDecide(reportId, 'approve');
+  if (RETURN_VALUES.has(rawStatus)) return reviewAndDecide(reportId, 'return', notes);
+
+  throw new Error(`Unknown review action: ${rawStatus}`);
 };
 
 // Notifications / feedback now live under /messages. Director role can broadcast;
