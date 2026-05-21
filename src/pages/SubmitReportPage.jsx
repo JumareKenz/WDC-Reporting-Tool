@@ -68,11 +68,11 @@ const buildInitialFormData = (userWard, userLGA) => ({
   state: 'Kaduna State',
   lga_id: userLGA?.id || '',
   ward_id: userWard?.id || '',
-  report_date: new Date().toISOString().split('T')[0],
-  report_time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+  report_date: '',
+  report_time: '',
 
   // Section 1: Agenda & Governance
-  meeting_type: 'Monthly',
+  meeting_type: '',
   agenda_opening_prayer: true,
   agenda_minutes: true,
   agenda_action_tracker: true,
