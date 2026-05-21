@@ -25,9 +25,13 @@ const CommunityFeedbackSection = ({ formData, onChange, onVoiceNote, voiceNotes 
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-gray-600">
-        Record feedback from the Quarterly Town Hall meeting.
-      </p>
+      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+        <p className="text-sm font-semibold text-emerald-900 mb-1">Objective</p>
+        <p className="text-xs sm:text-sm text-emerald-800">
+          Encourage community involvement and gather feedback on quality of care
+          and community development issues.
+        </p>
+      </div>
 
       {/* Town Hall Conducted */}
       <div>

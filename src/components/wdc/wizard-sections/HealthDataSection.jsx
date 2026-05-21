@@ -12,17 +12,34 @@ const HealthDataSection = ({ formData, onChange, errors }) => {
 
   return (
     <div className="space-y-8">
-      {/* OPD & Immunization */}
+      {/* OPD General Attendance */}
       <div>
-        <h4 className="text-sm font-semibold text-gray-800 mb-1">OPD & Immunization</h4>
-        <p className="text-xs text-gray-500 mb-3">Enter attendance and immunization figures for the reporting period.</p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <h4 className="text-sm font-semibold text-gray-800 mb-1">OPD General Attendance</h4>
+        <p className="text-xs text-gray-500 mb-3">Total outpatient visits across the reporting period.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <NumberInput label="OPD General Attendance Total" name="health_general_attendance_total" value={formData.health_general_attendance_total} onChange={handleChange} required />
-          <NumberInput label="Routine Immunization Total" name="health_routine_immunization_total" value={formData.health_routine_immunization_total} onChange={handleChange} required />
+        </div>
+      </div>
+
+      {/* OPD Immunization */}
+      <div>
+        <h4 className="text-sm font-semibold text-gray-800 mb-1">OPD Immunization</h4>
+        <p className="text-xs text-gray-500 mb-3">Routine immunization counts.</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <NumberInput label="OPD Immunization Total" name="health_routine_immunization_total" value={formData.health_routine_immunization_total} onChange={handleChange} required />
           <NumberInput label="PENTA1" name="health_penta1" value={formData.health_penta1} onChange={handleChange} required />
           <NumberInput label="BCG" name="health_bcg" value={formData.health_bcg} onChange={handleChange} required />
           <NumberInput label="PENTA3" name="health_penta3" value={formData.health_penta3} onChange={handleChange} required />
           <NumberInput label="MEASLES" name="health_measles" value={formData.health_measles} onChange={handleChange} required />
+        </div>
+      </div>
+
+      {/* OPD Under 5 */}
+      <div>
+        <h4 className="text-sm font-semibold text-gray-800 mb-1">OPD Under 5</h4>
+        <p className="text-xs text-gray-500 mb-3">Outpatient attendance for children under five.</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <NumberInput label="OPD Under 5 Total" name="health_opd_under5_total" value={formData.health_opd_under5_total} onChange={handleChange} required />
           <NumberInput label="MALARIA UNDER 5" name="health_malaria_under5" value={formData.health_malaria_under5} onChange={handleChange} required />
           <NumberInput label="DIARRHEA UNDER 5" name="health_diarrhea_under5" value={formData.health_diarrhea_under5} onChange={handleChange} required />
         </div>

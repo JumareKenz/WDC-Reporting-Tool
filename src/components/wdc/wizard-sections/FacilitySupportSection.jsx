@@ -15,8 +15,9 @@ const REPAIR_ITEMS = [
   'Furniture', 'Generator', 'Water pump', 'Fencing', 'Doors/Windows', 'Other',
 ];
 
-// Who can repair
-const REPAIR_ACTORS = ['WDC', 'Government', 'Partners'];
+// Who can repair / renovate
+const REPAIR_ACTORS = ['Government', 'Partners', 'WDC'];
+const RENOVATION_ACTORS = ['Government', 'Partners', 'WDC'];
 
 /**
  * Section 3B: Health Facility Support
@@ -50,7 +51,19 @@ const FacilitySupportSection = ({ formData, onChange, errors, onVoiceNote, voice
   const addRenovation = () => {
     onChange((prev) => ({
       ...prev,
-      facility_renovations: [...(prev.facility_renovations || []), { facility_name: '', partner: '' }],
+      facility_renovations: [...(prev.facility_renovations || []), { facility_name: '', renovated_by: [] }],
+    }));
+  };
+
+  const toggleRenovationActor = (index, actor) => {
+    onChange((prev) => ({
+      ...prev,
+      facility_renovations: (prev.facility_renovations || []).map((item, i) => {
+        if (i !== index) return item;
+        const current = Array.isArray(item.renovated_by) ? item.renovated_by : [];
+        const next = current.includes(actor) ? current.filter((a) => a !== actor) : [...current, actor];
+        return { ...item, renovated_by: next };
+      }),
     }));
   };
 
@@ -61,14 +74,15 @@ const FacilitySupportSection = ({ formData, onChange, errors, onVoiceNote, voice
     }));
   };
 
-  // Toggle repaired-by actor in items_repaired_yn array
+  // Toggle a "repaired by" actor (WDC / Government / Partners) — independent of
+  // the items_repaired_yn Yes/No gate.
   const handleRepairActorToggle = (actor) => {
     onChange((prev) => {
-      const current = Array.isArray(prev.items_repaired_yn) ? prev.items_repaired_yn : [];
+      const current = Array.isArray(prev.items_repaired_by) ? prev.items_repaired_by : [];
       const next = current.includes(actor)
         ? current.filter((a) => a !== actor)
         : [...current, actor];
-      return { ...prev, items_repaired_yn: next.length > 0 ? next : 'No' };
+      return { ...prev, items_repaired_by: next };
     });
   };
 
@@ -81,8 +95,8 @@ const FacilitySupportSection = ({ formData, onChange, errors, onVoiceNote, voice
   const govtDonatedYes = formData.items_donated_govt_yn === 'Yes';
   const donatedGovtCount = parseInt(formData.items_donated_govt_count) || 0;
 
-  const repairActors = Array.isArray(formData.items_repaired_yn) ? formData.items_repaired_yn : [];
-  const hasRepairs = repairActors.length > 0;
+  const repairActors = Array.isArray(formData.items_repaired_by) ? formData.items_repaired_by : [];
+  const repairedYes = formData.items_repaired_yn === 'Yes';
   const repairedCount = parseInt(formData.items_repaired_count) || 0;
 
   return (
@@ -132,37 +146,53 @@ const FacilitySupportSection = ({ formData, onChange, errors, onVoiceNote, voice
             />
 
             {renovationCount > 0 && (
-              <div className="space-y-3 mt-3">
+              <div className="space-y-4 mt-3">
                 <label className="block text-xs sm:text-sm font-medium text-gray-700">
-                  List each renovated facility and partner:
+                  For each renovated facility, give the name and tick everyone who renovated it:
                 </label>
                 {(formData.facility_renovations || []).map((item, idx) => (
-                  <div key={idx} className="flex gap-2 items-start">
-                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div key={idx} className="rounded-xl border border-gray-200 bg-white p-3 space-y-3">
+                    <div className="flex items-start gap-2">
                       <input
                         type="text"
                         value={item.facility_name || ''}
                         onChange={(e) => handleRenovationChange(idx, 'facility_name', e.target.value)}
-                        className={inputClass}
-                        placeholder="Facility name..."
+                        className={`${inputClass} flex-1`}
+                        placeholder={`Facility ${idx + 1} name...`}
                       />
-                      <input
-                        type="text"
-                        value={item.partner || ''}
-                        onChange={(e) => handleRenovationChange(idx, 'partner', e.target.value)}
-                        className={inputClass}
-                        placeholder="Renovated by (Govt/Partner/WDC)..."
-                      />
+                      {(formData.facility_renovations || []).length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeRenovation(idx)}
+                          className="p-2 text-red-500 hover:bg-red-50 rounded transition-colors"
+                          aria-label={`Remove facility ${idx + 1}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
-                    {(formData.facility_renovations || []).length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeRenovation(idx)}
-                        className="p-2 text-red-500 hover:bg-red-50 rounded transition-colors mt-1"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-2 font-medium">Renovated by (tick all that apply):</label>
+                      <div className="flex flex-wrap gap-2">
+                        {RENOVATION_ACTORS.map((actor) => {
+                          const checked = Array.isArray(item.renovated_by) && item.renovated_by.includes(actor);
+                          return (
+                            <button
+                              key={actor}
+                              type="button"
+                              onClick={() => toggleRenovationActor(idx, actor)}
+                              className={`px-3 py-1.5 text-xs rounded-full border transition-all ${
+                                checked
+                                  ? 'bg-green-100 border-green-500 text-green-700 font-medium'
+                                  : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                              }`}
+                            >
+                              {actor}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
                 ))}
                 <button
@@ -354,35 +384,37 @@ const FacilitySupportSection = ({ formData, onChange, errors, onVoiceNote, voice
       {/* Items Repaired */}
       <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
         <h4 className="text-sm font-semibold text-gray-800 mb-1">Items Repaired</h4>
-        <p className="text-xs text-gray-500 mb-3">Were any items in health facilities repaired?</p>
+        <p className="text-xs text-gray-500 mb-3">Were any items in any health facility repaired?</p>
 
         <div className="mb-3">
           <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
-            Repaired by whom? <span className="text-xs text-gray-400">(select all that apply, or leave empty for No)</span>
+            Any item repaired? <span className="text-red-500">*</span>
           </label>
-          <div className="flex flex-wrap gap-3">
-            {REPAIR_ACTORS.map((actor) => (
+          <div className="flex gap-3">
+            {['Yes', 'No'].map((opt) => (
               <label
-                key={actor}
+                key={opt}
                 className={`flex items-center gap-2 px-4 py-3 rounded-xl border cursor-pointer transition-all ${
-                  repairActors.includes(actor)
+                  formData.items_repaired_yn === opt
                     ? 'bg-green-50 border-green-500 text-green-700 shadow-sm'
                     : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
                 }`}
               >
                 <input
-                  type="checkbox"
-                  checked={repairActors.includes(actor)}
-                  onChange={() => handleRepairActorToggle(actor)}
-                  className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                  type="radio"
+                  name="items_repaired_yn"
+                  value={opt}
+                  checked={formData.items_repaired_yn === opt}
+                  onChange={handleChange}
+                  className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
                 />
-                <span className="text-sm font-medium">{actor}</span>
+                <span className="text-sm font-medium">{opt}</span>
               </label>
             ))}
           </div>
         </div>
 
-        {hasRepairs && (
+        {repairedYes && (
           <div className="space-y-3 mt-3">
             <TextInput
               label="Facility name (repairs)"
@@ -394,6 +426,25 @@ const FacilitySupportSection = ({ formData, onChange, errors, onVoiceNote, voice
               existingVoiceNote={voiceNotes.items_repaired_facility}
               placeholder="Name of the health facility..."
             />
+            <div>
+              <label className="block text-xs text-gray-600 mb-2 font-medium">Repaired by (tick all that apply): <span className="text-red-500">*</span></label>
+              <div className="flex flex-wrap gap-2">
+                {REPAIR_ACTORS.map((actor) => (
+                  <button
+                    key={actor}
+                    type="button"
+                    onClick={() => handleRepairActorToggle(actor)}
+                    className={`px-3 py-1.5 text-xs rounded-full border transition-all ${
+                      repairActors.includes(actor)
+                        ? 'bg-green-100 border-green-500 text-green-700 font-medium'
+                        : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                    }`}
+                  >
+                    {actor}
+                  </button>
+                ))}
+              </div>
+            </div>
             <NumberInput label="Number of items repaired" name="items_repaired_count" value={formData.items_repaired_count} onChange={handleChange} min={1} required />
             {repairedCount > 0 && (
               <div className="mt-2">

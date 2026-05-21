@@ -202,7 +202,8 @@ const ConclusionSection = ({ formData, onChange, onVoiceNote, voiceNotes = {}, e
           Upload Attendance Pictures
         </h5>
         <p className="text-xs text-gray-500 mb-3">
-          Photograph the signed attendance list and upload it here.
+          Photograph the signed attendance list — make sure every signature and
+          phone number is clearly visible. Multiple photos allowed.
         </p>
         <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors">
           <Upload className="w-7 h-7 text-gray-400 mb-1" />
@@ -232,8 +233,11 @@ const ConclusionSection = ({ formData, onChange, onVoiceNote, voiceNotes = {}, e
       <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
         <h5 className="text-sm font-semibold text-gray-800 mb-1 flex items-center gap-2">
           <Users className="w-4 h-4" />
-          Upload Group Photo
+          Upload Meeting Group Photo
         </h5>
+        <p className="text-xs text-gray-500 mb-3">
+          One or more group photos from the meeting.
+        </p>
         <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors">
           <Upload className="w-7 h-7 text-gray-400 mb-1" />
           <p className="text-sm text-gray-600">Click to upload group photo</p>
@@ -278,7 +282,7 @@ const ConclusionSection = ({ formData, onChange, onVoiceNote, voiceNotes = {}, e
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <TextInput
-          label="Chairman Signature (Full Name)"
+          label="WDC Chairman Name"
           name="chairman_signature"
           value={formData.chairman_signature}
           onChange={handleChange}
@@ -286,7 +290,7 @@ const ConclusionSection = ({ formData, onChange, onVoiceNote, voiceNotes = {}, e
           required
         />
         <TextInput
-          label="Secretary Signature (Full Name)"
+          label="WDC Secretary Name"
           name="secretary_signature"
           value={formData.secretary_signature}
           onChange={handleChange}

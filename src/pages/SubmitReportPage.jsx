@@ -93,6 +93,7 @@ const buildInitialFormData = (userWard, userLGA) => ({
   health_bcg: '',
   health_penta3: '',
   health_measles: '',
+  health_opd_under5_total: '',
   health_malaria_under5: '',
   health_diarrhea_under5: '',
   health_anc_total: '',
@@ -125,7 +126,8 @@ const buildInitialFormData = (userWard, userLGA) => ({
   items_donated_govt_types: [],
   items_donated_govt_other_specify: '',
   // Repairs
-  items_repaired_yn: 'No',
+  items_repaired_yn: '',
+  items_repaired_by: [],
   items_repaired_facility: '',
   items_repaired_count: '',
   items_repaired_types: [],

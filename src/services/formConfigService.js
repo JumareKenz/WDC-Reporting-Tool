@@ -236,21 +236,55 @@ export function getOcrPatterns(config) {
 
 /**
  * Build the ordered Voice Assistant question script from the active config.
- * Skips fields already populated in `formData`.
+ *
+ * Rules:
+ * - Skips fields already populated in `formData`.
+ * - Skips section 'community_feedback' unless the report is at end-of-quarter
+ *   (months 3/6/9/12 from formData.report_date) or meeting_type === 'Quarterly Town Hall'.
+ * - For YES/NO gates (facility_renovated, items_donated_wdc_yn,
+ *   items_donated_govt_yn, items_repaired_yn) — when the gate answer is "No"
+ *   in formData, the dependent follow-ups are skipped so the assistant
+ *   doesn't ask irrelevant questions.
  */
 export function buildVoiceQuestions(config, formData = {}) {
   const cfg = config || getActiveFieldConfigSync();
+
+  // Quarter gate
+  const reportMonthNum = (() => {
+    const d = formData?.report_date ? new Date(formData.report_date) : null;
+    if (!d || isNaN(d.getTime())) return null;
+    return d.getMonth() + 1;
+  })();
+  const isQuarterEnd = reportMonthNum ? [3, 6, 9, 12].includes(reportMonthNum) : false;
+  const showCommunityFeedback = isQuarterEnd || formData?.meeting_type === 'Quarterly Town Hall';
+
+  // Dependencies — which fields depend on a Yes answer to a gate
+  const DEPENDENCIES = {
+    facility_renovated: ['facility_renovated_count'],
+    items_donated_wdc_yn: ['items_donated_count', 'items_donated_facility'],
+    items_donated_govt_yn: ['items_donated_govt_count', 'items_donated_govt_facility'],
+    items_repaired_yn: ['items_repaired_count', 'items_repaired_facility'],
+  };
+  const skipDependents = new Set();
+  for (const [gate, deps] of Object.entries(DEPENDENCIES)) {
+    if (formData?.[gate] === 'No') deps.forEach((d) => skipDependents.add(d));
+  }
+
   const questions = [];
   for (const field of Object.values(cfg)) {
     if (!field.voice?.question_en) continue;
+    if (field.section === 'community_feedback' && !showCommunityFeedback) continue;
+    if (skipDependents.has(field.name)) continue;
+
     const existing = formData[field.name];
-    if (existing !== undefined && existing !== null && existing !== '' && existing !== 0) {
-      continue;
-    }
+    const isEmpty = existing === undefined || existing === null || existing === '';
+    if (!isEmpty) continue;
+
     questions.push({
       field: field.name,
       type: field.type,
       options: field.options,
+      section: field.section,
       en: field.voice.question_en,
       ha: field.voice.question_ha,
     });
