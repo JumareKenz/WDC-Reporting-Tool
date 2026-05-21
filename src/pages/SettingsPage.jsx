@@ -153,7 +153,10 @@ const SettingsPage = () => {
         setConfirmPin('');
         setPinStep('current');
       } else if (status === 400) {
-        setPinError('New PIN must be different from current PIN.');
+        // Backend validates: PIN must be 4 digits, PIN cannot be "1234",
+        // and the new PIN must differ from the current one. Surface its
+        // actual message instead of guessing which rule fired.
+        setPinError(msg || 'PIN does not meet the requirements.');
         setNewPin('');
         setConfirmPin('');
         setPinStep('new');

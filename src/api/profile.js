@@ -39,18 +39,27 @@ export const updateEmail = async (_email) => {
   throw err;
 };
 
-// Change the calling user's password (console accounts).
-export const changePassword = async (currentPassword, newPassword) => {
-  return apiClient.post(API_ENDPOINTS.SET_CREDENTIALS, {
-    currentPassword,
-    newPassword,
-  });
+// Console password changes have no dedicated endpoint. Initial credentials
+// are set via POST /auth/enrol with a one-time enrolment token. Surface a
+// clear message instead of pretending to hit a non-existent route.
+export const changePassword = async (_currentPassword, _newPassword) => {
+  const err = new Error('Password changes for console accounts must be requested from the state office (no self-service endpoint).');
+  err.status = 405;
+  err.code = 'PASSWORD_CHANGE_NOT_SUPPORTED';
+  throw err;
 };
 
-// Change the calling user's PIN (secretary accounts).
+/**
+ * Change a secretary PIN.
+ *
+ * Backend contract (POST /auth/set-credentials):
+ *   - First-time set (JWT carries mustChangePin: true):  { pin }
+ *   - Voluntary change after first-time is done:         { currentPin, pin }
+ *   - `pin` must be exactly 4 digits and cannot be "1234"
+ *
+ * Pass `null`/empty `currentPin` for the first-time path.
+ */
 export const changePin = async (currentPin, newPin) => {
-  return apiClient.post(API_ENDPOINTS.SET_CREDENTIALS, {
-    currentPin,
-    newPin,
-  });
+  const body = currentPin ? { currentPin, pin: newPin } : { pin: newPin };
+  return apiClient.post(API_ENDPOINTS.SET_CREDENTIALS, body);
 };
