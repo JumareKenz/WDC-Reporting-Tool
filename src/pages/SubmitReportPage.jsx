@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, CheckCircle, Info, Calendar, AlertTriangle, Loader2, RefreshCw, WifiOff, FileX } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Info, Calendar, AlertTriangle, Loader2, RefreshCw, WifiOff, FileX, Camera, Mic } from 'lucide-react';
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
 import Alert from '../components/common/Alert';
 import WDCReportWizard from '../components/wdc/WDCReportWizard';
 import DraftStatusBar from '../components/wdc/DraftStatusBar';
+import OCRSubmitModal from '../components/wdc/OCRSubmitModal';
+import VoiceAssistantModal from '../components/wdc/VoiceAssistantModal';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { useOfflineQueue } from '../hooks/useOfflineQueue';
@@ -282,6 +284,8 @@ const SubmitReportPage = () => {
   );
   const [formData, setFormData] = useState(() => buildInitialFormData(userWard, userLGA));
   const [voiceNotes, setVoiceNotes] = useState({});
+  const [ocrOpen, setOcrOpen] = useState(false);
+  const [voiceAssistantOpen, setVoiceAssistantOpen] = useState(false);
 
   // Voice note draft persistence
   const {
@@ -938,6 +942,24 @@ const SubmitReportPage = () => {
     }
   }, []);
 
+  // Bulk-merge fields produced by OCR or voice-assistant capture into the
+  // current form state. Empty/undefined values are skipped so existing answers
+  // aren't blown away by partial extractions.
+  const handleBulkFieldsApply = useCallback((fields, source) => {
+    if (!fields || typeof fields !== 'object') return;
+    const cleaned = Object.fromEntries(
+      Object.entries(fields).filter(([, v]) => v !== undefined && v !== null && v !== '')
+    );
+    if (!Object.keys(cleaned).length) return;
+    setFormData((prev) => ({ ...prev, ...cleaned }));
+    const count = Object.keys(cleaned).length;
+    toast.success(
+      source === 'ocr'
+        ? `Filled ${count} field${count === 1 ? '' : 's'} from photo — review before submitting.`
+        : `Filled ${count} field${count === 1 ? '' : 's'} from voice — review before submitting.`
+    );
+  }, [toast]);
+
   const handleCancel = () => {
     if (phase === 'form') {
       // Go back to month selector
@@ -1226,6 +1248,38 @@ const SubmitReportPage = () => {
                   </div>
                 )}
 
+                {/* ── Smart-fill entry points (OCR + Voice Assistant) ── */}
+                <div className="mb-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setOcrOpen(true)}
+                    disabled={!submissionAllowed}
+                    className="flex items-center gap-3 p-4 rounded-xl border border-primary-200 bg-primary-50 text-left transition hover:bg-primary-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-600 text-white">
+                      <Camera className="h-5 w-5" />
+                    </span>
+                    <span>
+                      <span className="block text-sm font-semibold text-primary-900">Submit via Photo (OCR)</span>
+                      <span className="block text-xs text-primary-700/80">Snap or upload a filled paper form; we'll read the fields.</span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVoiceAssistantOpen(true)}
+                    disabled={!submissionAllowed}
+                    className="flex items-center gap-3 p-4 rounded-xl border border-primary-200 bg-primary-50 text-left transition hover:bg-primary-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-600 text-white">
+                      <Mic className="h-5 w-5" />
+                    </span>
+                    <span>
+                      <span className="block text-sm font-semibold text-primary-900">Fill by Voice</span>
+                      <span className="block text-xs text-primary-700/80">Answer questions aloud in English or Hausa.</span>
+                    </span>
+                  </button>
+                </div>
+
                 {/* ── Wizard Form ────────────────────────────────── */}
                 <WDCReportWizard
                   formData={formData}
@@ -1248,6 +1302,20 @@ const SubmitReportPage = () => {
           </>
         )}
       </div>
+
+      {/* Smart-fill modals — mounted once at the page level so they're
+          available from every wizard step. */}
+      <OCRSubmitModal
+        isOpen={ocrOpen}
+        onClose={() => setOcrOpen(false)}
+        onFieldsExtracted={(fields) => handleBulkFieldsApply(fields, 'ocr')}
+      />
+      <VoiceAssistantModal
+        isOpen={voiceAssistantOpen}
+        onClose={() => setVoiceAssistantOpen(false)}
+        formData={formData}
+        onFieldsCollected={(fields) => handleBulkFieldsApply(fields, 'voice')}
+      />
     </div>
   );
 };
