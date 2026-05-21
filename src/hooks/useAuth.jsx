@@ -168,17 +168,23 @@ export const AuthProvider = ({ children }) => {
 
     try {
       const data = await secretaryLogin(lgaId, wardId, pin);
-      const access_token = data.access_token;
-      const refresh_token = data.refresh_token;
-      const userData = data.user;
+      // Backend returns camelCase: accessToken, refreshToken
+      const accessToken = data.accessToken || data.access_token;
+      const refreshToken = data.refreshToken || data.refresh_token;
 
-      if (access_token && userData) {
-        localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, access_token);
-        if (refresh_token) {
-          localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, refresh_token);
+      if (accessToken) {
+        localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, accessToken);
+        if (refreshToken) {
+          localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
         }
-        localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData));
 
+        // Fetch user profile with the new token
+        const meResponse = await apiClient.get('/auth/me', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const userData = meResponse?.data || meResponse;
+
+        localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData));
         setUser(userData);
         setLoading(false);
 
