@@ -120,7 +120,7 @@ const SecretaryLogin = () => {
     setSubmitting(true);
     setError(null);
     try {
-      const result = await loginWithPin(selectedLga.id, selectedWard.id, submittedPin);
+      const result = await loginWithPin(selectedLga, selectedWard, submittedPin);
       if (result.success) {
         navigate(getDefaultRoute(), { replace: true });
       }

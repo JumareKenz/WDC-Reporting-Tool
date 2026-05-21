@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import apiClient from '../api/client';
-import { secretaryLogin } from '../api/auth';
+import { secretaryLogin, fetchLgas, fetchWards } from '../api/auth';
 import { API_ENDPOINTS, STORAGE_KEYS, USER_ROLES } from '../utils/constants';
 
 // Map backend role strings (any casing/spelling) to canonical USER_ROLES values
@@ -47,10 +47,6 @@ export const AuthProvider = ({ children }) => {
             parsedUser.role = normalizeRole(parsedUser.role);
           }
           setUser(parsedUser);
-
-          // Optionally verify token with backend
-          // Uncomment if you want to verify on every page load
-          // await verifyToken();
         } catch (err) {
           console.error('Failed to parse user data:', err);
           logout();
@@ -62,6 +58,54 @@ export const AuthProvider = ({ children }) => {
 
     initAuth();
   }, []);
+
+  // Backfill LGA/ward names when the user object only has IDs (e.g. an
+  // existing session from before names were captured at login, or a JWT
+  // re-hydration). Runs once after auth resolves and rewrites the cached
+  // user object so subsequent reloads start with names already populated.
+  useEffect(() => {
+    if (!user?.id) return;
+    const lgaId = user?.lga?.id || user?.ward?.lga_id;
+    const wardId = user?.ward?.id;
+    const hasLgaName = !!user?.lga?.name;
+    const hasWardName = !!user?.ward?.name;
+    if (!lgaId || (hasLgaName && hasWardName)) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const updates = {};
+        if (!hasLgaName) {
+          const lgas = await fetchLgas();
+          const lga = (Array.isArray(lgas) ? lgas : []).find((l) => String(l.id) === String(lgaId));
+          if (lga?.name) updates.lgaName = lga.name;
+        }
+        if (!hasWardName && wardId) {
+          const wards = await fetchWards(lgaId);
+          const ward = (Array.isArray(wards) ? wards : []).find((w) => String(w.id) === String(wardId));
+          if (ward?.name) updates.wardName = ward.name;
+        }
+        if (cancelled || (!updates.lgaName && !updates.wardName)) return;
+        const next = {
+          ...user,
+          lga: { ...(user.lga || {}), id: lgaId, name: updates.lgaName || user?.lga?.name },
+          ward: {
+            ...(user.ward || {}),
+            id: wardId,
+            name: updates.wardName || user?.ward?.name,
+            lga_id: lgaId,
+            lga_name: updates.lgaName || user?.ward?.lga_name,
+          },
+        };
+        localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(next));
+        setUser(next);
+      } catch (err) {
+        console.warn('Failed to hydrate LGA/ward names:', err?.message || err);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, user?.lga?.id, user?.ward?.id]);
 
   /**
    * Login function
@@ -194,9 +238,18 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const loginWithPin = async (lgaId, wardId, pin) => {
+  // Accepts either bare IDs or `{ id, name }` objects. When objects are passed
+  // (the secretary picked them from the LGA/ward lists on Login), we stash the
+  // names into the user object so the wizard/dashboard can display them
+  // instead of "Not assigned".
+  const loginWithPin = async (lgaArg, wardArg, pin) => {
     setError(null);
     setLoading(true);
+
+    const lgaId = lgaArg?.id ?? lgaArg;
+    const wardId = wardArg?.id ?? wardArg;
+    const lgaName = typeof lgaArg === 'object' ? lgaArg?.name : undefined;
+    const wardName = typeof wardArg === 'object' ? wardArg?.name : undefined;
 
     try {
       const data = await secretaryLogin(lgaId, wardId, pin);
@@ -214,8 +267,8 @@ export const AuthProvider = ({ children }) => {
         const userData = {
           id: payload.sub,
           role: normalizeRole(payload.role),
-          ward: { id: payload.wardId, lga_id: payload.lgaId },
-          lga: { id: payload.lgaId },
+          ward: { id: payload.wardId, name: wardName, lga_id: payload.lgaId, lga_name: lgaName },
+          lga: { id: payload.lgaId, name: lgaName },
           mustChangePin: payload.mustChangePin,
         };
 

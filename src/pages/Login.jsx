@@ -152,7 +152,7 @@ const Login = () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await loginWithPin(selectedLga.id, selectedWard.id, fullPin);
+      const result = await loginWithPin(selectedLga, selectedWard, fullPin);
       if (result?.success) {
         navigate(getDefaultRoute(), { replace: true });
       }
