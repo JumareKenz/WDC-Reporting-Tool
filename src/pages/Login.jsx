@@ -1,17 +1,28 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  LogIn, MapPin, Lock, Mail, ShieldCheck, Building2,
-  ArrowLeft, ArrowRight, Search, Check, ChevronRight, Loader2,
+  ShieldCheck, Building2, ArrowLeft, Search, Loader2, Delete,
+  Mail, Lock, KeyRound, ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { APP_CONFIG, API_ENDPOINTS } from '../utils/constants';
-import Button from '../components/common/Button';
-import Logo from '../components/common/Logo';
+import { LogoIcon } from '../components/common/Logo';
 
-const TABS = { MOBILE: 'mobile', CONSOLE: 'console' };
-const STEPS = { LGA: 1, WARD: 2, PIN: 3 };
-const STEP_LABELS = { 1: 'Local Government', 2: 'Ward', 3: 'Sign In' };
+// ──────────────────────────────────────────────────────────────────────────────
+// View state machine
+//   role    → landing: choose Secretary or Console
+//   lga     → secretary step 1: pick LGA
+//   ward    → secretary step 2: pick ward
+//   pin     → secretary step 3: enter 4-digit PIN
+//   console → director / coordinator email + password + TOTP
+// ──────────────────────────────────────────────────────────────────────────────
+const VIEW = {
+  ROLE:    'role',
+  LGA:     'lga',
+  WARD:    'ward',
+  PIN:     'pin',
+  CONSOLE: 'console',
+};
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://kadwdc.equily.ng/api/v1';
 
@@ -28,39 +39,44 @@ const fetchJSON = async (path) => {
   return body?.data ?? body;
 };
 
+// Cream/parchment surface — warm contrast against the deep emerald background.
+const CARD_STYLE = {
+  background: 'linear-gradient(180deg, #FFFBF0 0%, #FCEFCF 100%)',
+  borderRadius: '28px',
+  border: '1px solid rgba(255,255,255,0.5)',
+  boxShadow:
+    '0 30px 70px -20px rgba(6, 41, 30, 0.65), 0 12px 32px -10px rgba(6, 41, 30, 0.4), inset 0 1px 0 rgba(255,255,255,0.7)',
+};
+
 const Login = () => {
   const navigate = useNavigate();
   const { login, getDefaultRoute } = useAuth();
 
-  const [tab, setTab] = useState(TABS.MOBILE);
-  const [step, setStep] = useState(STEPS.LGA);
+  const [view, setView]       = useState(VIEW.ROLE);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError]     = useState(null);
 
-  // Secretary flow state
-  const [lgas, setLgas] = useState([]);
-  const [loadingLgas, setLoadingLgas] = useState(false);
-  const [lgaQuery, setLgaQuery] = useState('');
-  const [selectedLga, setSelectedLga] = useState(null);
-
-  const [wards, setWards] = useState([]);
+  // Secretary data
+  const [lgas, setLgas]                 = useState([]);
+  const [loadingLgas, setLoadingLgas]   = useState(false);
+  const [wards, setWards]               = useState([]);
   const [loadingWards, setLoadingWards] = useState(false);
-  const [wardQuery, setWardQuery] = useState('');
+  const [selectedLga, setSelectedLga]   = useState(null);
   const [selectedWard, setSelectedWard] = useState(null);
+  const [lgaQuery, setLgaQuery]         = useState('');
+  const [wardQuery, setWardQuery]       = useState('');
+  const [pin, setPin]                   = useState('');
 
-  const [pinDigits, setPinDigits] = useState(['', '', '', '']);
-  const pinRefs = useRef([]);
-
-  // Console flow state
+  // Console data
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [totp, setTotp]         = useState('');
 
   const clearError = () => setError(null);
 
-  // Load LGAs on first entry to secretary tab
+  // Load LGAs the first time we enter the LGA picker
   useEffect(() => {
-    if (tab !== TABS.MOBILE || lgas.length > 0) return;
+    if (view !== VIEW.LGA || lgas.length > 0) return;
     let cancelled = false;
     setLoadingLgas(true);
     fetchJSON(API_ENDPOINTS.LGAS)
@@ -72,9 +88,9 @@ const Login = () => {
       .catch((err) => { if (!cancelled) setError(err.message); })
       .finally(() => { if (!cancelled) setLoadingLgas(false); });
     return () => { cancelled = true; };
-  }, [tab, lgas.length]);
+  }, [view, lgas.length]);
 
-  // Load wards when LGA selected
+  // Load wards whenever the LGA changes
   useEffect(() => {
     if (!selectedLga) { setWards([]); return; }
     let cancelled = false;
@@ -101,571 +117,616 @@ const Login = () => {
     return q ? wards.filter((w) => w.name?.toLowerCase().includes(q)) : wards;
   }, [wards, wardQuery]);
 
-  const pin = pinDigits.join('');
-  const canSubmitMobile = selectedLga && selectedWard && /^\d{4}$/.test(pin);
-
-  const handlePinChange = (idx, value) => {
-    const digit = value.replace(/\D/g, '').slice(-1);
-    const next = [...pinDigits];
-    next[idx] = digit;
-    setPinDigits(next);
-    clearError();
-    if (digit && idx < 3) pinRefs.current[idx + 1]?.focus();
-  };
-
-  const handlePinKey = (idx, e) => {
-    if (e.key === 'Backspace' && !pinDigits[idx] && idx > 0) {
-      pinRefs.current[idx - 1]?.focus();
-    } else if (e.key === 'ArrowLeft' && idx > 0) {
-      pinRefs.current[idx - 1]?.focus();
-    } else if (e.key === 'ArrowRight' && idx < 3) {
-      pinRefs.current[idx + 1]?.focus();
-    }
-  };
-
-  const handlePinPaste = (e) => {
-    e.preventDefault();
-    const text = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 4);
-    if (!text) return;
-    const next = ['', '', '', ''];
-    for (let i = 0; i < text.length; i++) next[i] = text[i];
-    setPinDigits(next);
-    const focusIdx = Math.min(text.length, 3);
-    pinRefs.current[focusIdx]?.focus();
-  };
+  // ── Navigation helpers ─────────────────────────────────────────────────────
+  const goRole    = () => { setView(VIEW.ROLE); clearError(); };
+  const goLga     = () => { setView(VIEW.LGA); clearError(); };
+  const goWard    = () => { setView(VIEW.WARD); clearError(); };
+  const goPin     = () => { setView(VIEW.PIN); setPin(''); clearError(); };
+  const goConsole = () => { setView(VIEW.CONSOLE); clearError(); };
 
   const selectLga = (lga) => {
     setSelectedLga(lga);
     setSelectedWard(null);
     setWardQuery('');
-    setStep(STEPS.WARD);
-    clearError();
+    goWard();
   };
 
   const selectWard = (ward) => {
     setSelectedWard(ward);
-    setStep(STEPS.PIN);
-    setPinDigits(['', '', '', '']);
-    clearError();
-    setTimeout(() => pinRefs.current[0]?.focus(), 80);
+    goPin();
   };
 
-  const goBack = () => {
-    if (step === STEPS.WARD) setStep(STEPS.LGA);
-    else if (step === STEPS.PIN) setStep(STEPS.WARD);
-    clearError();
-  };
+  // ── PIN handling ───────────────────────────────────────────────────────────
+  const submittingRef = useRef(false);
 
-  const switchTab = (newTab) => {
-    if (newTab === tab) return;
-    setTab(newTab);
-    setError(null);
-    setStep(STEPS.LGA);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError(null);
-
-    if (tab === TABS.MOBILE && !canSubmitMobile) {
-      setError('Please complete every step before signing in.');
-      return;
-    }
-
+  const submitMobile = async (fullPin) => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setLoading(true);
+    setError(null);
     try {
-      const credentials =
-        tab === TABS.MOBILE
-          ? { lgaId: Number(selectedLga.id), wardId: Number(selectedWard.id), pin }
-          : { email: email.trim(), password, totp: totp.trim() };
-
-      const result = await login(credentials);
+      const result = await login({
+        lgaId:  selectedLga.id,
+        wardId: selectedWard.id,
+        pin:    fullPin,
+      });
       if (result?.success) {
         navigate(getDefaultRoute(), { replace: true });
       }
     } catch (err) {
-      setError(err.message || 'Login failed. Please check your credentials.');
+      setError(err.message || 'Sign-in failed. Please check your PIN.');
+      setPin('');
+    } finally {
+      submittingRef.current = false;
+      setLoading(false);
+    }
+  };
+
+  const pushDigit = (d) => {
+    if (loading) return;
+    setError(null);
+    setPin((prev) => {
+      if (prev.length >= 4) return prev;
+      const next = prev + d;
+      if (next.length === 4 && selectedLga && selectedWard) {
+        setTimeout(() => submitMobile(next), 80);
+      }
+      return next;
+    });
+  };
+
+  const popDigit = () => {
+    if (loading) return;
+    setError(null);
+    setPin((prev) => prev.slice(0, -1));
+  };
+
+  // Physical-keyboard support for the PIN view
+  useEffect(() => {
+    if (view !== VIEW.PIN) return;
+    const onKey = (e) => {
+      if (e.key >= '0' && e.key <= '9') {
+        e.preventDefault();
+        pushDigit(e.key);
+      } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        popDigit();
+      } else if (e.key === 'Escape') {
+        goWard();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, loading, selectedLga, selectedWard]);
+
+  // ── Console submit ─────────────────────────────────────────────────────────
+  const submitConsole = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const result = await login({
+        email:    email.trim(),
+        password,
+        totp:     totp.trim(),
+      });
+      if (result?.success) {
+        navigate(getDefaultRoute(), { replace: true });
+      }
+    } catch (err) {
+      setError(err.message || 'Sign-in failed. Check your credentials.');
     } finally {
       setLoading(false);
     }
   };
 
+  const stepIndex =
+    view === VIEW.LGA  ? 0 :
+    view === VIEW.WARD ? 1 :
+    view === VIEW.PIN  ? 2 : -1;
+
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-950 via-emerald-950 to-slate-950">
-      {/* Ambient glow */}
+    <div
+      className="min-h-screen relative overflow-hidden"
+      style={{
+        background:
+          'radial-gradient(120% 80% at 50% 0%, #1F7A52 0%, #0F4F3A 45%, #06291E 100%)',
+      }}
+    >
+      {/* Ambient highlights — brand greens for depth */}
       <div
-        className="absolute -top-32 left-1/4 w-[28rem] h-[28rem] bg-emerald-500 rounded-full opacity-25 pointer-events-none animate-pulse-soft"
-        style={{ filter: 'blur(120px)', animationDuration: '8s' }}
+        className="absolute -top-32 left-1/4 w-[28rem] h-[28rem] rounded-full pointer-events-none"
+        style={{ background: 'rgba(74, 222, 128, 0.22)', filter: 'blur(120px)' }}
       />
       <div
-        className="absolute -bottom-40 -right-20 w-[28rem] h-[28rem] bg-teal-500 rounded-full opacity-20 pointer-events-none animate-pulse-soft"
-        style={{ filter: 'blur(140px)', animationDuration: '10s' }}
+        className="absolute -bottom-40 -right-20 w-[30rem] h-[30rem] rounded-full pointer-events-none"
+        style={{ background: 'rgba(22, 163, 74, 0.28)', filter: 'blur(140px)' }}
       />
       <div
-        className="absolute top-1/2 -left-32 w-80 h-80 bg-green-400 rounded-full opacity-15 pointer-events-none animate-pulse-soft"
-        style={{ filter: 'blur(100px)', animationDuration: '12s' }}
+        className="absolute top-1/2 -left-32 w-80 h-80 rounded-full pointer-events-none"
+        style={{ background: 'rgba(134, 239, 172, 0.18)', filter: 'blur(110px)' }}
       />
-      {/* Subtle grid texture */}
+      {/* Subtle texture grid */}
       <div
-        className="absolute inset-0 pointer-events-none opacity-[0.35]"
+        className="absolute inset-0 pointer-events-none opacity-[0.25]"
         style={{
           backgroundImage:
-            'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.06) 1px, transparent 0)',
+            'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.07) 1px, transparent 0)',
           backgroundSize: '32px 32px',
         }}
       />
 
-      <div className="relative z-10 flex items-center justify-center min-h-screen p-4 py-8">
+      <div className="relative z-10 flex items-center justify-center min-h-screen p-4 py-6">
         <div className="w-full max-w-md">
-          {/* Header */}
-          <div className="text-center mb-6">
-            <div className="flex justify-center mb-4">
-              <Logo size="xl" showText={false} linkTo={null} />
-            </div>
-            <h1 className="text-3xl font-bold text-white mb-1 tracking-tight">
-              {APP_CONFIG.APP_NAME}
-            </h1>
-            <p className="text-emerald-300/90 text-sm">{APP_CONFIG.APP_SUBTITLE}</p>
-          </div>
-
-          {/* Card */}
-          <div
-            className="rounded-3xl p-6 sm:p-8"
-            style={{
-              background:
-                'linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.07) 100%)',
-              backdropFilter: 'blur(28px)',
-              WebkitBackdropFilter: 'blur(28px)',
-              border: '1px solid rgba(255,255,255,0.18)',
-              boxShadow:
-                '0 20px 60px -10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)',
-            }}
-          >
-            {/* Tab selector */}
-            <div className="flex rounded-2xl mb-6 bg-white/5 border border-white/10 p-1">
-              <button
-                type="button"
-                onClick={() => switchTab(TABS.MOBILE)}
-                className={`flex-1 py-2.5 text-sm font-medium rounded-xl transition-all ${
-                  tab === TABS.MOBILE
-                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-600/30'
-                    : 'text-emerald-200/70 hover:text-white'
-                }`}
-              >
-                WDC Secretary
-              </button>
-              <button
-                type="button"
-                onClick={() => switchTab(TABS.CONSOLE)}
-                className={`flex-1 py-2.5 text-sm font-medium rounded-xl transition-all ${
-                  tab === TABS.CONSOLE
-                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-600/30'
-                    : 'text-emerald-200/70 hover:text-white'
-                }`}
-              >
-                Director / Coordinator
-              </button>
-            </div>
-
-            {/* Stepper (secretary only) */}
-            {tab === TABS.MOBILE && (
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-2">
-                  {[STEPS.LGA, STEPS.WARD, STEPS.PIN].map((s, i) => {
-                    const active = step === s;
-                    const done = step > s;
-                    return (
-                      <div key={s} className="flex items-center flex-1">
-                        <div
-                          className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
-                            done
-                              ? 'bg-emerald-500 text-white'
-                              : active
-                              ? 'bg-emerald-500 text-white ring-4 ring-emerald-500/30'
-                              : 'bg-white/10 text-emerald-200/60 border border-white/15'
-                          }`}
-                        >
-                          {done ? <Check className="w-3.5 h-3.5" /> : s}
-                        </div>
-                        {i < 2 && (
-                          <div
-                            className={`flex-1 h-0.5 mx-2 rounded-full transition-all ${
-                              step > s ? 'bg-emerald-500' : 'bg-white/10'
-                            }`}
-                          />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-                <p className="text-xs text-emerald-300/70 text-center mt-1">
-                  Step {step} of 3 · {STEP_LABELS[step]}
-                </p>
-              </div>
+          <div className="p-6 sm:p-8" style={CARD_STYLE}>
+            {view === VIEW.ROLE && <RoleView onSecretary={goLga} onConsole={goConsole} />}
+            {view === VIEW.LGA && (
+              <LgaView
+                stepIndex={stepIndex}
+                lgas={filteredLgas}
+                rawCount={lgas.length}
+                loading={loadingLgas}
+                query={lgaQuery}
+                onQuery={setLgaQuery}
+                onPick={selectLga}
+                onBack={goRole}
+                error={error}
+                clearError={clearError}
+              />
             )}
-
-            {/* Error */}
-            {error && (
-              <div
-                role="alert"
-                className="mb-5 flex items-start gap-3 px-4 py-3 rounded-xl bg-red-500/15 border border-red-400/30 text-red-100 animate-slide-down"
-              >
-                <svg
-                  className="w-5 h-5 flex-shrink-0 mt-0.5 text-red-300"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
-                  />
-                </svg>
-                <p className="text-sm font-medium flex-1">{error}</p>
-                <button
-                  type="button"
-                  onClick={clearError}
-                  className="text-red-300 hover:text-red-100 transition-colors"
-                  aria-label="Dismiss"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
+            {view === VIEW.WARD && (
+              <WardView
+                stepIndex={stepIndex}
+                lga={selectedLga}
+                wards={filteredWards}
+                rawCount={wards.length}
+                loading={loadingWards}
+                query={wardQuery}
+                onQuery={setWardQuery}
+                onPick={selectWard}
+                onBack={goLga}
+                error={error}
+                clearError={clearError}
+              />
             )}
-
-            {tab === TABS.MOBILE ? (
-              <form onSubmit={handleSubmit}>
-                {/* STEP 1 — LGA */}
-                {step === STEPS.LGA && (
-                  <div key="lga-step" className="animate-fade-in">
-                    <div className="mb-4">
-                      <h2 className="text-xl font-semibold text-white mb-1">
-                        Select your Local Government
-                      </h2>
-                      <p className="text-sm text-emerald-200/70">
-                        Find your LGA from the list to continue.
-                      </p>
-                    </div>
-
-                    {/* Search */}
-                    <div className="relative mb-3">
-                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-200/60 pointer-events-none" />
-                      <input
-                        type="text"
-                        value={lgaQuery}
-                        onChange={(e) => setLgaQuery(e.target.value)}
-                        placeholder="Search LGAs…"
-                        className="w-full pl-10 pr-3 py-2.5 bg-white/8 border border-white/15 rounded-xl text-white placeholder-emerald-200/50 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-transparent transition-all"
-                      />
-                    </div>
-
-                    {/* List */}
-                    <div className="max-h-72 overflow-y-auto pr-1 -mr-1 space-y-1.5 login-scroll">
-                      {loadingLgas ? (
-                        <div className="flex items-center justify-center py-12 text-emerald-200/70">
-                          <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                          <span className="text-sm">Loading LGAs…</span>
-                        </div>
-                      ) : filteredLgas.length === 0 ? (
-                        <div className="text-center py-10 text-sm text-emerald-200/60">
-                          {lgas.length === 0
-                            ? 'No LGAs available right now.'
-                            : 'No LGAs match your search.'}
-                        </div>
-                      ) : (
-                        filteredLgas.map((lga) => (
-                          <button
-                            key={lga.id}
-                            type="button"
-                            onClick={() => selectLga(lga)}
-                            className="w-full group flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-emerald-400/40 transition-all text-left"
-                          >
-                            <div className="w-9 h-9 rounded-lg bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center flex-shrink-0">
-                              <Building2 className="w-4 h-4 text-emerald-300" />
-                            </div>
-                            <span className="flex-1 text-sm font-medium text-white">
-                              {lga.name}
-                            </span>
-                            <ChevronRight className="w-4 h-4 text-emerald-300/60 group-hover:text-emerald-300 group-hover:translate-x-0.5 transition-all" />
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* STEP 2 — WARD */}
-                {step === STEPS.WARD && (
-                  <div key="ward-step" className="animate-fade-in">
-                    <button
-                      type="button"
-                      onClick={goBack}
-                      className="inline-flex items-center gap-1.5 text-sm text-emerald-300/80 hover:text-white mb-3 transition-colors"
-                    >
-                      <ArrowLeft className="w-4 h-4" />
-                      Back
-                    </button>
-
-                    <div className="mb-4">
-                      <h2 className="text-xl font-semibold text-white mb-1">
-                        Select your Ward
-                      </h2>
-                      <p className="text-sm text-emerald-200/70 flex items-center gap-1.5">
-                        <Building2 className="w-3.5 h-3.5" />
-                        {selectedLga?.name}
-                      </p>
-                    </div>
-
-                    {/* Search */}
-                    <div className="relative mb-3">
-                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-200/60 pointer-events-none" />
-                      <input
-                        type="text"
-                        value={wardQuery}
-                        onChange={(e) => setWardQuery(e.target.value)}
-                        placeholder="Search wards…"
-                        className="w-full pl-10 pr-3 py-2.5 bg-white/8 border border-white/15 rounded-xl text-white placeholder-emerald-200/50 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-transparent transition-all"
-                      />
-                    </div>
-
-                    <div className="max-h-72 overflow-y-auto pr-1 -mr-1 space-y-1.5 login-scroll">
-                      {loadingWards ? (
-                        <div className="flex items-center justify-center py-12 text-emerald-200/70">
-                          <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                          <span className="text-sm">Loading wards…</span>
-                        </div>
-                      ) : filteredWards.length === 0 ? (
-                        <div className="text-center py-10 text-sm text-emerald-200/60">
-                          {wards.length === 0
-                            ? 'No wards found for this LGA.'
-                            : 'No wards match your search.'}
-                        </div>
-                      ) : (
-                        filteredWards.map((ward) => (
-                          <button
-                            key={ward.id}
-                            type="button"
-                            onClick={() => selectWard(ward)}
-                            className="w-full group flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-emerald-400/40 transition-all text-left"
-                          >
-                            <div className="w-9 h-9 rounded-lg bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center flex-shrink-0">
-                              <MapPin className="w-4 h-4 text-emerald-300" />
-                            </div>
-                            <span className="flex-1 text-sm font-medium text-white">
-                              {ward.name}
-                            </span>
-                            <ChevronRight className="w-4 h-4 text-emerald-300/60 group-hover:text-emerald-300 group-hover:translate-x-0.5 transition-all" />
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* STEP 3 — PIN */}
-                {step === STEPS.PIN && (
-                  <div key="pin-step" className="animate-fade-in">
-                    <button
-                      type="button"
-                      onClick={goBack}
-                      className="inline-flex items-center gap-1.5 text-sm text-emerald-300/80 hover:text-white mb-3 transition-colors"
-                    >
-                      <ArrowLeft className="w-4 h-4" />
-                      Back
-                    </button>
-
-                    <div className="mb-5">
-                      <h2 className="text-xl font-semibold text-white mb-1">
-                        Enter your PIN
-                      </h2>
-                      <p className="text-sm text-emerald-200/70">
-                        Signing in as WDC Secretary for
-                      </p>
-                    </div>
-
-                    {/* Selection summary */}
-                    <div className="mb-6 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-400/20">
-                      <div className="flex items-center gap-2 text-sm text-white">
-                        <Building2 className="w-4 h-4 text-emerald-300 flex-shrink-0" />
-                        <span className="truncate">{selectedLga?.name}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-white/90 mt-1.5">
-                        <MapPin className="w-4 h-4 text-emerald-300 flex-shrink-0" />
-                        <span className="truncate">{selectedWard?.name}</span>
-                      </div>
-                    </div>
-
-                    {/* PIN boxes */}
-                    <label className="block text-sm font-medium text-white mb-2.5 text-center">
-                      4-Digit PIN
-                    </label>
-                    <div className="flex justify-center gap-3 mb-2" onPaste={handlePinPaste}>
-                      {pinDigits.map((d, i) => (
-                        <input
-                          key={i}
-                          ref={(el) => (pinRefs.current[i] = el)}
-                          type="password"
-                          inputMode="numeric"
-                          autoComplete={i === 0 ? 'current-password' : 'off'}
-                          maxLength={1}
-                          value={d}
-                          onChange={(e) => handlePinChange(i, e.target.value)}
-                          onKeyDown={(e) => handlePinKey(i, e)}
-                          onFocus={(e) => e.target.select()}
-                          disabled={loading}
-                          aria-label={`PIN digit ${i + 1}`}
-                          className={`w-14 h-16 text-center text-2xl font-semibold rounded-2xl bg-white/10 border-2 transition-all text-white caret-emerald-300 focus:outline-none focus:bg-white/15 disabled:opacity-50 ${
-                            d
-                              ? 'border-emerald-400/70 shadow-lg shadow-emerald-500/10'
-                              : 'border-white/15 focus:border-emerald-400/70'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                    <p className="text-xs text-emerald-300/60 text-center mb-6">
-                      Default PIN is <span className="text-emerald-200 font-medium">1234</span>.
-                      Change it after first sign-in.
-                    </p>
-
-                    <Button
-                      type="submit"
-                      variant="primary"
-                      size="lg"
-                      fullWidth
-                      loading={loading}
-                      disabled={!canSubmitMobile}
-                      icon={loading ? undefined : LogIn}
-                    >
-                      {loading ? 'Signing in…' : 'Sign In'}
-                    </Button>
-                  </div>
-                )}
-              </form>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-5 animate-fade-in">
-                {/* Email */}
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-white mb-1.5">
-                    Email Address
-                  </label>
-                  <div className="relative">
-                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-200/70" />
-                    <input
-                      id="email"
-                      type="email"
-                      required
-                      value={email}
-                      onChange={(e) => { setEmail(e.target.value); clearError(); }}
-                      placeholder="director@kaduna.gov.ng"
-                      disabled={loading}
-                      autoComplete="email"
-                      className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/15 rounded-xl text-white placeholder-emerald-200/40 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-transparent transition-all text-sm disabled:opacity-50"
-                    />
-                  </div>
-                </div>
-
-                {/* Password */}
-                <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-white mb-1.5">
-                    Password
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-200/70" />
-                    <input
-                      id="password"
-                      type="password"
-                      required
-                      value={password}
-                      onChange={(e) => { setPassword(e.target.value); clearError(); }}
-                      placeholder="Enter your password"
-                      disabled={loading}
-                      autoComplete="current-password"
-                      className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/15 rounded-xl text-white placeholder-emerald-200/40 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-transparent transition-all text-sm disabled:opacity-50"
-                    />
-                  </div>
-                </div>
-
-                {/* TOTP */}
-                <div>
-                  <label htmlFor="totp" className="block text-sm font-medium text-white mb-1.5">
-                    Authenticator Code
-                  </label>
-                  <div className="relative">
-                    <ShieldCheck className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-200/70" />
-                    <input
-                      id="totp"
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={6}
-                      required
-                      value={totp}
-                      onChange={(e) => { setTotp(e.target.value.replace(/\D/g, '')); clearError(); }}
-                      placeholder="123456"
-                      disabled={loading}
-                      autoComplete="one-time-code"
-                      className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/15 rounded-xl text-white placeholder-emerald-200/40 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-transparent transition-all text-sm disabled:opacity-50 tracking-widest"
-                    />
-                  </div>
-                  <p className="text-xs text-emerald-300/60 mt-1.5">
-                    6-digit code from your authenticator app
-                  </p>
-                </div>
-
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="lg"
-                  fullWidth
-                  loading={loading}
-                  icon={loading ? undefined : LogIn}
-                >
-                  {loading ? 'Signing in…' : 'Sign In'}
-                </Button>
-              </form>
+            {view === VIEW.PIN && (
+              <PinView
+                stepIndex={stepIndex}
+                lga={selectedLga}
+                ward={selectedWard}
+                pin={pin}
+                loading={loading}
+                onPush={pushDigit}
+                onPop={popDigit}
+                onBack={goWard}
+                error={error}
+                clearError={clearError}
+              />
+            )}
+            {view === VIEW.CONSOLE && (
+              <ConsoleView
+                email={email}
+                password={password}
+                totp={totp}
+                onEmail={setEmail}
+                onPassword={setPassword}
+                onTotp={setTotp}
+                onSubmit={submitConsole}
+                loading={loading}
+                onBack={goRole}
+                error={error}
+                clearError={clearError}
+              />
             )}
           </div>
 
           {/* Footer */}
-          <div className="mt-6 text-center">
-            <p className="text-sm text-emerald-300/90">
+          <div className="mt-5 text-center">
+            <p className="text-sm text-emerald-100/90 font-medium">
               {APP_CONFIG.STATE_NAME}, {APP_CONFIG.COUNTRY}
             </p>
-            <p className="text-xs text-emerald-400/50 mt-1">
+            <p className="text-xs text-emerald-200/60 mt-1">
               Support: {APP_CONFIG.SUPPORT_EMAIL}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Custom scrollbar inside the login card */}
       <style>{`
-        .login-scroll::-webkit-scrollbar { width: 6px; }
-        .login-scroll::-webkit-scrollbar-track { background: transparent; }
-        .login-scroll::-webkit-scrollbar-thumb {
-          background: rgba(255,255,255,0.15);
+        .wdc-scroll::-webkit-scrollbar { width: 6px; }
+        .wdc-scroll::-webkit-scrollbar-track { background: transparent; }
+        .wdc-scroll::-webkit-scrollbar-thumb {
+          background: rgba(20, 83, 45, 0.18);
           border-radius: 9999px;
         }
-        .login-scroll::-webkit-scrollbar-thumb:hover {
-          background: rgba(255,255,255,0.25);
+        .wdc-scroll::-webkit-scrollbar-thumb:hover {
+          background: rgba(20, 83, 45, 0.32);
         }
+        @keyframes wdc-fade-in {
+          from { opacity: 0; transform: translateY(4px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .wdc-fade-in { animation: wdc-fade-in 220ms ease-out; }
       `}</style>
     </div>
   );
 };
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Shared bits
+// ──────────────────────────────────────────────────────────────────────────────
+const Brand = ({ size = 'lg' }) => (
+  <div className="flex justify-center">
+    <LogoIcon className={size === 'lg' ? 'w-20 h-20' : 'w-14 h-14'} />
+  </div>
+);
+
+const StepDots = ({ activeIndex }) => (
+  <div className="flex items-center gap-1.5">
+    {[0, 1, 2].map((i) => {
+      const active = i <= activeIndex;
+      return (
+        <span
+          key={i}
+          className="rounded-full transition-all"
+          style={{
+            width:  active ? '18px' : '8px',
+            height: '8px',
+            background: active ? '#16A34A' : '#D6D3D1',
+          }}
+        />
+      );
+    })}
+  </div>
+);
+
+const TopBar = ({ onBack, stepIndex }) => (
+  <div className="flex items-center justify-between mb-5">
+    <button
+      type="button"
+      onClick={onBack}
+      className="inline-flex items-center gap-1 text-sm font-medium text-stone-700 hover:text-emerald-700 transition-colors"
+    >
+      <ArrowLeft className="w-4 h-4" />
+      Back
+    </button>
+    <StepDots activeIndex={stepIndex} />
+  </div>
+);
+
+const ErrorBanner = ({ error, onDismiss }) => {
+  if (!error) return null;
+  return (
+    <div
+      role="alert"
+      className="mt-4 flex items-start gap-2.5 px-3.5 py-2.5 rounded-xl bg-red-50 border border-red-200 text-red-800 wdc-fade-in"
+    >
+      <span className="flex-1 text-sm">{error}</span>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="text-red-500 hover:text-red-700 text-lg leading-none -mt-0.5"
+        aria-label="Dismiss"
+      >
+        ×
+      </button>
+    </div>
+  );
+};
+
+// ──────────────────────────────────────────────────────────────────────────────
+// View: role landing
+// ──────────────────────────────────────────────────────────────────────────────
+const RoleView = ({ onSecretary, onConsole }) => (
+  <div className="wdc-fade-in">
+    <div className="pt-2 pb-4">
+      <Brand />
+      <h1 className="mt-5 text-center text-2xl font-bold text-stone-900 tracking-tight">
+        {APP_CONFIG.APP_NAME.toUpperCase()}
+      </h1>
+      <p className="mt-1 text-center text-sm text-stone-500">
+        {APP_CONFIG.APP_SUBTITLE}
+      </p>
+    </div>
+
+    <div className="mt-6 space-y-3">
+      <button
+        type="button"
+        onClick={onSecretary}
+        className="w-full group flex items-center gap-4 p-4 rounded-2xl bg-white/90 border-2 border-emerald-500 hover:border-emerald-600 hover:bg-white active:scale-[0.99] transition-all shadow-sm hover:shadow-md text-left"
+      >
+        <div className="w-12 h-12 rounded-xl bg-emerald-100 border border-emerald-200 flex items-center justify-center flex-shrink-0">
+          <ShieldCheck className="w-6 h-6 text-emerald-700" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-base font-semibold text-stone-900">Ward Secretary</div>
+          <div className="text-xs text-stone-500 mt-0.5">Log in with your ward PIN</div>
+        </div>
+        <ChevronRight className="w-5 h-5 text-emerald-500 group-hover:translate-x-0.5 transition-all" />
+      </button>
+
+      <button
+        type="button"
+        onClick={onConsole}
+        className="w-full group flex items-center gap-4 p-4 rounded-2xl bg-white/90 border border-stone-200 hover:border-stone-300 hover:bg-white active:scale-[0.99] transition-all shadow-sm hover:shadow-md text-left"
+      >
+        <div className="w-12 h-12 rounded-xl bg-stone-100 border border-stone-200 flex items-center justify-center flex-shrink-0">
+          <Building2 className="w-6 h-6 text-stone-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-base font-semibold text-stone-900">LGA / State Official</div>
+          <div className="text-xs text-stone-500 mt-0.5">Log in with email &amp; password</div>
+        </div>
+        <ChevronRight className="w-5 h-5 text-stone-400 group-hover:text-stone-600 group-hover:translate-x-0.5 transition-all" />
+      </button>
+    </div>
+  </div>
+);
+
+// ──────────────────────────────────────────────────────────────────────────────
+// View: LGA picker
+// ──────────────────────────────────────────────────────────────────────────────
+const LgaView = ({ stepIndex, lgas, rawCount, loading, query, onQuery, onPick, onBack, error, clearError }) => (
+  <div className="wdc-fade-in">
+    <TopBar onBack={onBack} stepIndex={stepIndex} />
+    <Brand size="sm" />
+    <h2 className="mt-4 text-2xl font-bold text-stone-900 tracking-tight">Select your LGA</h2>
+    <p className="text-sm text-stone-500 mt-1">Choose your Local Government Area</p>
+
+    {rawCount > 10 && (
+      <div className="relative mt-4">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none" />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => onQuery(e.target.value)}
+          placeholder="Search LGAs…"
+          className="w-full pl-10 pr-3 py-2.5 bg-white/95 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-transparent"
+        />
+      </div>
+    )}
+
+    <ErrorBanner error={error} onDismiss={clearError} />
+
+    <div className="mt-4 max-h-80 overflow-y-auto pr-1 -mr-1 space-y-2 wdc-scroll">
+      {loading ? (
+        <div className="flex items-center justify-center py-12 text-stone-500">
+          <Loader2 className="w-5 h-5 animate-spin mr-2" />
+          <span className="text-sm">Loading LGAs…</span>
+        </div>
+      ) : lgas.length === 0 ? (
+        <div className="text-center py-10 text-sm text-stone-500">
+          {rawCount === 0 ? 'No LGAs available right now.' : 'No LGAs match your search.'}
+        </div>
+      ) : (
+        lgas.map((lga) => (
+          <button
+            key={lga.id}
+            type="button"
+            onClick={() => onPick(lga)}
+            className="w-full px-4 py-3 rounded-xl bg-white border border-stone-200 hover:border-emerald-500 hover:bg-emerald-50/50 active:scale-[0.99] transition-all text-left text-stone-900 font-medium text-[15px] shadow-sm"
+          >
+            {lga.name}
+          </button>
+        ))
+      )}
+    </div>
+  </div>
+);
+
+// ──────────────────────────────────────────────────────────────────────────────
+// View: Ward picker
+// ──────────────────────────────────────────────────────────────────────────────
+const WardView = ({ stepIndex, lga, wards, rawCount, loading, query, onQuery, onPick, onBack, error, clearError }) => (
+  <div className="wdc-fade-in">
+    <TopBar onBack={onBack} stepIndex={stepIndex} />
+    <Brand size="sm" />
+    <h2 className="mt-4 text-2xl font-bold text-stone-900 tracking-tight">Select your Ward</h2>
+    <p className="text-sm text-stone-500 mt-1">{lga?.name} LGA</p>
+
+    <div className="relative mt-4">
+      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none" />
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => onQuery(e.target.value)}
+        placeholder="Search wards…"
+        className="w-full pl-10 pr-3 py-2.5 bg-white/95 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-transparent"
+      />
+    </div>
+
+    <ErrorBanner error={error} onDismiss={clearError} />
+
+    <div className="mt-4 max-h-80 overflow-y-auto pr-1 -mr-1 space-y-2 wdc-scroll">
+      {loading ? (
+        <div className="flex items-center justify-center py-12 text-stone-500">
+          <Loader2 className="w-5 h-5 animate-spin mr-2" />
+          <span className="text-sm">Loading wards…</span>
+        </div>
+      ) : wards.length === 0 ? (
+        <div className="text-center py-10 text-sm text-stone-500">
+          {rawCount === 0 ? 'No wards found for this LGA.' : 'No wards match your search.'}
+        </div>
+      ) : (
+        wards.map((ward) => (
+          <button
+            key={ward.id}
+            type="button"
+            onClick={() => onPick(ward)}
+            className="w-full px-4 py-3 rounded-xl bg-white border border-stone-200 hover:border-emerald-500 hover:bg-emerald-50/50 active:scale-[0.99] transition-all text-left text-stone-900 font-medium text-[15px] shadow-sm"
+          >
+            {ward.name}
+          </button>
+        ))
+      )}
+    </div>
+  </div>
+);
+
+// ──────────────────────────────────────────────────────────────────────────────
+// View: PIN entry (on-screen numeric keypad)
+// ──────────────────────────────────────────────────────────────────────────────
+const PinView = ({ stepIndex, lga, ward, pin, loading, onPush, onPop, onBack, error, clearError }) => (
+  <div className="wdc-fade-in">
+    <TopBar onBack={onBack} stepIndex={stepIndex} />
+    <Brand size="sm" />
+
+    <p className="mt-4 text-center text-sm text-stone-500">
+      {lga?.name} LGA — {ward?.name} Ward
+    </p>
+    <h2 className="mt-1 text-center text-2xl font-bold text-stone-900 tracking-tight">
+      Enter your 4-digit PIN
+    </h2>
+
+    {/* PIN progress dots */}
+    <div className="mt-5 flex justify-center gap-4">
+      {[0, 1, 2, 3].map((i) => {
+        const filled = i < pin.length;
+        return (
+          <span
+            key={i}
+            className="w-3.5 h-3.5 rounded-full transition-all border-2"
+            style={{
+              borderColor: filled ? '#16A34A' : '#D6D3D1',
+              background:  filled ? '#16A34A' : 'transparent',
+            }}
+          />
+        );
+      })}
+    </div>
+
+    <ErrorBanner error={error} onDismiss={clearError} />
+
+    {/* Numeric keypad */}
+    <div className="mt-6 grid grid-cols-3 gap-3">
+      {['1','2','3','4','5','6','7','8','9'].map((d) => (
+        <KeyButton key={d} onClick={() => onPush(d)} disabled={loading}>
+          {d}
+        </KeyButton>
+      ))}
+      <span />
+      <KeyButton onClick={() => onPush('0')} disabled={loading}>0</KeyButton>
+      <KeyButton onClick={onPop} disabled={loading || pin.length === 0} variant="secondary" aria-label="Delete">
+        <Delete className="w-6 h-6 mx-auto" />
+      </KeyButton>
+    </div>
+
+    <div className="mt-5 min-h-[1.5rem] flex items-center justify-center">
+      {loading && (
+        <div className="inline-flex items-center gap-2 text-sm text-emerald-700">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Signing in…
+        </div>
+      )}
+    </div>
+
+    <p className="mt-1 text-center text-xs text-stone-500 leading-relaxed">
+      Forgotten your PIN? Contact your LGA coordinator to reset it.
+    </p>
+  </div>
+);
+
+const KeyButton = ({ children, onClick, disabled, variant = 'primary', ...rest }) => {
+  const base =
+    'flex items-center justify-center h-14 rounded-2xl text-2xl font-semibold transition-all select-none active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed';
+  const styles = variant === 'secondary'
+    ? 'bg-stone-200 text-stone-700 hover:bg-stone-300 shadow-sm'
+    : 'bg-white text-stone-900 hover:bg-emerald-50 hover:border-emerald-300 border border-stone-200 shadow-sm';
+  return (
+    <button type="button" onClick={onClick} disabled={disabled} className={`${base} ${styles}`} {...rest}>
+      {children}
+    </button>
+  );
+};
+
+// ──────────────────────────────────────────────────────────────────────────────
+// View: Console sign-in (Director / Coordinator)
+// ──────────────────────────────────────────────────────────────────────────────
+const ConsoleView = ({
+  email, password, totp, onEmail, onPassword, onTotp,
+  onSubmit, loading, onBack, error, clearError,
+}) => (
+  <form onSubmit={onSubmit} className="wdc-fade-in">
+    <div className="flex items-center justify-between mb-5">
+      <button
+        type="button"
+        onClick={onBack}
+        className="inline-flex items-center gap-1 text-sm font-medium text-stone-700 hover:text-emerald-700 transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back
+      </button>
+    </div>
+
+    <Brand size="sm" />
+    <h2 className="mt-4 text-2xl font-bold text-stone-900 tracking-tight">Director / Coordinator</h2>
+    <p className="text-sm text-stone-500 mt-1">Sign in with your console credentials</p>
+
+    <ErrorBanner error={error} onDismiss={clearError} />
+
+    <div className="mt-4 space-y-4">
+      <Field label="Email" icon={Mail}>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => { onEmail(e.target.value); clearError(); }}
+          required
+          disabled={loading}
+          autoComplete="email"
+          placeholder="director@kaduna.gov.ng"
+          className="w-full pl-10 pr-3 py-2.5 bg-white/95 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-transparent disabled:opacity-60"
+        />
+      </Field>
+
+      <Field label="Password" icon={Lock}>
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => { onPassword(e.target.value); clearError(); }}
+          required
+          disabled={loading}
+          autoComplete="current-password"
+          placeholder="••••••••••••"
+          className="w-full pl-10 pr-3 py-2.5 bg-white/95 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-transparent disabled:opacity-60"
+        />
+      </Field>
+
+      <Field label="Authenticator code" icon={KeyRound}>
+        <input
+          type="text"
+          inputMode="numeric"
+          maxLength={6}
+          value={totp}
+          onChange={(e) => { onTotp(e.target.value.replace(/\D/g, '')); clearError(); }}
+          required
+          disabled={loading}
+          autoComplete="one-time-code"
+          placeholder="123456"
+          className="w-full pl-10 pr-3 py-2.5 bg-white/95 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 text-sm tracking-widest focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-transparent disabled:opacity-60"
+        />
+      </Field>
+    </div>
+
+    <button
+      type="submit"
+      disabled={loading || !email || !password || totp.length !== 6}
+      className="mt-6 w-full py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-semibold transition-all shadow-md shadow-emerald-700/30 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+    >
+      {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+      {loading ? 'Signing in…' : 'Sign in'}
+    </button>
+  </form>
+);
+
+const Field = ({ label, icon: Icon, children }) => (
+  <div>
+    <label className="block text-xs font-semibold text-stone-700 mb-1.5 uppercase tracking-wide">{label}</label>
+    <div className="relative">
+      <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+      {children}
+    </div>
+  </div>
+);
 
 export default Login;

@@ -37,3 +37,7 @@ android/
 
 # Leftover empty folder from repo restructure (only contains gitignored .claude)
 frontend/
+
+# Markdown files
+*.md
+.gradle-tmp/
