@@ -3,11 +3,15 @@ import { AlertTriangle, Plus, Trash2 } from 'lucide-react';
 import VoiceRecorder from '../VoiceRecorder';
 
 // ── Shared input class names ──────────────────────────────────────────────
+// Explicit `bg-white text-gray-900` is required so the browser does not
+// apply a dark-mode user-agent stylesheet (dark bg + light text) on devices
+// with prefers-color-scheme: dark. The app is light-only after the dark
+// mode removal.
 export const inputClass =
-  'w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all placeholder:text-gray-400';
+  'w-full rounded-xl border border-gray-200 bg-white text-gray-900 px-4 py-3 text-sm focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all placeholder:text-gray-400';
 
 export const inputErrorClass =
-  'w-full rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm focus:border-red-500 focus:ring-2 focus:ring-red-200 transition-all placeholder:text-gray-400';
+  'w-full rounded-xl border border-red-300 bg-red-50 text-gray-900 px-4 py-3 text-sm focus:border-red-500 focus:ring-2 focus:ring-red-200 transition-all placeholder:text-gray-400';
 
 export const labelClass = 'block text-xs sm:text-sm font-medium text-gray-700 mb-1';
 

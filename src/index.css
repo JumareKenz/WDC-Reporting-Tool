@@ -317,3 +317,33 @@
     @apply flex items-center gap-3 text-primary-700 font-bold;
   }
 }
+
+/* App is light-only — force form controls to render light even on devices
+   whose OS is in dark mode (prevents browser UA stylesheet from giving us
+   dark background + invisible light text on inputs that don't carry an
+   explicit bg-white / text-gray-900 utility). */
+input,
+textarea,
+select {
+  color-scheme: light;
+  background-color: #ffffff;
+  color: #171717;
+}
+input::placeholder,
+textarea::placeholder {
+  color: #9ca3af;
+}
+input:disabled,
+textarea:disabled,
+select:disabled {
+  background-color: #f9fafb;
+  color: #6b7280;
+}
+/* Date / time picker text and the OS picker indicator */
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+input[type="month"],
+input[type="week"] {
+  color-scheme: light;
+}

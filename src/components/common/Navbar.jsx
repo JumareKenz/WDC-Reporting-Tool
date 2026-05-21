@@ -26,15 +26,17 @@ const Navbar = ({ onMenuToggle }) => {
     <nav className="glass-nav sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Left: Menu Toggle + Logo */}
+          {/* Left: Logo (bottom-nav layout — no hamburger needed) */}
           <div className="flex items-center gap-4">
-            <button
-              onClick={onMenuToggle}
-              className="lg:hidden p-2 rounded-xl hover:bg-neutral-100 transition-all duration-200"
-              aria-label="Toggle menu"
-            >
-              <Menu className="w-5 h-5 text-neutral-600" />
-            </button>
+            {onMenuToggle && (
+              <button
+                onClick={onMenuToggle}
+                className="lg:hidden p-2 rounded-xl hover:bg-neutral-100 transition-all duration-200"
+                aria-label="Toggle menu"
+              >
+                <Menu className="w-5 h-5 text-neutral-600" />
+              </button>
+            )}
             <Logo size="default" showText={true} />
           </div>
 
