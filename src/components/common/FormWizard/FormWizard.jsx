@@ -77,16 +77,18 @@ const FormWizard = ({
 
   // Setup auto-save timer
   useEffect(() => {
-    if (autoSaveInterval > 0) {
+    if (autoSaveInterval > 0 && onSaveDraft) {
       autoSaveTimerRef.current = setInterval(saveDraft, autoSaveInterval);
       return () => clearInterval(autoSaveTimerRef.current);
     }
-  }, [saveDraft, autoSaveInterval]);
+  }, [saveDraft, autoSaveInterval, onSaveDraft]);
 
-  // Save on step change
+  // Save on step change (only if auto-save is enabled)
   useEffect(() => {
-    saveDraft();
-  }, [currentStep, saveDraft]);
+    if (onSaveDraft && autoSaveInterval > 0) {
+      saveDraft();
+    }
+  }, [currentStep]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Validate current step
   const validateCurrentStep = useCallback(() => {

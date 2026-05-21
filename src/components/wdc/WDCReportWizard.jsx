@@ -386,10 +386,9 @@ const WDCReportWizard = ({ onSuccess, onCancel, userWard, userLGA, submissionInf
         steps={steps}
         initialData={mergedInitialData}
         onSubmit={handleSubmit}
-        onSaveDraft={handleSaveDraft}
         validateStep={validateStep}
         validateAll={validateAll}
-        autoSaveInterval={30000}
+        autoSaveInterval={0}
       />
     </div>
   );
@@ -473,7 +472,7 @@ const ActionTrackerStep = ({ formData, updateFormData }) => (
             newTracker[index].action_point = e.target.value;
             updateFormData('action_tracker', newTracker);
           }}
-          className="w-full p-2 border rounded"
+          className="w-full p-2.5 border border-neutral-300 rounded-lg bg-white text-neutral-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
         />
         
         <select
@@ -483,7 +482,7 @@ const ActionTrackerStep = ({ formData, updateFormData }) => (
             newTracker[index].status = e.target.value;
             updateFormData('action_tracker', newTracker);
           }}
-          className="w-full p-2 border rounded"
+          className="w-full p-2.5 border border-neutral-300 rounded-lg bg-white text-neutral-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
         >
           <option value="">Select status...</option>
           <option value="Completed">Completed</option>
@@ -509,7 +508,7 @@ const NumInput = ({ name, label, formData, updateFormData, getHighlightClass }) 
       min={0}
       value={formData[name] ?? ''}
       onChange={(e) => updateFormData(name, e.target.value)}
-      className={`w-full p-2 text-sm border rounded-lg ${getHighlightClass(name)}`}
+      className={`w-full p-2.5 text-sm border border-neutral-300 rounded-lg bg-white text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary-500 ${getHighlightClass(name)}`}
       placeholder="0"
     />
   </WizardField>
@@ -664,7 +663,7 @@ const CommunityStep = ({ formData, updateFormData }) => (
               newFeedback[idx].feedback = e.target.value;
               updateFormData('community_feedback', newFeedback);
             }}
-            className="w-full mt-2 p-2 border rounded text-sm"
+            className="w-full mt-2 p-2.5 border border-neutral-300 rounded-lg bg-white text-neutral-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
       ))}
@@ -702,7 +701,7 @@ const VDCStep = ({ formData, updateFormData }) => (
             newReports[index].vdc_name = e.target.value;
             updateFormData('vdc_reports', newReports);
           }}
-          className="w-full p-2 border rounded"
+          className="w-full p-2.5 border border-neutral-300 rounded-lg bg-white text-neutral-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
         />
         
         <textarea
@@ -713,7 +712,7 @@ const VDCStep = ({ formData, updateFormData }) => (
             newReports[index].issues = e.target.value;
             updateFormData('vdc_reports', newReports);
           }}
-          className="w-full p-2 border rounded"
+          className="w-full p-2.5 border border-neutral-300 rounded-lg bg-white text-neutral-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
           rows={2}
         />
       </div>
@@ -736,7 +735,7 @@ const MobilizationStep = ({ formData, updateFormData, voiceNotes, setVoiceNotes 
           type="text"
           value={formData.awareness_theme}
           onChange={(e) => updateFormData('awareness_theme', e.target.value)}
-          className="flex-1 p-3 border rounded-lg"
+          className="flex-1 p-2.5 border border-neutral-300 rounded-lg bg-white text-neutral-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
           placeholder="Enter theme..."
         />
         <VoiceRecorder
@@ -752,7 +751,7 @@ const MobilizationStep = ({ formData, updateFormData, voiceNotes, setVoiceNotes 
         <textarea
           value={formData.traditional_leaders_support}
           onChange={(e) => updateFormData('traditional_leaders_support', e.target.value)}
-          className="flex-1 p-3 border rounded-lg"
+          className="flex-1 p-2.5 border border-neutral-300 rounded-lg bg-white text-neutral-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
           rows={2}
           placeholder="Describe support needed..."
         />
@@ -769,7 +768,7 @@ const MobilizationStep = ({ formData, updateFormData, voiceNotes, setVoiceNotes 
         <textarea
           value={formData.religious_leaders_support}
           onChange={(e) => updateFormData('religious_leaders_support', e.target.value)}
-          className="flex-1 p-3 border rounded-lg"
+          className="flex-1 p-2.5 border border-neutral-300 rounded-lg bg-white text-neutral-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
           rows={2}
           placeholder="Describe support needed..."
         />
@@ -813,7 +812,7 @@ const ActionPlanStep = ({ formData, updateFormData }) => (
             newPlan[index].issue = e.target.value;
             updateFormData('action_plan', newPlan);
           }}
-          className="w-full p-2 border rounded"
+          className="w-full p-2.5 border border-neutral-300 rounded-lg bg-white text-neutral-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
         />
         
         <input
@@ -825,7 +824,7 @@ const ActionPlanStep = ({ formData, updateFormData }) => (
             newPlan[index].action = e.target.value;
             updateFormData('action_plan', newPlan);
           }}
-          className="w-full p-2 border rounded"
+          className="w-full p-2.5 border border-neutral-300 rounded-lg bg-white text-neutral-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
         />
         
         <input
@@ -837,7 +836,7 @@ const ActionPlanStep = ({ formData, updateFormData }) => (
             newPlan[index].timeline = e.target.value;
             updateFormData('action_plan', newPlan);
           }}
-          className="w-full p-2 border rounded"
+          className="w-full p-2.5 border border-neutral-300 rounded-lg bg-white text-neutral-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
         />
       </div>
     ))}
@@ -861,7 +860,7 @@ const ConclusionStep = ({ formData, updateFormData, voiceNotes, setVoiceNotes, g
             type="number"
             value={formData.attendance_total}
             onChange={(e) => updateFormData('attendance_total', e.target.value)}
-            className={`w-full p-2 border rounded ${getHighlightClass('attendance_total')}`}
+            className={`w-full p-2.5 border border-neutral-300 rounded-lg bg-white text-neutral-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 ${getHighlightClass('attendance_total')}`}
             placeholder="0"
           />
         </WizardField>
@@ -870,7 +869,7 @@ const ConclusionStep = ({ formData, updateFormData, voiceNotes, setVoiceNotes, g
             type="number"
             value={formData.attendance_male}
             onChange={(e) => updateFormData('attendance_male', e.target.value)}
-            className={`w-full p-2 border rounded ${getHighlightClass('attendance_male')}`}
+            className={`w-full p-2.5 border border-neutral-300 rounded-lg bg-white text-neutral-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 ${getHighlightClass('attendance_male')}`}
             placeholder="0"
           />
         </WizardField>
@@ -879,7 +878,7 @@ const ConclusionStep = ({ formData, updateFormData, voiceNotes, setVoiceNotes, g
             type="number"
             value={formData.attendance_female}
             onChange={(e) => updateFormData('attendance_female', e.target.value)}
-            className={`w-full p-2 border rounded ${getHighlightClass('attendance_female')}`}
+            className={`w-full p-2.5 border border-neutral-300 rounded-lg bg-white text-neutral-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 ${getHighlightClass('attendance_female')}`}
             placeholder="0"
           />
         </WizardField>
@@ -905,7 +904,7 @@ const ConclusionStep = ({ formData, updateFormData, voiceNotes, setVoiceNotes, g
         <textarea
           value={formData.support_required}
           onChange={(e) => updateFormData('support_required', e.target.value)}
-          className="flex-1 p-3 border rounded-lg"
+          className="flex-1 p-2.5 border border-neutral-300 rounded-lg bg-white text-neutral-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
           rows={3}
           placeholder="List support required..."
         />
@@ -922,7 +921,7 @@ const ConclusionStep = ({ formData, updateFormData, voiceNotes, setVoiceNotes, g
         <textarea
           value={formData.aob}
           onChange={(e) => updateFormData('aob', e.target.value)}
-          className="flex-1 p-3 border rounded-lg"
+          className="flex-1 p-2.5 border border-neutral-300 rounded-lg bg-white text-neutral-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
           rows={3}
           placeholder="Other business..."
         />
@@ -939,7 +938,7 @@ const ConclusionStep = ({ formData, updateFormData, voiceNotes, setVoiceNotes, g
         type="date"
         value={formData.next_meeting_date}
         onChange={(e) => updateFormData('next_meeting_date', e.target.value)}
-        className="w-full p-3 border rounded-lg"
+        className="w-full p-2.5 border border-neutral-300 rounded-lg bg-white text-neutral-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
       />
     </WizardField>
   </div>
