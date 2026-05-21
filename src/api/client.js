@@ -3,11 +3,9 @@ import { STORAGE_KEYS } from '../utils/constants';
 import { emitToast } from '../hooks/useToast';
 
 // Base API URL - can be configured via environment variable
-// In dev, hit localhost:8000; in production, use the deployed domain
-const rawBaseUrl =
+const BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
-  (import.meta.env.DEV ? 'http://localhost:8000/api' : 'https://kadwdc.equily.ng/api');
-const BASE_URL = rawBaseUrl.endsWith('/api') ? rawBaseUrl : `${rawBaseUrl.replace(/\/+$/, '')}/api`;
+  (import.meta.env.DEV ? 'http://localhost:8000/api/v1' : 'https://kadwdc.equily.ng/api/v1');
 
 // Create axios instance
 const apiClient = axios.create({
