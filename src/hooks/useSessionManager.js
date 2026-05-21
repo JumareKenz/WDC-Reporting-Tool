@@ -4,7 +4,7 @@ import { STORAGE_KEYS } from '../utils/constants';
 
 const BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
-  (import.meta.env.DEV ? 'http://localhost:8000/api' : 'https://kadwdc.equily.ng/api');
+  (import.meta.env.DEV ? 'http://localhost:8000/api/v1' : 'https://kadwdc.equily.ng/api/v1');
 
 // Activity tracking configuration
 const ACTIVITY_EVENTS = [
@@ -76,15 +76,16 @@ export const useSessionManager = ({ enabled = true, onDraftSave = null } = {}) =
       }
 
       // Use raw axios to avoid the apiClient interceptor loop
+      const deviceId = localStorage.getItem('wdc_device_id') || undefined;
       const response = await axios.post(
         `${BASE_URL}/auth/refresh`,
-        { refresh_token: refreshToken },
+        { refreshToken, ...(deviceId ? { deviceId } : {}) },
         { headers: { 'Content-Type': 'application/json' } }
       );
 
       const data = response.data?.data || response.data;
-      const newAccessToken = data.access_token;
-      const newRefreshToken = data.refresh_token;
+      const newAccessToken = data.accessToken || data.access_token;
+      const newRefreshToken = data.refreshToken || data.refresh_token;
 
       if (newAccessToken) {
         localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, newAccessToken);

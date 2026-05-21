@@ -137,15 +137,16 @@ apiClient.interceptors.response.use(
 
       try {
         // Use raw axios (not apiClient) to avoid interceptor loop
+        const deviceId = localStorage.getItem('wdc_device_id') || undefined;
         const response = await axios.post(
           `${BASE_URL}/auth/refresh`,
-          { refresh_token: refreshToken },
+          { refreshToken, ...(deviceId ? { deviceId } : {}) },
           { headers: { 'Content-Type': 'application/json' } }
         );
 
         const data = response.data?.data || response.data;
-        const newAccessToken = data.access_token;
-        const newRefreshToken = data.refresh_token;
+        const newAccessToken = data.accessToken || data.access_token;
+        const newRefreshToken = data.refreshToken || data.refresh_token;
 
         if (newAccessToken) {
           localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, newAccessToken);

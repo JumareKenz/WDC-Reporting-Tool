@@ -3,6 +3,25 @@ import apiClient from '../api/client';
 import { secretaryLogin } from '../api/auth';
 import { API_ENDPOINTS, STORAGE_KEYS, USER_ROLES } from '../utils/constants';
 
+// Map backend role strings (any casing/spelling) to canonical USER_ROLES values
+const ROLE_ALIASES = {
+  secretary: USER_ROLES.WDC_SECRETARY,
+  wdc_secretary: USER_ROLES.WDC_SECRETARY,
+  wdcsecretary: USER_ROLES.WDC_SECRETARY,
+  coordinator: USER_ROLES.LGA_COORDINATOR,
+  lga_coordinator: USER_ROLES.LGA_COORDINATOR,
+  lgacoordinator: USER_ROLES.LGA_COORDINATOR,
+  official: USER_ROLES.STATE_OFFICIAL,
+  state_official: USER_ROLES.STATE_OFFICIAL,
+  stateofficial: USER_ROLES.STATE_OFFICIAL,
+};
+
+const normalizeRole = (role) => {
+  if (!role) return role;
+  const key = String(role).toLowerCase().replace(/[-\s]/g, '_');
+  return ROLE_ALIASES[key] || ROLE_ALIASES[key.replace(/_/g, '')] || role;
+};
+
 // Create Auth Context
 const AuthContext = createContext(null);
 
@@ -24,6 +43,9 @@ export const AuthProvider = ({ children }) => {
         try {
           // Parse stored user data
           const parsedUser = JSON.parse(userData);
+          if (parsedUser?.role) {
+            parsedUser.role = normalizeRole(parsedUser.role);
+          }
           setUser(parsedUser);
 
           // Optionally verify token with backend
@@ -181,7 +203,7 @@ export const AuthProvider = ({ children }) => {
         const payload = JSON.parse(atob(accessToken.split('.')[1]));
         const userData = {
           id: payload.sub,
-          role: payload.role,
+          role: normalizeRole(payload.role),
           ward: { id: payload.wardId, lga_id: payload.lgaId },
           lga: { id: payload.lgaId },
           mustChangePin: payload.mustChangePin,
