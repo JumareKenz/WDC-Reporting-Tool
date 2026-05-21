@@ -168,7 +168,6 @@ export const AuthProvider = ({ children }) => {
 
     try {
       const data = await secretaryLogin(lgaId, wardId, pin);
-      // Backend returns camelCase: accessToken, refreshToken
       const accessToken = data.accessToken || data.access_token;
       const refreshToken = data.refreshToken || data.refresh_token;
 
@@ -178,11 +177,15 @@ export const AuthProvider = ({ children }) => {
           localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
         }
 
-        // Fetch user profile with the new token
-        const meResponse = await apiClient.get('/auth/me', {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
-        const userData = meResponse?.data || meResponse;
+        // Decode JWT payload to get user info
+        const payload = JSON.parse(atob(accessToken.split('.')[1]));
+        const userData = {
+          id: payload.sub,
+          role: payload.role,
+          ward: { id: payload.wardId, lga_id: payload.lgaId },
+          lga: { id: payload.lgaId },
+          mustChangePin: payload.mustChangePin,
+        };
 
         localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData));
         setUser(userData);
