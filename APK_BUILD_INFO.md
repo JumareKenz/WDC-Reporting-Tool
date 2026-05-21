@@ -3,15 +3,22 @@
 ## Build Details
 - **App Name**: Kaduna WDC Reports
 - **Package ID**: ng.gov.kaduna.wdc.reporting
-- **Version**: 1.0.0
+- **Version**: 1.0.1 (Latest)
 - **Build Date**: May 21, 2026
 - **Build Type**: Release (Unsigned)
 - **APK Size**: 47 MB
 
 ## APK Location
 ```
-C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.0.apk
+C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.1.apk  ← LATEST (Voice assistant fix)
+C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.0.apk  (Initial build)
 ```
+
+## What's New in v1.0.1
+✅ **Fixed**: Voice assistant now starts from the beginning (meeting details)
+- Previously skipped to "OPD general attendance" (section 3A)
+- Now starts with "What type of meeting?" and "What date?" (section 0/1)
+- All fields are now asked in the correct order
 
 ## What's Included in This Build
 
