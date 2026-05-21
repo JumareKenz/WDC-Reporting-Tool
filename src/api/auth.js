@@ -13,10 +13,14 @@ export const fetchWards = async (lgaId) => {
 };
 
 export const secretaryLogin = async (lgaId, wardId, pin) => {
+  const deviceId = localStorage.getItem('wdc_device_id') || crypto.randomUUID();
+  localStorage.setItem('wdc_device_id', deviceId);
+
   const response = await apiClient.post('/auth/sign-in/mobile', {
-    lga_id: lgaId,
-    ward_id: wardId,
+    lgaId,
+    wardId,
     pin,
+    deviceId,
   });
   return response?.data || response;
 };

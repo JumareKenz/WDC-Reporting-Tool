@@ -50,7 +50,7 @@ const CARD_STYLE = {
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login, getDefaultRoute } = useAuth();
+  const { login, loginWithPin, getDefaultRoute } = useAuth();
 
   const [view, setView]       = useState(VIEW.ROLE);
   const [loading, setLoading] = useState(false);
@@ -145,11 +145,7 @@ const Login = () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await login({
-        lgaId:  selectedLga.id,
-        wardId: selectedWard.id,
-        pin:    fullPin,
-      });
+      const result = await loginWithPin(selectedLga.id, selectedWard.id, fullPin);
       if (result?.success) {
         navigate(getDefaultRoute(), { replace: true });
       }
