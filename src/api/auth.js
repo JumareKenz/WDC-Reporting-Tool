@@ -13,7 +13,7 @@ export const fetchWards = async (lgaId) => {
 };
 
 export const secretaryLogin = async (lgaId, wardId, pin) => {
-  const response = await apiClient.post('/auth/secretary-login', {
+  const response = await apiClient.post('/auth/sign-in/mobile', {
     lga_id: lgaId,
     ward_id: wardId,
     pin,
