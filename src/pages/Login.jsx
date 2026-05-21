@@ -74,9 +74,9 @@ const Login = () => {
 
   const clearError = () => setError(null);
 
-  // Load LGAs the first time we enter the LGA picker
+  // Prefetch LGAs on mount so they're ready when the user taps "Ward Secretary"
   useEffect(() => {
-    if (view !== VIEW.LGA || lgas.length > 0) return;
+    if (lgas.length > 0) return;
     let cancelled = false;
     setLoadingLgas(true);
     fetchJSON(API_ENDPOINTS.LGAS)
@@ -88,7 +88,7 @@ const Login = () => {
       .catch((err) => { if (!cancelled) setError(err.message); })
       .finally(() => { if (!cancelled) setLoadingLgas(false); });
     return () => { cancelled = true; };
-  }, [view, lgas.length]);
+  }, [lgas.length]);
 
   // Load wards whenever the LGA changes
   useEffect(() => {

@@ -72,7 +72,7 @@ const RefreshIndicator = () => {
       role="status"
       aria-live="polite"
       aria-label="Verifying session"
-      className="fixed bottom-20 right-4 z-[200] flex items-center gap-2 bg-white/90 dark:bg-neutral-800/90 backdrop-blur-sm border border-neutral-200 dark:border-neutral-700 shadow-lg rounded-full px-4 py-2 text-sm text-neutral-700 dark:text-neutral-200 pointer-events-none"
+      className="fixed bottom-20 right-4 z-[200] flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-neutral-200 shadow-lg rounded-full px-4 py-2 text-sm text-neutral-700 pointer-events-none"
     >
       <Loader2 size={15} className="animate-spin text-primary-600 flex-shrink-0" aria-hidden="true" />
       <span>Verifying session…</span>

@@ -416,31 +416,3 @@
   }
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .form-wizard-progress,
-  .form-wizard-navigation {
-    background: #1f2937;
-    border-color: #374151;
-  }
-  
-  .form-wizard-step-title {
-    color: #f9fafb;
-  }
-  
-  .form-wizard-step-description {
-    color: #9ca3af;
-  }
-  
-  .wizard-field-label {
-    color: #f9fafb;
-  }
-  
-  .form-wizard-review-content {
-    background: #1f2937;
-  }
-  
-  .form-wizard-review-title {
-    color: #f9fafb;
-  }
-}
