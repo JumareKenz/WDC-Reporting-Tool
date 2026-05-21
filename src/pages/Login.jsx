@@ -212,7 +212,8 @@ const Login = () => {
       const result = await login({
         email:    email.trim(),
         password,
-        totp:     totp.trim(),
+        totp:     totp.trim().padStart(6, '0'), // Ensure exactly 6 digits
+        deviceId: 'web-session', // Required by backend
       });
       if (result?.success) {
         navigate(getDefaultRoute(), { replace: true });

@@ -248,7 +248,7 @@ const DEFAULT_FIELD_CONFIG = {
     options: ['Yes', 'No'],
     voice: {
       question_en: 'Was any health facility renovated last month? Yes or No.',
-      question_ha: 'An gyara wani asibiti a wannan watan? Eh ko A’a?',
+      question_ha: "An gyara wani asibiti a wannan watan? Eh ko A'a?",
     },
     ocr: { patterns: [], keywords: ['Facility Renovated'] },
   },
@@ -267,7 +267,7 @@ const DEFAULT_FIELD_CONFIG = {
     options: ['Yes', 'No'],
     voice: {
       question_en: 'Did the WDC donate any items to a health facility this month? Yes or No.',
-      question_ha: 'Shin WDC ta ba da gudummawar kayayyaki ga asibiti a wannan watan? Eh ko A’a?',
+      question_ha: "Shin WDC ta ba da gudummawar kayayyaki ga asibiti a wannan watan? Eh ko A'a?",
     },
     ocr: { patterns: [], keywords: ['WDC Donated'] },
   },
@@ -295,7 +295,7 @@ const DEFAULT_FIELD_CONFIG = {
     options: ['Yes', 'No'],
     voice: {
       question_en: 'Did the government donate any items to a health facility this month? Yes or No.',
-      question_ha: 'Shin gwamnati ta ba da gudummawar kayayyaki ga asibiti a wannan watan? Eh ko A’a?',
+      question_ha: "Shin gwamnati ta ba da gudummawar kayayyaki ga asibiti a wannan watan? Eh ko A'a?",
     },
     ocr: { patterns: [], keywords: ['Government Donated'] },
   },
@@ -323,7 +323,7 @@ const DEFAULT_FIELD_CONFIG = {
     options: ['Yes', 'No'],
     voice: {
       question_en: 'Was any item repaired in a health facility this month? Yes or No.',
-      question_ha: 'An gyara wani kaya a asibiti a wannan watan? Eh ko A’a?',
+      question_ha: "An gyara wani kaya a asibiti a wannan watan? Eh ko A'a?",
     },
     ocr: { patterns: [], keywords: ['Items Repaired'] },
   },
@@ -404,6 +404,64 @@ const DEFAULT_FIELD_CONFIG = {
     ocr: { patterns: ['perinatal\\s*deaths?[:\\s]*(\\d+)'], keywords: ['Perinatal Deaths'] },
   },
 
+  // ─── Section 2: Action Tracker (Row 1) ────────────────────────────────────
+  action_tracker_1_action_point: {
+    type: "text",
+    section: "action_tracker",
+    voice: {
+      question_en: "What was the agreed action point from the last meeting?",
+      question_ha: "Menene abin da aka amince da shi daga taron da ya gabata?",
+    },
+    ocr: { patterns: [], keywords: ["Action Point"] },
+  },
+  action_tracker_1_status: {
+    type: "select",
+    section: "action_tracker",
+    options: ["Completed", "On-going", "Not Started"],
+    voice: {
+      question_en: "What is the status? Completed, On-going, or Not Started?",
+      question_ha: "Menene matsayin? An kammala, yana ci gaba, ko ba a fara ba?",
+    },
+    ocr: { patterns: [], keywords: ["Status"] },
+  },
+  action_tracker_1_challenges: {
+    type: "text",
+    section: "action_tracker",
+    voice: {
+      question_en: "Are there any challenges with this action point?",
+      question_ha: "Shin akwai matsaloli game da wannan aiki?",
+    },
+    ocr: { patterns: [], keywords: ["Challenges"] },
+  },
+  action_tracker_1_timeline: {
+    type: "text",
+    section: "action_tracker",
+    voice: {
+      question_en: "What is the timeline for this action?",
+      question_ha: "Menene lokacin kammala wannan aiki?",
+    },
+    ocr: { patterns: [], keywords: ["Timeline"] },
+  },
+  action_tracker_1_responsible_person: {
+    type: "text",
+    section: "action_tracker",
+    voice: {
+      question_en: "Who is the responsible person for this action?",
+      question_ha: "Wanene mai alhakin wannan aiki?",
+    },
+    ocr: { patterns: [], keywords: ["Responsible Person"] },
+  },
+  action_tracker_has_more: {
+    type: "select",
+    section: "action_tracker",
+    options: ["Yes", "No"],
+    voice: {
+      question_en: "Is there another agreed action point to report? Yes or No.",
+      question_ha: "Shin akwai wani aiki da aka amince da shi? Eh ko Aa?",
+    },
+    ocr: { patterns: [], keywords: [] },
+  },
+
   // ─── Section 4: Community Feedback (only at quarter-end / town-hall) ──────
   town_hall_conducted: {
     type: 'select',
@@ -411,9 +469,48 @@ const DEFAULT_FIELD_CONFIG = {
     options: ['Yes', 'No'],
     voice: {
       question_en: 'Was the quarterly town hall conducted? Yes or No.',
-      question_ha: 'An gudanar da taron kwata na gari? Eh ko A’a?',
+      question_ha: 'An gudanar da taron kwata na gari? Eh ko Aa?',
     },
     ocr: { patterns: [], keywords: ['Town Hall Conducted'] },
+  },
+
+  // ─── Section 5: VDC Reports (Row 1) ───────────────────────────────────────
+  vdc_reports_1_vdc_name: {
+    type: "text",
+    section: "vdc_reports",
+    voice: {
+      question_en: "What is the name of the Village Development Committee?",
+      question_ha: "Menene sunan kwamitin raya unguwa?",
+    },
+    ocr: { patterns: [], keywords: ["VDC Name"] },
+  },
+  vdc_reports_1_issues: {
+    type: "text",
+    section: "vdc_reports",
+    voice: {
+      question_en: "What issues were raised by this VDC?",
+      question_ha: "Wadanne matsaloli wannan kwamitin ya gabatar?",
+    },
+    ocr: { patterns: [], keywords: ["Issues"] },
+  },
+  vdc_reports_1_action_taken: {
+    type: "text",
+    section: "vdc_reports",
+    voice: {
+      question_en: "What action was taken on these issues?",
+      question_ha: "Wane mataki aka dauka kan wadannan matsalolin?",
+    },
+    ocr: { patterns: [], keywords: ["Action Taken"] },
+  },
+  vdc_reports_has_more: {
+    type: "select",
+    section: "vdc_reports",
+    options: ["Yes", "No"],
+    voice: {
+      question_en: "Is there another VDC to report? Yes or No.",
+      question_ha: "Shin akwai wani kwamitin da zai bayar da rahoto? Eh ko Aa?",
+    },
+    ocr: { patterns: [], keywords: [] },
   },
 
   // ─── Section 6: Community Mobilization ────────────────────────────────────
@@ -443,6 +540,54 @@ const DEFAULT_FIELD_CONFIG = {
       question_ha: 'Wane taimako ake bukata daga shugabannin addini?',
     },
     ocr: { patterns: [], keywords: ['Religious Leaders'] },
+  },
+
+  // ─── Section 7: Community Action Plan (Row 1) ─────────────────────────────
+  action_plan_1_issue: {
+    type: "text",
+    section: "action_plan",
+    voice: {
+      question_en: "What is the first issue or priority identified for action?",
+      question_ha: "Menene matsala ko muhimmanci na farko da aka gano?",
+    },
+    ocr: { patterns: [], keywords: ["Issue", "Priority"] },
+  },
+  action_plan_1_action: {
+    type: "text",
+    section: "action_plan",
+    voice: {
+      question_en: "What action will be taken to address this issue?",
+      question_ha: "Wane mataki za a dauka don magance wannan matsala?",
+    },
+    ocr: { patterns: [], keywords: ["Action"] },
+  },
+  action_plan_1_timeline: {
+    type: "text",
+    section: "action_plan",
+    voice: {
+      question_en: "What is the timeline for completing this action?",
+      question_ha: "Menene lokacin kammala wannan aiki?",
+    },
+    ocr: { patterns: [], keywords: ["Timeline"] },
+  },
+  action_plan_1_responsible_person: {
+    type: "text",
+    section: "action_plan",
+    voice: {
+      question_en: "Who is responsible for this action?",
+      question_ha: "Wanene mai alhakin wannan aiki?",
+    },
+    ocr: { patterns: [], keywords: ["Responsible"] },
+  },
+  action_plan_has_more: {
+    type: "select",
+    section: "action_plan",
+    options: ["Yes", "No"],
+    voice: {
+      question_en: "Is there another action to plan? Yes or No.",
+      question_ha: "Shin akwai wani mataki da za a tsara? Eh ko Aa?",
+    },
+    ocr: { patterns: [], keywords: [] },
   },
 
   // ─── Section 8: Conclusion ────────────────────────────────────────────────
@@ -495,7 +640,7 @@ const DEFAULT_FIELD_CONFIG = {
     type: 'text',
     section: 'conclusion',
     voice: {
-      question_en: 'Please state the WDC chairman’s full name.',
+      question_en: "Please state the WDC chairman's full name.",
       question_ha: 'Ka fadi cikakken sunan shugaban WDC.',
     },
     ocr: { patterns: [], keywords: ['Chairman'] },
@@ -504,7 +649,7 @@ const DEFAULT_FIELD_CONFIG = {
     type: 'text',
     section: 'conclusion',
     voice: {
-      question_en: 'Please state the WDC secretary’s full name.',
+      question_en: "Please state the WDC secretary's full name.",
       question_ha: 'Ka fadi cikakken sunan sakataren WDC.',
     },
     ocr: { patterns: [], keywords: ['Secretary'] },

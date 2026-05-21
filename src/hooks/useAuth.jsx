@@ -110,14 +110,16 @@ export const AuthProvider = ({ children }) => {
   /**
    * Login function
    */
-  const login = async (email, password) => {
+  const login = async (credentials) => {
     setError(null);
     setLoading(true);
 
     try {
       const response = await apiClient.post(API_ENDPOINTS.SIGN_IN_CONSOLE, {
-        email,
-        password,
+        email: credentials.email,
+        password: credentials.password,
+        totp: credentials.totp,
+        deviceId: credentials.deviceId,
       });
 
       const data = response.data || response;

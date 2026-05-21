@@ -270,8 +270,38 @@ export function buildVoiceQuestions(config, formData = {}) {
     if (formData?.[gate] === 'No') deps.forEach((d) => skipDependents.add(d));
   }
 
+  // Define explicit section order
+  const SECTION_ORDER = {
+    'meeting': 0,
+    'health_data': 1,
+    'action_tracker': 2,
+    'facility_support': 3,
+    'transportation': 4,
+    'cmpdsr': 5,
+    'community_feedback': 6,
+    'vdc_reports': 7,
+    'achievements': 8,
+    'action_plan': 9,
+    'conclusion': 10,
+  };
+
   const questions = [];
-  for (const field of Object.values(cfg)) {
+
+  // Convert to array and sort by section order
+  const fieldsArray = Object.values(cfg).map(field => ({
+    ...field,
+    sectionOrder: SECTION_ORDER[field.section] ?? 999,
+  }));
+
+  // Sort by section order first, then by field name for consistent ordering within section
+  fieldsArray.sort((a, b) => {
+    if (a.sectionOrder !== b.sectionOrder) {
+      return a.sectionOrder - b.sectionOrder;
+    }
+    return (a.name || '').localeCompare(b.name || '');
+  });
+
+  for (const field of fieldsArray) {
     if (!field.voice?.question_en) continue;
     if (field.section === 'community_feedback' && !showCommunityFeedback) continue;
     if (skipDependents.has(field.name)) continue;

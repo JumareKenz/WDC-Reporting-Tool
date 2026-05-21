@@ -3,17 +3,49 @@
 ## Build Details
 - **App Name**: Kaduna WDC Reports
 - **Package ID**: ng.gov.kaduna.wdc.reporting
-- **Version**: 1.0.2-FINAL ✅ **LATEST & RECOMMENDED**
+- **Version**: 1.0.5-FINAL ✅ **LATEST & RECOMMENDED**
 - **Build Date**: May 21, 2026
 - **Build Type**: Release (Unsigned)
 - **APK Size**: 47 MB
 
 ## APK Location
 ```
-C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.2-FINAL.apk  ← USE THIS ONE ✅
-C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.1.apk  (Voice fix)
+C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.5-FINAL.apk  ← USE THIS ONE ✅
+C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.4-FINAL.apk  (Console login fixed)
+C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.3-FINAL.apk  (Console login attempt 1)
+C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.2-FINAL.apk  (Voice + table sections)
+C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.1.apk  (Voice fix attempt)
 C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.0.apk  (Initial build)
 ```
+
+## What's New in v1.0.5-FINAL
+✅ **Voice Assistant Section Ordering FIXED**: Now asks questions from ALL sections 1-8 in correct order
+- Added explicit section ordering in `buildVoiceQuestions()` function
+- Sections now processed in order: meeting → health_data → action_tracker → facility_support → transportation → cmpdsr → community_feedback → vdc_reports → achievements → action_plan → conclusion
+- Voice assistant will ask:
+  - Section 1: Meeting type, date, time (starts HERE now, not Section 3!)
+  - Section 2: Action Tracker (with row-by-row questions)
+  - Section 3: Health data (all individual fields)
+  - Section 4: Community feedback (quarter-end only)
+  - Section 5: VDC Reports (with row-by-row questions)
+  - Section 6: Achievements
+  - Section 7: Community Action Plan (with row-by-row questions)
+  - Section 8: Conclusion
+
+✅ **Root cause**: `Object.values()` doesn't guarantee iteration order - fields were being processed in random order instead of section 1→2→3→4→5→6→7→8
+
+## What's New in v1.0.4-FINAL
+✅ **Console Login FIXED**: State officials and LGA coordinators can now log in properly
+- Fixed function signature mismatch: `login()` now accepts credentials object instead of positional arguments
+- Backend receives exactly: `{ email, password, totp, deviceId }` with correct field names
+- TOTP code padded to exactly 6 digits
+- deviceId set to 'web-session'
+
+✅ **Voice Assistant with Table Sections**: Complete voice entry for all 8 sections
+- Section 2 (Action Tracker): Voice asks for each column (action point, status, challenges, timeline, responsible person) + "has more" gate for multiple rows
+- Section 5 (VDC Reports): Voice asks for VDC name, issues, action taken + "has more" gate
+- Section 7 (Community Action Plan): Voice asks for issue, action, timeline, responsible person + "has more" gate
+- Transformation logic converts flat voice answers to proper table row arrays
 
 ## What's New in v1.0.2-FINAL
 ✅ **Voice Assistant**: Now starts from the beginning (Section 0: Meeting Details)
