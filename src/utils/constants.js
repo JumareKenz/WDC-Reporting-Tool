@@ -11,6 +11,22 @@ export const ROLE_LABELS = {
   [USER_ROLES.STATE_OFFICIAL]: 'State Official',
 };
 
+// Context-aware role label. Prefixes the role with the user's ward/LGA name
+// when known (e.g. "Barnawa WDC Secretary"). Falls back to ROLE_LABELS.
+export const getUserRoleLabel = (user) => {
+  if (!user?.role) return '';
+  const base = ROLE_LABELS[user.role] || user.role;
+  if (user.role === USER_ROLES.WDC_SECRETARY) {
+    const wardName = user?.ward?.name;
+    return wardName ? `${wardName} ${base}` : base;
+  }
+  if (user.role === USER_ROLES.LGA_COORDINATOR) {
+    const lgaName = user?.lga?.name || user?.ward?.lga_name;
+    return lgaName ? `${lgaName} ${base}` : base;
+  }
+  return base;
+};
+
 // Report Statuses — must match backend op-log state machine.
 // Legacy aliases (REVIEWED/FLAGGED/DECLINED) are kept so older screens keep
 // rendering correctly while their copy is migrated to APPROVED/RETURNED.

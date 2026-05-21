@@ -18,7 +18,7 @@ import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import Alert from '../components/common/Alert';
 import { useAuth } from '../hooks/useAuth';
-import { ROLE_LABELS } from '../utils/constants';
+import { ROLE_LABELS, getUserRoleLabel } from '../utils/constants';
 import { updateProfile, updateEmail, changePassword, changePin } from '../api/profile';
 import PinKeypad from '../components/secretary-login/PinKeypad';
 import PinDots from '../components/secretary-login/PinDots';
@@ -312,7 +312,7 @@ const SettingsPage = () => {
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-neutral-900">{user?.full_name}</h3>
-                    <p className="text-sm text-primary-600 font-medium">{ROLE_LABELS[user?.role]}</p>
+                    <p className="text-sm text-primary-600 font-medium">{getUserRoleLabel(user)}</p>
                     {user?.ward_name && (
                       <p className="text-sm text-neutral-500">{user.ward_name} Ward, {user.lga_name}</p>
                     )}
@@ -383,7 +383,7 @@ const SettingsPage = () => {
                       <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
                       <input
                         type="text"
-                        value={ROLE_LABELS[user?.role] || ''}
+                        value={getUserRoleLabel(user) || ''}
                         disabled
                         className="w-full pl-10 pr-3 py-2 border border-neutral-300 rounded-lg bg-neutral-50 text-neutral-500"
                       />

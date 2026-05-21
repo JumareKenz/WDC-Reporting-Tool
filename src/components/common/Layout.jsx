@@ -16,7 +16,7 @@ import {
   UserCog,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import { USER_ROLES, ROLE_LABELS } from '../../utils/constants';
+import { USER_ROLES, ROLE_LABELS, getUserRoleLabel } from '../../utils/constants';
 import Navbar from './Navbar';
 import Logo from './Logo';
 import AIChatInterface from '../state/AIChatInterface';
@@ -135,7 +135,7 @@ const Layout = ({ children }) => {
                   {user?.full_name}
                 </p>
                 <p className="text-xs text-neutral-600 truncate">
-                  {ROLE_LABELS[user?.role]}
+                  {getUserRoleLabel(user)}
                 </p>
               </div>
             )}

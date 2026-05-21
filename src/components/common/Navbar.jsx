@@ -2,7 +2,7 @@ import { Bell, User, LogOut, Menu, Settings } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { ROLE_LABELS, USER_ROLES } from '../../utils/constants';
+import { ROLE_LABELS, USER_ROLES, getUserRoleLabel } from '../../utils/constants';
 import Logo from './Logo';
 
 const Navbar = ({ onMenuToggle }) => {
@@ -67,7 +67,7 @@ const Navbar = ({ onMenuToggle }) => {
                     {user?.full_name}
                   </div>
                   <div className="text-xs text-neutral-500">
-                    {ROLE_LABELS[user?.role]}
+                    {getUserRoleLabel(user)}
                   </div>
                 </div>
               </button>
@@ -97,7 +97,7 @@ const Navbar = ({ onMenuToggle }) => {
                             {user?.email}
                           </p>
                           <p className="text-xs text-primary-600 font-medium mt-0.5">
-                            {ROLE_LABELS[user?.role]}
+                            {getUserRoleLabel(user)}
                           </p>
                           {(user?.ward_name || user?.lga_name) && (
                             <p className="text-xs text-neutral-400 mt-0.5">

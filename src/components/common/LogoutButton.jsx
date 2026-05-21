@@ -8,6 +8,7 @@
 import React, { useState } from 'react';
 import { LogOut, AlertTriangle, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { getUserRoleLabel } from '../../utils/constants';
 import Button from './Button';
 import Modal from './Modal';
 
@@ -84,7 +85,7 @@ const LogoutButton = ({
             <div className="bg-gray-50 rounded-lg p-3 text-sm">
               <p className="text-gray-500">Currently logged in as:</p>
               <p className="font-medium text-gray-900">{user.full_name || user.email}</p>
-              <p className="text-gray-500 text-xs mt-0.5">{user.role?.replace(/_/g, ' ')}</p>
+              <p className="text-gray-500 text-xs mt-0.5">{getUserRoleLabel(user)}</p>
             </div>
           )}
 
