@@ -74,7 +74,7 @@ const ResetPassword = () => {
   if (success) {
     return (
       <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900">
-        <div className="absolute -top-24 left-1/4 w-96 h-96 bg-emerald-500 rounded-full opacity-20 pointer-events-none" style={{ filter: 'blur(100px)' }} />
+        <div className="absolute -top-24 left-1/4 w-96 h-96 bg-primary-500 rounded-full opacity-20 pointer-events-none" style={{ filter: 'blur(100px)' }} />
         <div className="absolute -bottom-32 -right-16 w-96 h-96 bg-teal-500 rounded-full opacity-15 pointer-events-none" style={{ filter: 'blur(120px)' }} />
 
         <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
@@ -90,7 +90,7 @@ const ResetPassword = () => {
 
             <div className="rounded-2xl p-8" style={{ background: 'rgba(255,255,255,0.13)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.18)', boxShadow: '0 8px 32px rgba(0,0,0,0.25)' }}>
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-green-500/20 rounded-full mb-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-500/20 rounded-full mb-4">
                   <CheckCircle className="w-8 h-8 text-green-400" />
                 </div>
 
@@ -98,11 +98,11 @@ const ResetPassword = () => {
                   All Set!
                 </h2>
 
-                <p className="text-emerald-200 mb-6">
+                <p className="text-primary-200 mb-6">
                   Your password has been reset successfully. You can now login with your new password.
                 </p>
 
-                <p className="text-sm text-emerald-300 mb-6">
+                <p className="text-sm text-primary-300 mb-6">
                   Redirecting to login page...
                 </p>
 
@@ -123,7 +123,7 @@ const ResetPassword = () => {
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900">
-      <div className="absolute -top-24 left-1/4 w-96 h-96 bg-emerald-500 rounded-full opacity-20 pointer-events-none" style={{ filter: 'blur(100px)' }} />
+      <div className="absolute -top-24 left-1/4 w-96 h-96 bg-primary-500 rounded-full opacity-20 pointer-events-none" style={{ filter: 'blur(100px)' }} />
       <div className="absolute -bottom-32 -right-16 w-96 h-96 bg-teal-500 rounded-full opacity-15 pointer-events-none" style={{ filter: 'blur(120px)' }} />
       <div className="absolute top-1/2 -left-24 w-72 h-72 bg-green-400 rounded-full opacity-10 pointer-events-none" style={{ filter: 'blur(90px)' }} />
 
@@ -136,7 +136,7 @@ const ResetPassword = () => {
             <h1 className="text-3xl font-bold text-white mb-1.5 tracking-tight">
               Reset Your Password
             </h1>
-            <p className="text-emerald-300 text-sm">
+            <p className="text-primary-300 text-sm">
               Enter your new password below
             </p>
           </div>
@@ -223,7 +223,7 @@ const ResetPassword = () => {
           </div>
 
           <div className="mt-6 text-center">
-            <p className="text-sm text-emerald-300">
+            <p className="text-sm text-primary-300">
               {APP_CONFIG.STATE_NAME}, {APP_CONFIG.COUNTRY}
             </p>
           </div>

@@ -76,7 +76,7 @@ const OfflineBanner = ({ isSyncing = false, pendingCount = 0 }) => {
         <div className={`px-4 py-3 text-sm font-medium shadow-lg ${
           isSyncingNow
             ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white'
-            : 'bg-gradient-to-r from-emerald-500 to-green-500 text-white'
+            : 'bg-gradient-to-r from-primary-500 to-green-500 text-white'
         }`}>
           <div className="max-w-3xl mx-auto flex items-center justify-center gap-3">
             {isSyncingNow ? (

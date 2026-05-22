@@ -265,22 +265,22 @@ Kaduna State WDC Digital Reporting System
               <p className="text-2xl font-bold text-blue-700">{formatNumber(state_overview.total_wards)}</p>
               <p className="text-xs text-blue-600">Total Wards</p>
             </div>
-            <div className="p-4 bg-green-50 rounded-lg text-center">
-              <FileText className="w-5 h-5 text-green-600 mx-auto mb-1" />
-              <p className="text-2xl font-bold text-green-700">{formatNumber(state_overview.reports_submitted)}</p>
-              <p className="text-xs text-green-600">Submitted</p>
+            <div className="p-4 bg-primary-50 rounded-lg text-center">
+              <FileText className="w-5 h-5 text-primary-600 mx-auto mb-1" />
+              <p className="text-2xl font-bold text-primary-700">{formatNumber(state_overview.reports_submitted)}</p>
+              <p className="text-xs text-primary-600">Submitted</p>
             </div>
             <div className="p-4 bg-neutral-50 rounded-lg text-center">
               <p className="text-2xl font-bold text-neutral-700">{state_overview.submission_rate}%</p>
               <p className="text-xs text-neutral-600">Submission Rate</p>
             </div>
-            <div className={`p-4 rounded-lg text-center ${state_overview.rate_change >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
+            <div className={`p-4 rounded-lg text-center ${state_overview.rate_change >= 0 ? 'bg-primary-50' : 'bg-red-50'}`}>
               {state_overview.rate_change >= 0 ? (
-                <TrendingUp className="w-5 h-5 text-green-600 mx-auto mb-1" />
+                <TrendingUp className="w-5 h-5 text-primary-600 mx-auto mb-1" />
               ) : (
                 <TrendingDown className="w-5 h-5 text-red-600 mx-auto mb-1" />
               )}
-              <p className={`text-2xl font-bold ${state_overview.rate_change >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+              <p className={`text-2xl font-bold ${state_overview.rate_change >= 0 ? 'text-primary-700' : 'text-red-700'}`}>
                 {state_overview.rate_change > 0 ? '+' : ''}{state_overview.rate_change}%
               </p>
               <p className="text-xs text-neutral-600">vs Previous Month</p>
@@ -373,8 +373,8 @@ Kaduna State WDC Digital Reporting System
           {key_issues.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               {key_issues.map((issue, idx) => (
-                <div key={idx} className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
-                  <p className="font-semibold text-yellow-800 capitalize">{issue.word}</p>
+                <div key={idx} className="p-3 bg-accent-50 border border-yellow-200 rounded-lg text-center">
+                  <p className="font-semibold text-accent-900 capitalize">{issue.word}</p>
                   <p className="text-xs text-yellow-600">{issue.count} mentions</p>
                 </div>
               ))}
@@ -408,15 +408,15 @@ Kaduna State WDC Digital Reporting System
           <h3 className="text-lg font-bold text-neutral-900 mb-4 border-b pb-2">SWOT Analysis</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Strengths */}
-            <div className="p-4 bg-green-50 border border-green-200 rounded-xl">
-              <h4 className="font-bold text-green-800 mb-3 flex items-center gap-2">
-                <span className="w-6 h-6 bg-green-600 text-white rounded flex items-center justify-center text-xs font-bold">S</span>
+            <div className="p-4 bg-primary-50 border border-primary-200 rounded-xl">
+              <h4 className="font-bold text-primary-800 mb-3 flex items-center gap-2">
+                <span className="w-6 h-6 bg-primary-600 text-white rounded flex items-center justify-center text-xs font-bold">S</span>
                 Strengths
               </h4>
               <ul className="space-y-1.5">
                 {(swot.strengths || []).map((item, idx) => (
-                  <li key={idx} className="text-sm text-green-800 flex items-start gap-1.5">
-                    <span className="text-green-500 mt-0.5">+</span>
+                  <li key={idx} className="text-sm text-primary-800 flex items-start gap-1.5">
+                    <span className="text-primary-500 mt-0.5">+</span>
                     {item}
                   </li>
                 ))}
@@ -456,14 +456,14 @@ Kaduna State WDC Digital Reporting System
             </div>
 
             {/* Threats */}
-            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
-              <h4 className="font-bold text-yellow-800 mb-3 flex items-center gap-2">
+            <div className="p-4 bg-accent-50 border border-yellow-200 rounded-xl">
+              <h4 className="font-bold text-accent-900 mb-3 flex items-center gap-2">
                 <span className="w-6 h-6 bg-yellow-600 text-white rounded flex items-center justify-center text-xs font-bold">T</span>
                 Threats
               </h4>
               <ul className="space-y-1.5">
                 {(swot.threats || []).map((item, idx) => (
-                  <li key={idx} className="text-sm text-yellow-800 flex items-start gap-1.5">
+                  <li key={idx} className="text-sm text-accent-900 flex items-start gap-1.5">
                     <AlertTriangle className="w-3 h-3 text-yellow-500 mt-0.5 shrink-0" />
                     {item}
                   </li>

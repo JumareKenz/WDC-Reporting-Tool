@@ -64,7 +64,7 @@ const FormField = ({
 
         {/* Success indicator */}
         {showSuccess && !error && (
-          <Check className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-500 pointer-events-none" aria-hidden="true" />
+          <Check className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary-500 pointer-events-none" aria-hidden="true" />
         )}
       </div>
 

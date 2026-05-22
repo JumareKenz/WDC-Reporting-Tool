@@ -73,7 +73,7 @@ import MonthlyReportModal from '../components/state/MonthlyReportModal';
 import AIChatInterface from '../components/state/AIChatInterface';
 import apiClient from '../api/client';
 
-const COLORS = ['#16a34a', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+const COLORS = ['#3d8a63', '#2f6b4d', '#d4a574', '#c18a4f', '#3b82f6', '#dc2626'];
 
 // Animation variants
 const containerVariants = {
@@ -397,7 +397,7 @@ const StateDashboard = () => {
           <XAxis dataKey="month" tick={{ fontSize: 12 }} />
           <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} tickFormatter={(v) => `${v}%`} />
           <Tooltip formatter={(value) => [`${value}%`, 'Submission Rate']} />
-          <Bar dataKey="submission_rate" fill="#16a34a" radius={[4, 4, 0, 0]} name="Submission Rate" />
+          <Bar dataKey="submission_rate" fill="#3d8a63" radius={[4, 4, 0, 0]} name="Submission Rate" />
         </BarChart>
       );
     }
@@ -409,7 +409,7 @@ const StateDashboard = () => {
           <XAxis dataKey="month" tick={{ fontSize: 12 }} />
           <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} tickFormatter={(v) => `${v}%`} />
           <Tooltip formatter={(value) => [`${value}%`, 'Submission Rate']} />
-          <Line type="monotone" dataKey="submission_rate" stroke="#16a34a" strokeWidth={3} dot={{ fill: '#16a34a', r: 4 }} />
+          <Line type="monotone" dataKey="submission_rate" stroke="#3d8a63" strokeWidth={3} dot={{ fill: '#16a34a', r: 4 }} />
         </LineChart>
       );
     }
@@ -427,7 +427,7 @@ const StateDashboard = () => {
         <XAxis dataKey="month" tick={{ fontSize: 12 }} />
         <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} tickFormatter={(v) => `${v}%`} />
         <Tooltip formatter={(value) => [`${value}%`, 'Submission Rate']} />
-        <Area type="monotone" dataKey="submission_rate" stroke="#16a34a" strokeWidth={3} fill="url(#colorRate)" />
+        <Area type="monotone" dataKey="submission_rate" stroke="#3d8a63" strokeWidth={3} fill="url(#colorRate)" />
       </AreaChart>
     );
   };
@@ -626,8 +626,8 @@ const StateDashboard = () => {
             onClick={() => navigate('/state/submissions')}
           >
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-green-100 rounded-lg">
-                <CheckCircle className="w-5 h-5 text-green-600" />
+              <div className="p-2.5 bg-primary-100 rounded-lg">
+                <CheckCircle className="w-5 h-5 text-primary-600" />
               </div>
               <div className="flex-1">
                 <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Submitted</p>
@@ -636,7 +636,7 @@ const StateDashboard = () => {
                     {loadingOverview ? '-' : formatNumber(totalSubmitted)}
                   </p>
                   {!loadingOverview && (
-                    <span className="text-xs font-medium text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
+                    <span className="text-xs font-medium text-primary-600 bg-primary-50 px-1.5 py-0.5 rounded">
                       {submissionRate}%
                     </span>
                   )}
@@ -648,7 +648,7 @@ const StateDashboard = () => {
               <div className="mt-3">
                 <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden">
                   <div 
-                    className="h-full bg-green-500 rounded-full transition-all duration-500"
+                    className="h-full bg-primary-500 rounded-full transition-all duration-500"
                     style={{ width: `${submissionRate}%` }}
                   />
                 </div>
@@ -660,7 +660,7 @@ const StateDashboard = () => {
           {/* Missing */}
           <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-4 hover:shadow-md transition-shadow">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-amber-100 rounded-lg">
+              <div className="p-2.5 bg-accent-100 rounded-lg">
                 <AlertTriangle className="w-5 h-5 text-amber-600" />
               </div>
               <div className="flex-1">
@@ -670,7 +670,7 @@ const StateDashboard = () => {
                     {loadingOverview ? '-' : formatNumber(totalMissing)}
                   </p>
                   {!loadingOverview && totalWards > 0 && (
-                    <span className="text-xs font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+                    <span className="text-xs font-medium text-amber-600 bg-accent-50 px-1.5 py-0.5 rounded">
                       {Math.round((totalMissing / totalWards) * 100)}%
                     </span>
                   )}
@@ -682,7 +682,7 @@ const StateDashboard = () => {
               <div className="mt-3">
                 <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden">
                   <div 
-                    className="h-full bg-amber-500 rounded-full transition-all duration-500"
+                    className="h-full bg-accent-500 rounded-full transition-all duration-500"
                     style={{ width: `${Math.round((totalMissing / totalWards) * 100)}%` }}
                   />
                 </div>
@@ -766,7 +766,7 @@ const StateDashboard = () => {
             <div className="flex items-center justify-between mb-1">
               <span className="text-sm font-medium text-neutral-600">Current Rate</span>
               {submissionRate >= avgRate ? (
-                <TrendingUp className="w-4 h-4 text-green-500" />
+                <TrendingUp className="w-4 h-4 text-primary-500" />
               ) : (
                 <TrendingDown className="w-4 h-4 text-red-500" />
               )}
@@ -785,9 +785,9 @@ const StateDashboard = () => {
           <div className="p-4 bg-white rounded-xl border border-neutral-200 shadow-sm">
             <div className="flex items-center justify-between mb-1">
               <span className="text-sm font-medium text-neutral-600">Top Performers</span>
-              <Award className="w-4 h-4 text-green-500" />
+              <Award className="w-4 h-4 text-primary-500" />
             </div>
-            <p className="text-3xl font-bold text-green-600">{performanceCategories.excellent + performanceCategories.good}</p>
+            <p className="text-3xl font-bold text-primary-600">{performanceCategories.excellent + performanceCategories.good}</p>
             <p className="text-xs text-neutral-500 mt-1">LGAs at ≥70% rate</p>
           </div>
           <div className="p-4 bg-white rounded-xl border border-neutral-200 shadow-sm">
@@ -802,13 +802,13 @@ const StateDashboard = () => {
 
         {/* ROW 3: Performance Category Banners */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200">
+          <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-primary-200">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-green-700">Excellent (≥90%)</span>
-              <span className="text-2xl font-bold text-green-600">{performanceCategories.excellent}</span>
+              <span className="text-sm font-medium text-primary-700">Excellent (≥90%)</span>
+              <span className="text-2xl font-bold text-primary-600">{performanceCategories.excellent}</span>
             </div>
-            <div className="mt-2 h-1 bg-green-200 rounded-full">
-              <div className="h-1 bg-green-500 rounded-full" style={{ width: `${totalLGAs > 0 ? (performanceCategories.excellent / totalLGAs) * 100 : 0}%` }} />
+            <div className="mt-2 h-1 bg-primary-200 rounded-full">
+              <div className="h-1 bg-primary-500 rounded-full" style={{ width: `${totalLGAs > 0 ? (performanceCategories.excellent / totalLGAs) * 100 : 0}%` }} />
             </div>
           </div>
           <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200">
@@ -822,11 +822,11 @@ const StateDashboard = () => {
           </div>
           <div className="p-4 bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl border border-yellow-200">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-yellow-700">Needs Attention</span>
+              <span className="text-sm font-medium text-accent-800">Needs Attention</span>
               <span className="text-2xl font-bold text-yellow-600">{performanceCategories.needsAttention}</span>
             </div>
             <div className="mt-2 h-1 bg-yellow-200 rounded-full">
-              <div className="h-1 bg-yellow-500 rounded-full" style={{ width: `${totalLGAs > 0 ? (performanceCategories.needsAttention / totalLGAs) * 100 : 0}%` }} />
+              <div className="h-1 bg-accent-500 rounded-full" style={{ width: `${totalLGAs > 0 ? (performanceCategories.needsAttention / totalLGAs) * 100 : 0}%` }} />
             </div>
           </div>
           <div className="p-4 bg-gradient-to-br from-red-50 to-red-100 rounded-xl border border-red-200">
@@ -874,8 +874,8 @@ const StateDashboard = () => {
           {/* Facility Support */}
           <div className="p-5 bg-white rounded-xl border border-neutral-200 shadow-sm">
             <div className="flex items-center gap-2 mb-4">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Hammer className="w-5 h-5 text-green-600" />
+              <div className="p-2 bg-primary-100 rounded-lg">
+                <Hammer className="w-5 h-5 text-primary-600" />
               </div>
               <div>
                 <h3 className="font-semibold text-neutral-900">Facility Support</h3>
@@ -1077,7 +1077,7 @@ const StateDashboard = () => {
                       <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
                       <YAxis dataKey="name" type="category" width={90} tick={{ fontSize: 11 }} />
                       <Tooltip formatter={(value, name) => [name === 'rate' ? `${value}%` : value, name === 'rate' ? 'Submission Rate' : name]} />
-                      <Bar dataKey="rate" fill="#16a34a" radius={[0, 4, 4, 0]} name="Submission Rate" />
+                      <Bar dataKey="rate" fill="#3d8a63" radius={[0, 4, 4, 0]} name="Submission Rate" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -1089,8 +1089,8 @@ const StateDashboard = () => {
             {/* Top 5 / Bottom 5 Performers */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Top 5 */}
-              <div className="p-5 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200">
-                <h3 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
+              <div className="p-5 bg-gradient-to-br from-green-50 to-primary-50 rounded-xl border border-primary-200">
+                <h3 className="font-semibold text-primary-800 mb-3 flex items-center gap-2">
                   <TrendingUp className="w-4 h-4" />
                   Top 5 Performers
                 </h3>
@@ -1098,12 +1098,12 @@ const StateDashboard = () => {
                   {top5.map((lga, idx) => (
                     <div key={lga.id || idx} className="flex items-center gap-3 p-2 bg-white/70 rounded-lg">
                       <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white ${
-                        idx === 0 ? 'bg-yellow-500' : idx === 1 ? 'bg-neutral-400' : idx === 2 ? 'bg-amber-600' : 'bg-green-500'
+                        idx === 0 ? 'bg-accent-500' : idx === 1 ? 'bg-neutral-400' : idx === 2 ? 'bg-amber-600' : 'bg-primary-500'
                       }`}>
                         {idx + 1}
                       </span>
                       <span className="flex-1 text-sm font-medium text-neutral-900">{lga.name}</span>
-                      <span className="text-sm font-bold text-green-700">{lga.submission_rate}%</span>
+                      <span className="text-sm font-bold text-primary-700">{lga.submission_rate}%</span>
                     </div>
                   ))}
                 </div>
@@ -1188,9 +1188,9 @@ const StateDashboard = () => {
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2">
                               <div
-                                className={`w-2 h-2 rounded-full ${lga.submission_rate >= 90 ? 'bg-green-500' :
+                                className={`w-2 h-2 rounded-full ${lga.submission_rate >= 90 ? 'bg-primary-500' :
                                   lga.submission_rate >= 70 ? 'bg-blue-500' :
-                                    lga.submission_rate >= 50 ? 'bg-yellow-500' : 'bg-red-500'
+                                    lga.submission_rate >= 50 ? 'bg-accent-500' : 'bg-red-500'
                                   }`}
                               />
                               <span className="font-medium text-neutral-900">{lga.name}</span>
@@ -1210,7 +1210,7 @@ const StateDashboard = () => {
                             </div>
                           </td>
                           <td className="py-3 px-4 text-center">
-                            <span className="inline-flex items-center justify-center w-8 h-6 rounded bg-green-100 text-green-700 text-sm font-medium">
+                            <span className="inline-flex items-center justify-center w-8 h-6 rounded bg-primary-100 text-primary-700 text-sm font-medium">
                               {lga.submitted_count}
                             </span>
                           </td>
@@ -1226,9 +1226,9 @@ const StateDashboard = () => {
                             </span>
                           </td>
                           <td className="py-3 px-4 text-center">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${lga.submission_rate >= 90 ? 'bg-green-100 text-green-700' :
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${lga.submission_rate >= 90 ? 'bg-primary-100 text-primary-700' :
                               lga.submission_rate >= 70 ? 'bg-blue-100 text-blue-700' :
-                                lga.submission_rate >= 50 ? 'bg-yellow-100 text-yellow-700' :
+                                lga.submission_rate >= 50 ? 'bg-accent-50 text-accent-800' :
                                   'bg-red-100 text-red-700'
                               }`}>
                               {lga.submission_rate >= 90 ? 'Excellent' :
@@ -1366,7 +1366,7 @@ const StateDashboard = () => {
                     icon={RefreshCw}
                     onClick={handleUpdateLGAsWards}
                     loading={updatingLGAsWards}
-                    className="border-green-300 text-green-700 hover:bg-green-50 font-semibold"
+                    className="border-green-300 text-primary-700 hover:bg-primary-50 font-semibold"
                   >
                     Update LGAs & Wards Database
                   </Button>
@@ -1558,7 +1558,7 @@ const StateDashboard = () => {
               )}
               {selectedReport.challenges && (
                 <div>
-                  <p className="font-bold text-amber-800">Challenges</p>
+                  <p className="font-bold text-accent-900">Challenges</p>
                   <p className="text-neutral-700 whitespace-pre-wrap">{selectedReport.challenges}</p>
                 </div>
               )}

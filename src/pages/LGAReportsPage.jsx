@@ -285,7 +285,7 @@ const LGAReportsPage = () => {
                   >
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${report.status === REPORT_STATUS.REVIEWED ? 'bg-green-500' :
+                        <div className={`w-2 h-2 rounded-full ${report.status === REPORT_STATUS.REVIEWED ? 'bg-primary-500' :
                           report.status === REPORT_STATUS.FLAGGED ? 'bg-red-500' :
                             'bg-blue-500'
                           }`} />
@@ -299,7 +299,7 @@ const LGAReportsPage = () => {
                       </div>
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-green-100 text-green-700 font-bold">
+                      <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary-100 text-primary-700 font-bold">
                         {report.meetings_held || 0}
                       </span>
                     </td>
@@ -369,10 +369,10 @@ const LGAReportsPage = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="p-5 bg-gradient-to-br from-green-50 to-green-100 rounded-xl">
                 <div className="flex items-center gap-3 mb-2">
-                  <Activity className="w-5 h-5 text-green-600" />
-                  <p className="text-sm text-green-700 font-medium">Meetings Held</p>
+                  <Activity className="w-5 h-5 text-primary-600" />
+                  <p className="text-sm text-primary-700 font-medium">Meetings Held</p>
                 </div>
-                <p className="text-4xl font-bold text-green-700">{selectedReport.meetings_held || 0}</p>
+                <p className="text-4xl font-bold text-primary-700">{selectedReport.meetings_held || 0}</p>
               </div>
               <div className="p-5 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl">
                 <div className="flex items-center gap-3 mb-2">
@@ -396,9 +396,9 @@ const LGAReportsPage = () => {
               )}
 
               {selectedReport.actions_taken && (
-                <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                <div className="p-4 bg-primary-50 rounded-lg border border-primary-200">
                   <h4 className="font-semibold text-neutral-900 mb-2 flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-600" />
+                    <CheckCircle className="w-4 h-4 text-primary-600" />
                     Actions Taken
                   </h4>
                   <p className="text-sm text-neutral-700 leading-relaxed">{selectedReport.actions_taken}</p>
@@ -406,7 +406,7 @@ const LGAReportsPage = () => {
               )}
 
               {selectedReport.challenges && (
-                <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                <div className="p-4 bg-accent-50 rounded-lg border border-yellow-200">
                   <h4 className="font-semibold text-neutral-900 mb-2 flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 text-yellow-600" />
                     Challenges

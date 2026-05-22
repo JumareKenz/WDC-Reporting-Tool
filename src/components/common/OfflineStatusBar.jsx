@@ -114,9 +114,9 @@ const OfflineStatusBar = () => {
           safe-area-bottom
           ${isOnline 
             ? showSuccess
-              ? 'bg-green-50 text-green-800 border-t border-green-200'
+              ? 'bg-primary-50 text-primary-800 border-t border-primary-200'
               : 'bg-blue-50 text-blue-800 border-t border-blue-200' 
-            : 'bg-amber-50 text-amber-800 border-t border-amber-200'}
+            : 'bg-accent-50 text-accent-900 border-t border-amber-200'}
         `}
         role="status"
         aria-live="polite"
@@ -126,13 +126,13 @@ const OfflineStatusBar = () => {
             w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
             ${isOnline 
               ? showSuccess
-                ? 'bg-green-100'
+                ? 'bg-primary-100'
                 : 'bg-blue-100'
-              : 'bg-amber-100'}
+              : 'bg-accent-100'}
           `}>
             {isOnline ? (
               showSuccess ? (
-                <CheckCircle className="w-4 h-4 text-green-600" aria-hidden="true" />
+                <CheckCircle className="w-4 h-4 text-primary-600" aria-hidden="true" />
               ) : isSyncing ? (
                 <RotateCw className="w-4 h-4 animate-spin text-blue-600" aria-hidden="true" />
               ) : (

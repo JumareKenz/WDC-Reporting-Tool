@@ -62,9 +62,9 @@ function StatCard({ label, value, sub, colorClass }) {
 const STAT_COLORS = {
   primary:  { bg: 'bg-primary-50',  label: 'text-primary-600',  value: 'text-primary-800' },
   blue:     { bg: 'bg-blue-50',     label: 'text-blue-600',     value: 'text-blue-800' },
-  emerald:  { bg: 'bg-emerald-50',  label: 'text-emerald-600',  value: 'text-emerald-800' },
+  emerald:  { bg: 'bg-primary-50',  label: 'text-primary-600',  value: 'text-primary-800' },
   violet:   { bg: 'bg-violet-50',   label: 'text-violet-600',   value: 'text-violet-800' },
-  amber:    { bg: 'bg-amber-50',    label: 'text-amber-600',    value: 'text-amber-800' },
+  amber:    { bg: 'bg-accent-50',    label: 'text-amber-600',    value: 'text-accent-900' },
 };
 
 // ---------------------------------------------------------------------------
@@ -151,7 +151,7 @@ function UserDetailCard({ user, onEdit, onPassword, onAccess, onCopyEmail, copie
           <h2 className="text-xl font-bold text-white leading-tight">{user.full_name}</h2>
           <span
             className={`inline-flex items-center gap-1.5 mt-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-              isCoordinator ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'
+              isCoordinator ? 'bg-blue-100 text-blue-700' : 'bg-primary-100 text-primary-700'
             }`}
           >
             <Building2 className="w-3.5 h-3.5" />
@@ -200,21 +200,21 @@ function UserDetailCard({ user, onEdit, onPassword, onAccess, onCopyEmail, copie
         <InfoRow
           icon={
             user.is_active ? (
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <ShieldCheck className="w-4 h-4 text-primary-600" />
             ) : (
               <ShieldOff className="w-4 h-4 text-red-500" />
             )
           }
           label="Access Status"
-          iconBg={user.is_active ? 'bg-emerald-50' : 'bg-red-50'}
+          iconBg={user.is_active ? 'bg-primary-50' : 'bg-red-50'}
         >
           <span
             className={`inline-flex items-center gap-1.5 text-sm font-semibold ${
-              user.is_active ? 'text-emerald-700' : 'text-red-600'
+              user.is_active ? 'text-primary-700' : 'text-red-600'
             }`}
           >
             <span
-              className={`w-2 h-2 rounded-full ${user.is_active ? 'bg-emerald-500' : 'bg-red-400'}`}
+              className={`w-2 h-2 rounded-full ${user.is_active ? 'bg-primary-500' : 'bg-red-400'}`}
             />
             {user.is_active ? 'Active' : 'Access Revoked'}
           </span>
@@ -238,7 +238,7 @@ function UserDetailCard({ user, onEdit, onPassword, onAccess, onCopyEmail, copie
           </button>
           <button
             onClick={onPassword}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white border border-neutral-200 text-neutral-700 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 text-sm font-medium transition-all shadow-sm"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white border border-neutral-200 text-neutral-700 hover:bg-accent-50 hover:border-amber-300 hover:text-accent-800 text-sm font-medium transition-all shadow-sm"
           >
             <Key className="w-4 h-4" /> {user.role === 'WDC_SECRETARY' ? 'Set PIN' : 'Reset Password'}
           </button>
@@ -247,7 +247,7 @@ function UserDetailCard({ user, onEdit, onPassword, onAccess, onCopyEmail, copie
             className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-all shadow-sm ${
               user.is_active
                 ? 'bg-white border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300'
-                : 'bg-white border-emerald-200 text-emerald-600 hover:bg-emerald-50 hover:border-emerald-300'
+                : 'bg-white border-primary-200 text-primary-600 hover:bg-primary-50 hover:border-primary-300'
             }`}
           >
             {user.is_active ? <ShieldOff className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
@@ -774,9 +774,9 @@ export default function StateUsersPage() {
               placeholder="+234 800 000 0000"
             />
           </div>
-          <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 flex items-start gap-2">
+          <div className="bg-accent-50 border border-amber-200 rounded-lg px-3 py-2.5 flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-amber-700 leading-relaxed">
+            <p className="text-xs text-accent-800 leading-relaxed">
               The email address is the login username and <strong>cannot be changed</strong>. Only the name
               and phone number are editable here.
             </p>
@@ -903,25 +903,25 @@ export default function StateUsersPage() {
               className={`rounded-lg p-3.5 flex items-start gap-3 ${
                 selectedUser.is_active
                   ? 'bg-red-50 border border-red-200'
-                  : 'bg-emerald-50 border border-emerald-200'
+                  : 'bg-primary-50 border border-primary-200'
               }`}
             >
               <AlertTriangle
                 className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
-                  selectedUser.is_active ? 'text-red-500' : 'text-emerald-600'
+                  selectedUser.is_active ? 'text-red-500' : 'text-primary-600'
                 }`}
               />
               <div>
                 <p
                   className={`text-sm font-semibold ${
-                    selectedUser.is_active ? 'text-red-700' : 'text-emerald-700'
+                    selectedUser.is_active ? 'text-red-700' : 'text-primary-700'
                   }`}
                 >
                   {selectedUser.is_active ? 'Revoke Platform Access' : 'Restore Platform Access'}
                 </p>
                 <p
                   className={`text-xs mt-0.5 leading-relaxed ${
-                    selectedUser.is_active ? 'text-red-600' : 'text-emerald-600'
+                    selectedUser.is_active ? 'text-red-600' : 'text-primary-600'
                   }`}
                 >
                   {selectedUser.is_active
@@ -1121,12 +1121,12 @@ export default function StateUsersPage() {
       >
         <div className="space-y-4">
           {/* Success Message */}
-          <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+          <div className="bg-primary-50 border border-primary-200 rounded-xl p-4">
             <div className="flex items-start gap-3">
-              <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+              <CheckCircle2 className="w-5 h-5 text-primary-600 flex-shrink-0 mt-0.5" />
               <div>
-                <h4 className="font-semibold text-green-900 mb-1">User Assigned Successfully!</h4>
-                <p className="text-sm text-green-700">
+                <h4 className="font-semibold text-primary-900 mb-1">User Assigned Successfully!</h4>
+                <p className="text-sm text-primary-700">
                   {userCredentials?.fullName} has been assigned as {userCredentials?.role}.
                 </p>
               </div>
@@ -1135,12 +1135,12 @@ export default function StateUsersPage() {
 
           {/* SMS Status */}
           {!userCredentials?.smsSent && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+            <div className="bg-accent-50 border border-amber-200 rounded-xl p-4">
               <div className="flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                 <div>
                   <h4 className="font-semibold text-amber-900 mb-1">SMS Not Sent</h4>
-                  <p className="text-sm text-amber-700">
+                  <p className="text-sm text-accent-800">
                     Please share the credentials below with the user manually.
                   </p>
                 </div>
@@ -1181,7 +1181,7 @@ export default function StateUsersPage() {
                 Password
               </label>
               <div className="flex items-center gap-2">
-                <div className="flex-1 px-3 py-2 bg-amber-50 border border-amber-300 rounded-lg font-mono text-lg font-bold text-amber-900">
+                <div className="flex-1 px-3 py-2 bg-accent-50 border border-amber-300 rounded-lg font-mono text-lg font-bold text-amber-900">
                   {userCredentials?.password}
                 </div>
                 <button

@@ -46,13 +46,13 @@ const fetchJSON = async (path) => {
   return body?.data ?? body;
 };
 
-// Cream/parchment surface — warm contrast against the deep emerald background.
+// Cream/parchment surface with subtle golden accent — warm contrast against the deep government green.
 const CARD_STYLE = {
-  background: 'linear-gradient(180deg, #FFFBF0 0%, #FCEFCF 100%)',
+  background: 'linear-gradient(180deg, #FFFBF0 0%, #FDF8F3 50%, #F9EDD9 100%)',
   borderRadius: '28px',
-  border: '1px solid rgba(255,255,255,0.5)',
+  border: '1px solid rgba(212, 165, 116, 0.2)',
   boxShadow:
-    '0 30px 70px -20px rgba(6, 41, 30, 0.65), 0 12px 32px -10px rgba(6, 41, 30, 0.4), inset 0 1px 0 rgba(255,255,255,0.7)',
+    '0 30px 70px -20px rgba(8, 20, 16, 0.65), 0 12px 32px -10px rgba(26, 63, 43, 0.4), inset 0 1px 0 rgba(255,255,255,0.7), 0 0 0 1px rgba(212, 165, 116, 0.1)',
 };
 
 const Login = () => {
@@ -235,17 +235,17 @@ const Login = () => {
       className="min-h-screen relative overflow-hidden"
       style={{
         background:
-          'radial-gradient(120% 80% at 50% 0%, #1F7A52 0%, #0F4F3A 45%, #06291E 100%)',
+          'radial-gradient(120% 80% at 50% 0%, #2f6b4d 0%, #1a3f2b 45%, #081410 100%)',
       }}
     >
       {/* Ambient highlights — brand greens for depth */}
       <div
         className="absolute -top-32 left-1/4 w-[28rem] h-[28rem] rounded-full pointer-events-none"
-        style={{ background: 'rgba(74, 222, 128, 0.22)', filter: 'blur(120px)' }}
+        style={{ background: 'rgba(61, 138, 99, 0.22)', filter: 'blur(120px)' }}
       />
       <div
         className="absolute -bottom-40 -right-20 w-[30rem] h-[30rem] rounded-full pointer-events-none"
-        style={{ background: 'rgba(22, 163, 74, 0.28)', filter: 'blur(140px)' }}
+        style={{ background: 'rgba(212, 165, 116, 0.18)', filter: 'blur(140px)' }}
       />
       <div
         className="absolute top-1/2 -left-32 w-80 h-80 rounded-full pointer-events-none"
@@ -327,10 +327,10 @@ const Login = () => {
 
           {/* Footer */}
           <div className="mt-5 text-center">
-            <p className="text-sm text-emerald-100/90 font-medium">
+            <p className="text-sm text-primary-100/90 font-medium">
               {APP_CONFIG.STATE_NAME}, {APP_CONFIG.COUNTRY}
             </p>
-            <p className="text-xs text-emerald-200/60 mt-1">
+            <p className="text-xs text-primary-200/60 mt-1">
               Support: {APP_CONFIG.SUPPORT_EMAIL}
             </p>
           </div>
@@ -390,7 +390,7 @@ const TopBar = ({ onBack, stepIndex }) => (
     <button
       type="button"
       onClick={onBack}
-      className="inline-flex items-center gap-1 text-sm font-medium text-stone-700 hover:text-emerald-700 transition-colors"
+      className="inline-flex items-center gap-1 text-sm font-medium text-stone-700 hover:text-primary-700 transition-colors"
     >
       <ArrowLeft className="w-4 h-4" />
       Back
@@ -438,16 +438,16 @@ const RoleView = ({ onSecretary, onConsole }) => (
       <button
         type="button"
         onClick={onSecretary}
-        className="w-full group flex items-center gap-4 p-4 rounded-2xl bg-white/90 border-2 border-emerald-500 hover:border-emerald-600 hover:bg-white active:scale-[0.99] transition-all shadow-sm hover:shadow-md text-left"
+        className="w-full group flex items-center gap-4 p-4 rounded-2xl bg-white/90 border-2 border-primary-500 hover:border-primary-600 hover:bg-white active:scale-[0.99] transition-all shadow-sm hover:shadow-md text-left"
       >
-        <div className="w-12 h-12 rounded-xl bg-emerald-100 border border-emerald-200 flex items-center justify-center flex-shrink-0">
-          <ShieldCheck className="w-6 h-6 text-emerald-700" />
+        <div className="w-12 h-12 rounded-xl bg-primary-100 border border-primary-200 flex items-center justify-center flex-shrink-0">
+          <ShieldCheck className="w-6 h-6 text-primary-700" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-base font-semibold text-stone-900">Ward Secretary</div>
           <div className="text-xs text-stone-500 mt-0.5">Log in with your ward PIN</div>
         </div>
-        <ChevronRight className="w-5 h-5 text-emerald-500 group-hover:translate-x-0.5 transition-all" />
+        <ChevronRight className="w-5 h-5 text-primary-500 group-hover:translate-x-0.5 transition-all" />
       </button>
 
       <button
@@ -486,7 +486,7 @@ const LgaView = ({ stepIndex, lgas, rawCount, loading, query, onQuery, onPick, o
           value={query}
           onChange={(e) => onQuery(e.target.value)}
           placeholder="Search LGAs…"
-          className="w-full pl-10 pr-3 py-2.5 bg-white/95 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-transparent"
+          className="w-full pl-10 pr-3 py-2.5 bg-white/95 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/60 focus:border-transparent"
         />
       </div>
     )}
@@ -509,7 +509,7 @@ const LgaView = ({ stepIndex, lgas, rawCount, loading, query, onQuery, onPick, o
             key={lga.id}
             type="button"
             onClick={() => onPick(lga)}
-            className="w-full px-4 py-3 rounded-xl bg-white border border-stone-200 hover:border-emerald-500 hover:bg-emerald-50/50 active:scale-[0.99] transition-all text-left text-stone-900 font-medium text-[15px] shadow-sm"
+            className="w-full px-4 py-3 rounded-xl bg-white border border-stone-200 hover:border-primary-500 hover:bg-primary-50/50 active:scale-[0.99] transition-all text-left text-stone-900 font-medium text-[15px] shadow-sm"
           >
             {lga.name}
           </button>
@@ -536,7 +536,7 @@ const WardView = ({ stepIndex, lga, wards, rawCount, loading, query, onQuery, on
         value={query}
         onChange={(e) => onQuery(e.target.value)}
         placeholder="Search wards…"
-        className="w-full pl-10 pr-3 py-2.5 bg-white/95 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-transparent"
+        className="w-full pl-10 pr-3 py-2.5 bg-white/95 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/60 focus:border-transparent"
       />
     </div>
 
@@ -558,7 +558,7 @@ const WardView = ({ stepIndex, lga, wards, rawCount, loading, query, onQuery, on
             key={ward.id}
             type="button"
             onClick={() => onPick(ward)}
-            className="w-full px-4 py-3 rounded-xl bg-white border border-stone-200 hover:border-emerald-500 hover:bg-emerald-50/50 active:scale-[0.99] transition-all text-left text-stone-900 font-medium text-[15px] shadow-sm"
+            className="w-full px-4 py-3 rounded-xl bg-white border border-stone-200 hover:border-primary-500 hover:bg-primary-50/50 active:scale-[0.99] transition-all text-left text-stone-900 font-medium text-[15px] shadow-sm"
           >
             {ward.name}
           </button>
@@ -618,7 +618,7 @@ const PinView = ({ stepIndex, lga, ward, pin, loading, onPush, onPop, onBack, er
 
     <div className="mt-5 min-h-[1.5rem] flex items-center justify-center">
       {loading && (
-        <div className="inline-flex items-center gap-2 text-sm text-emerald-700">
+        <div className="inline-flex items-center gap-2 text-sm text-primary-700">
           <Loader2 className="w-4 h-4 animate-spin" />
           Signing in…
         </div>
@@ -636,7 +636,7 @@ const KeyButton = ({ children, onClick, disabled, variant = 'primary', ...rest }
     'flex items-center justify-center h-14 rounded-2xl text-2xl font-semibold transition-all select-none active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed';
   const styles = variant === 'secondary'
     ? 'bg-stone-200 text-stone-700 hover:bg-stone-300 shadow-sm'
-    : 'bg-white text-stone-900 hover:bg-emerald-50 hover:border-emerald-300 border border-stone-200 shadow-sm';
+    : 'bg-white text-stone-900 hover:bg-primary-50 hover:border-primary-300 border border-stone-200 shadow-sm';
   return (
     <button type="button" onClick={onClick} disabled={disabled} className={`${base} ${styles}`} {...rest}>
       {children}
@@ -656,7 +656,7 @@ const ConsoleView = ({
       <button
         type="button"
         onClick={onBack}
-        className="inline-flex items-center gap-1 text-sm font-medium text-stone-700 hover:text-emerald-700 transition-colors"
+        className="inline-flex items-center gap-1 text-sm font-medium text-stone-700 hover:text-primary-700 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
         Back
@@ -679,7 +679,7 @@ const ConsoleView = ({
           disabled={loading}
           autoComplete="email"
           placeholder="director@kaduna.gov.ng"
-          className="w-full pl-10 pr-3 py-2.5 bg-white/95 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-transparent disabled:opacity-60"
+          className="w-full pl-10 pr-3 py-2.5 bg-white/95 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/60 focus:border-transparent disabled:opacity-60"
         />
       </Field>
 
@@ -692,7 +692,7 @@ const ConsoleView = ({
           disabled={loading}
           autoComplete="current-password"
           placeholder="••••••••••••"
-          className="w-full pl-10 pr-3 py-2.5 bg-white/95 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-transparent disabled:opacity-60"
+          className="w-full pl-10 pr-3 py-2.5 bg-white/95 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/60 focus:border-transparent disabled:opacity-60"
         />
       </Field>
 
@@ -707,7 +707,7 @@ const ConsoleView = ({
           disabled={loading}
           autoComplete="one-time-code"
           placeholder="123456"
-          className="w-full pl-10 pr-3 py-2.5 bg-white/95 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 text-sm tracking-widest focus:outline-none focus:ring-2 focus:ring-emerald-400/60 focus:border-transparent disabled:opacity-60"
+          className="w-full pl-10 pr-3 py-2.5 bg-white/95 border border-stone-200 rounded-xl text-stone-900 placeholder-stone-400 text-sm tracking-widest focus:outline-none focus:ring-2 focus:ring-primary-400/60 focus:border-transparent disabled:opacity-60"
         />
       </Field>
     </div>
@@ -715,7 +715,7 @@ const ConsoleView = ({
     <button
       type="submit"
       disabled={loading || !email || !password || totp.length !== 6}
-      className="mt-6 w-full py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-semibold transition-all shadow-md shadow-emerald-700/30 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+      className="mt-6 w-full py-3 rounded-2xl bg-primary-600 hover:bg-primary-700 active:scale-[0.99] text-white font-semibold transition-all shadow-md shadow-primary-700/30 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
     >
       {loading && <Loader2 className="w-4 h-4 animate-spin" />}
       {loading ? 'Signing in…' : 'Sign in'}

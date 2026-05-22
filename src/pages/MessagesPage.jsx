@@ -145,7 +145,7 @@ const MessagesPage = () => {
                     key={conv.id}
                     onClick={() => handleSelectConversation(conv)}
                     className={`w-full text-left p-4 hover:bg-neutral-50 transition-colors ${
-                      unread ? 'bg-yellow-50' : ''
+                      unread ? 'bg-accent-50' : ''
                     }`}
                   >
                     <div className="flex items-start justify-between">
@@ -256,7 +256,7 @@ const MessagesPage = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       {isSentByMe && (msg.readAt ? (
-                        <CheckCheck className="w-4 h-4 text-green-500" title="Read" />
+                        <CheckCheck className="w-4 h-4 text-primary-500" title="Read" />
                       ) : (
                         <Check className="w-4 h-4 text-neutral-400" title="Sent" />
                       ))}

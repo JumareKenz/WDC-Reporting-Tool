@@ -23,7 +23,7 @@ const Toast = ({ id, variant, message, title, actions, onDismiss }) => {
   const styles = {
     success: {
       border: 'border-l-green-500',
-      icon: <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />,
+      icon: <CheckCircle className="w-5 h-5 text-primary-600 flex-shrink-0" />,
       title: 'text-gray-900',
       message: 'text-gray-700',
       dismiss: 'text-gray-400 hover:text-gray-600',

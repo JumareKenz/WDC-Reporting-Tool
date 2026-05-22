@@ -17,7 +17,7 @@ const TransportEmergencySection = ({ formData, onChange }) => {
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-green-50 rounded-xl p-4 border border-green-100">
+        <div className="bg-primary-50 rounded-xl p-4 border border-green-100">
           <NumberInput
             label="Women transported to facility for ANC by WDC/VDC"
             name="women_transported_anc"
@@ -25,7 +25,7 @@ const TransportEmergencySection = ({ formData, onChange }) => {
             onChange={handleChange}
           />
         </div>
-        <div className="bg-green-50 rounded-xl p-4 border border-green-100">
+        <div className="bg-primary-50 rounded-xl p-4 border border-green-100">
           <NumberInput
             label="Women transported to facility for delivery by WDC/VDC"
             name="women_transported_delivery"
@@ -33,7 +33,7 @@ const TransportEmergencySection = ({ formData, onChange }) => {
             onChange={handleChange}
           />
         </div>
-        <div className="bg-amber-50 rounded-xl p-4 border border-amber-100">
+        <div className="bg-accent-50 rounded-xl p-4 border border-amber-100">
           <NumberInput
             label="Children under 5 with danger signs transported"
             name="children_transported_danger"

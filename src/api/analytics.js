@@ -33,8 +33,12 @@ const summarize = (list) => {
 export const getOverview = async (params = {}) => {
   try {
     const list = await getReports(params);
-    return summarize(list);
-  } catch {
+    console.log('[Analytics] getReports returned:', list);
+    const summary = summarize(list);
+    console.log('[Analytics] Overview summary:', summary);
+    return summary;
+  } catch (error) {
+    console.error('[Analytics] getOverview failed:', error.message);
     return ZERO_OVERVIEW;
   }
 };
@@ -42,7 +46,9 @@ export const getOverview = async (params = {}) => {
 export const getLGAComparison = async () => {
   try {
     const list = await getReports();
+    console.log('[Analytics] getLGAComparison - raw reports:', list);
     const arr = Array.isArray(list) ? list : list?.reports || [];
+    console.log('[Analytics] getLGAComparison - report count:', arr.length);
     const byLga = new Map();
     for (const r of arr) {
       const lgaId = r.lgaId || r.lga_id || r.lga?.id;
@@ -52,8 +58,11 @@ export const getLGAComparison = async () => {
       row.total++;
       if (r.state === 'approved' || r.state === 'sealed') row.approved++;
     }
-    return Array.from(byLga.values());
-  } catch {
+    const result = Array.from(byLga.values());
+    console.log('[Analytics] getLGAComparison - LGA summary:', result);
+    return result;
+  } catch (error) {
+    console.error('[Analytics] getLGAComparison failed:', error.message);
     return [];
   }
 };

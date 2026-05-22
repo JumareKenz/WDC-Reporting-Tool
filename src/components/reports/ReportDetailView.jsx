@@ -192,14 +192,14 @@ const ReportDetailView = ({ report }) => {
     switch (status) {
       case 'TRANSCRIBED':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+          <span className="inline-flex items-center gap-1 px-2 py-1 bg-primary-100 text-primary-700 text-xs font-medium rounded-full">
             <Check className="w-3 h-3" />
             Transcribed
           </span>
         );
       case 'PENDING':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
+          <span className="inline-flex items-center gap-1 px-2 py-1 bg-accent-100 text-accent-800 text-xs font-medium rounded-full">
             <Loader2 className="w-3 h-3 animate-spin" />
             Transcribing...
           </span>
@@ -242,56 +242,56 @@ const ReportDetailView = ({ report }) => {
           <div className="grid grid-cols-2 gap-3">
             {report.agenda_opening_prayer && (
               <div className="flex items-center gap-2 text-sm">
-                <div className="w-5 h-5 bg-green-100 rounded flex items-center justify-center">
-                  <span className="text-green-600 text-xs">✓</span>
+                <div className="w-5 h-5 bg-primary-100 rounded flex items-center justify-center">
+                  <span className="text-primary-600 text-xs">✓</span>
                 </div>
                 <span className="text-neutral-700">Opening Prayer</span>
               </div>
             )}
             {report.agenda_minutes && (
               <div className="flex items-center gap-2 text-sm">
-                <div className="w-5 h-5 bg-green-100 rounded flex items-center justify-center">
-                  <span className="text-green-600 text-xs">✓</span>
+                <div className="w-5 h-5 bg-primary-100 rounded flex items-center justify-center">
+                  <span className="text-primary-600 text-xs">✓</span>
                 </div>
                 <span className="text-neutral-700">Review of Minutes</span>
               </div>
             )}
             {report.agenda_action_tracker && (
               <div className="flex items-center gap-2 text-sm">
-                <div className="w-5 h-5 bg-green-100 rounded flex items-center justify-center">
-                  <span className="text-green-600 text-xs">✓</span>
+                <div className="w-5 h-5 bg-primary-100 rounded flex items-center justify-center">
+                  <span className="text-primary-600 text-xs">✓</span>
                 </div>
                 <span className="text-neutral-700">Action Tracker Review</span>
               </div>
             )}
             {report.agenda_reports && (
               <div className="flex items-center gap-2 text-sm">
-                <div className="w-5 h-5 bg-green-100 rounded flex items-center justify-center">
-                  <span className="text-green-600 text-xs">✓</span>
+                <div className="w-5 h-5 bg-primary-100 rounded flex items-center justify-center">
+                  <span className="text-primary-600 text-xs">✓</span>
                 </div>
                 <span className="text-neutral-700">VDC Reports</span>
               </div>
             )}
             {report.agenda_action_plan && (
               <div className="flex items-center gap-2 text-sm">
-                <div className="w-5 h-5 bg-green-100 rounded flex items-center justify-center">
-                  <span className="text-green-600 text-xs">✓</span>
+                <div className="w-5 h-5 bg-primary-100 rounded flex items-center justify-center">
+                  <span className="text-primary-600 text-xs">✓</span>
                 </div>
                 <span className="text-neutral-700">Community Action Plan</span>
               </div>
             )}
             {report.agenda_aob && (
               <div className="flex items-center gap-2 text-sm">
-                <div className="w-5 h-5 bg-green-100 rounded flex items-center justify-center">
-                  <span className="text-green-600 text-xs">✓</span>
+                <div className="w-5 h-5 bg-primary-100 rounded flex items-center justify-center">
+                  <span className="text-primary-600 text-xs">✓</span>
                 </div>
                 <span className="text-neutral-700">Any Other Business</span>
               </div>
             )}
             {report.agenda_closing && (
               <div className="flex items-center gap-2 text-sm">
-                <div className="w-5 h-5 bg-green-100 rounded flex items-center justify-center">
-                  <span className="text-green-600 text-xs">✓</span>
+                <div className="w-5 h-5 bg-primary-100 rounded flex items-center justify-center">
+                  <span className="text-primary-600 text-xs">✓</span>
                 </div>
                 <span className="text-neutral-700">Closing Remarks</span>
               </div>
@@ -326,9 +326,9 @@ const ReportDetailView = ({ report }) => {
                     <td className="px-3 py-2.5 text-neutral-700">{item.challenges || '—'}</td>
                     <td className="px-3 py-2.5">
                       <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                        item.status === 'completed' ? 'bg-green-100 text-green-800' :
+                        item.status === 'completed' ? 'bg-primary-100 text-primary-800' :
                         item.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                        item.status ? 'bg-yellow-100 text-yellow-800' : 'bg-neutral-100 text-neutral-600'
+                        item.status ? 'bg-accent-50 text-accent-900' : 'bg-neutral-100 text-neutral-600'
                       }`}>
                         {item.status ? toTitleCase(item.status.replace(/_/g, ' ')) : 'Pending'}
                       </span>
@@ -446,15 +446,15 @@ const ReportDetailView = ({ report }) => {
               <h4 className="font-semibold text-neutral-900 text-sm mb-3">Family Planning</h4>
               <div className="grid grid-cols-2 gap-4">
                 {report.health_fp_counselling !== null && (
-                  <div className="bg-green-50 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-bold text-green-700">{report.health_fp_counselling}</p>
-                    <p className="text-xs text-green-600 mt-1">FP Counselling</p>
+                  <div className="bg-primary-50 rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-primary-700">{report.health_fp_counselling}</p>
+                    <p className="text-xs text-primary-600 mt-1">FP Counselling</p>
                   </div>
                 )}
                 {report.health_fp_new_acceptors !== null && (
-                  <div className="bg-green-50 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-bold text-green-700">{report.health_fp_new_acceptors}</p>
-                    <p className="text-xs text-green-600 mt-1">New Acceptors</p>
+                  <div className="bg-primary-50 rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-primary-700">{report.health_fp_new_acceptors}</p>
+                    <p className="text-xs text-primary-600 mt-1">New Acceptors</p>
                   </div>
                 )}
               </div>
@@ -488,14 +488,14 @@ const ReportDetailView = ({ report }) => {
               <h4 className="font-semibold text-neutral-900 text-sm mb-3">Tuberculosis (TB)</h4>
               <div className="grid grid-cols-2 gap-4">
                 {report.health_tb_presumptive !== null && (
-                  <div className="bg-yellow-50 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-bold text-yellow-700">{report.health_tb_presumptive}</p>
+                  <div className="bg-accent-50 rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-accent-800">{report.health_tb_presumptive}</p>
                     <p className="text-xs text-yellow-600 mt-1">TB Presumptive</p>
                   </div>
                 )}
                 {report.health_tb_on_treatment !== null && (
-                  <div className="bg-yellow-50 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-bold text-yellow-700">{report.health_tb_on_treatment}</p>
+                  <div className="bg-accent-50 rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-accent-800">{report.health_tb_on_treatment}</p>
                     <p className="text-xs text-yellow-600 mt-1">On Treatment</p>
                   </div>
                 )}
@@ -543,7 +543,7 @@ const ReportDetailView = ({ report }) => {
                   <p className="text-sm text-neutral-600 mb-2">Types of Items:</p>
                   <div className="flex flex-wrap gap-2">
                     {report.items_donated_types.map((type, idx) => (
-                      <span key={idx} className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                      <span key={idx} className="px-2 py-1 bg-primary-100 text-primary-800 text-xs rounded-full">
                         {type}
                       </span>
                     ))}
@@ -601,7 +601,7 @@ const ReportDetailView = ({ report }) => {
                   <p className="text-sm text-neutral-600 mb-2">Types of Items Repaired:</p>
                   <div className="flex flex-wrap gap-2">
                     {report.items_repaired_types.map((type, idx) => (
-                      <span key={idx} className="px-2 py-1 bg-amber-100 text-amber-800 text-xs rounded-full">
+                      <span key={idx} className="px-2 py-1 bg-accent-100 text-accent-900 text-xs rounded-full">
                         {type}
                       </span>
                     ))}
@@ -768,15 +768,15 @@ const ReportDetailView = ({ report }) => {
           {renderSectionHeader('Community Mobilization', <Megaphone className="w-5 h-5 text-primary-600" />)}
           <dl className="space-y-3">
             {report.awareness_theme && (
-              <div className="bg-yellow-50 rounded-lg p-3">
+              <div className="bg-accent-50 rounded-lg p-3">
                 <dt className="text-sm font-semibold text-yellow-900 mb-1">Awareness Theme</dt>
-                <dd className="text-sm text-yellow-800">{report.awareness_theme}</dd>
+                <dd className="text-sm text-accent-900">{report.awareness_theme}</dd>
               </div>
             )}
             {report.traditional_leaders_support && (
-              <div className="bg-green-50 rounded-lg p-3">
-                <dt className="text-sm font-semibold text-green-900 mb-1">Traditional Leaders' Support</dt>
-                <dd className="text-sm text-green-800">{report.traditional_leaders_support}</dd>
+              <div className="bg-primary-50 rounded-lg p-3">
+                <dt className="text-sm font-semibold text-primary-900 mb-1">Traditional Leaders' Support</dt>
+                <dd className="text-sm text-primary-800">{report.traditional_leaders_support}</dd>
               </div>
             )}
             {report.religious_leaders_support && (
@@ -829,7 +829,7 @@ const ReportDetailView = ({ report }) => {
             {report.support_required && (
               <div>
                 <dt className="text-sm font-medium text-neutral-600 mb-1">Support Required</dt>
-                <dd className="text-sm text-neutral-900 bg-amber-50 p-3 rounded-lg border border-amber-200">
+                <dd className="text-sm text-neutral-900 bg-accent-50 p-3 rounded-lg border border-amber-200">
                   {report.support_required}
                 </dd>
               </div>
@@ -1009,7 +1009,7 @@ const ReportDetailView = ({ report }) => {
                     <button
                       onClick={() => handleTranscribe(note.id)}
                       disabled={transcriptionLoading[note.id]}
-                      className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 text-amber-700 text-sm rounded-lg hover:bg-amber-100 transition-colors disabled:opacity-50"
+                      className="flex items-center gap-2 px-3 py-1.5 bg-accent-50 text-accent-800 text-sm rounded-lg hover:bg-accent-100 transition-colors disabled:opacity-50"
                     >
                       {transcriptionLoading[note.id] ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -1088,9 +1088,9 @@ const ReportDetailView = ({ report }) => {
 
         {/* Next Meeting */}
         {report.next_meeting_date && (
-          <div className="bg-green-50 rounded-lg p-3">
-            <p className="text-sm font-medium text-green-900">Next Meeting Scheduled</p>
-            <p className="text-lg font-bold text-green-700 mt-1">{formatDate(report.next_meeting_date)}</p>
+          <div className="bg-primary-50 rounded-lg p-3">
+            <p className="text-sm font-medium text-primary-900">Next Meeting Scheduled</p>
+            <p className="text-lg font-bold text-primary-700 mt-1">{formatDate(report.next_meeting_date)}</p>
           </div>
         )}
       </div>

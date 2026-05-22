@@ -89,7 +89,7 @@ const MeetingDetailsSection = ({ formData, onChange, errors, userLGA, userWard }
               key={type}
               className={`flex items-center gap-2 px-4 py-3 rounded-xl border cursor-pointer transition-all ${
                 formData.meeting_type === type
-                  ? 'bg-green-50 border-green-500 text-green-700 shadow-sm'
+                  ? 'bg-primary-50 border-green-500 text-primary-700 shadow-sm'
                   : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
               }`}
             >
@@ -99,7 +99,7 @@ const MeetingDetailsSection = ({ formData, onChange, errors, userLGA, userWard }
                 value={type}
                 checked={formData.meeting_type === type}
                 onChange={handleChange}
-                className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
+                className="w-4 h-4 text-primary-600 border-gray-300 focus:ring-green-500"
               />
               <span className="text-xs sm:text-sm font-medium">{type}</span>
             </label>
@@ -129,7 +129,7 @@ const MeetingDetailsSection = ({ formData, onChange, errors, userLGA, userWard }
               key={item.name}
               className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
                 formData[item.name]
-                  ? 'bg-green-50 border-green-300'
+                  ? 'bg-primary-50 border-green-300'
                   : 'bg-white border-gray-200 hover:border-gray-300'
               }`}
             >
@@ -138,7 +138,7 @@ const MeetingDetailsSection = ({ formData, onChange, errors, userLGA, userWard }
                 name={item.name}
                 checked={!!formData[item.name]}
                 onChange={handleChange}
-                className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-green-500"
               />
               <span className="text-xs sm:text-sm text-gray-700">{item.label}</span>
             </label>

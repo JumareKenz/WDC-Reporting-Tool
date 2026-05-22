@@ -41,7 +41,7 @@ const WardSelector = ({ wards = [], onSelect, lastWardId = null }) => {
                 onClick={() => onSelect(ward)}
                 className={`w-full text-left px-5 py-4 rounded-xl border transition-all duration-100 active:scale-[0.98] ${
                   isLast
-                    ? 'border-amber-400 bg-amber-50 hover:bg-amber-100'
+                    ? 'border-amber-400 bg-accent-50 hover:bg-accent-100'
                     : 'border-neutral-200 bg-white hover:bg-neutral-50'
                 }`}
                 style={{ minHeight: 56 }}
@@ -50,7 +50,7 @@ const WardSelector = ({ wards = [], onSelect, lastWardId = null }) => {
                   {ward.name}
                 </span>
                 {isLast && (
-                  <span className="text-xs font-semibold text-amber-700 mt-1 inline-block">
+                  <span className="text-xs font-semibold text-accent-800 mt-1 inline-block">
                     Last used
                   </span>
                 )}

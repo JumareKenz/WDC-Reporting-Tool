@@ -53,7 +53,7 @@ import { formatDate, getStatusColor, formatMonth, getCurrentMonth, formatPercent
 import { getTargetReportMonth, getSubmissionInfo } from '../utils/dateUtils';
 import { REPORT_STATUS, STATUS_LABELS } from '../utils/constants';
 
-const COLORS = ['#16a34a', '#3b82f6', '#f59e0b', '#ef4444'];
+const COLORS = ['#3d8a63', '#d4a574', '#3b82f6', '#dc2626'];
 
 const LGADashboard = () => {
   const { user } = useAuth();
@@ -308,7 +308,7 @@ const LGADashboard = () => {
             subtitle={totalWards === officialWardCount ? `All ${officialWardCount} wards tracked` : `${totalWards} of ${officialWardCount} tracked`}
             trend={
               totalWards === officialWardCount ? (
-                <span className="text-green-600 flex items-center gap-1 text-xs">
+                <span className="text-primary-600 flex items-center gap-1 text-xs">
                   <CheckCircle className="w-3 h-3" /> Complete
                 </span>
               ) : totalWards < officialWardCount ? (
@@ -328,7 +328,7 @@ const LGADashboard = () => {
             subtitle={`${submissionRate}% rate`}
             trend={
               submissionRate >= 80 ? (
-                <span className="text-green-600 flex items-center gap-1">
+                <span className="text-primary-600 flex items-center gap-1">
                   <TrendingUp className="w-3 h-3" /> Good
                 </span>
               ) : (
@@ -436,7 +436,7 @@ const LGADashboard = () => {
                     <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} />
                     <Tooltip />
-                    <Bar dataKey="meetings" fill="#16a34a" name="Meetings" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="meetings" fill="#3d8a63" name="Meetings" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="attendees" fill="#3b82f6" name="Attendees" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -583,7 +583,7 @@ const LGADashboard = () => {
                                 {formatMonth(report.report_month)}
                               </td>
                               <td className="py-3 px-4 text-sm text-neutral-600 text-center">
-                                <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-100 text-green-700 font-medium">
+                                <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary-100 text-primary-700 font-medium">
                                   {report.meetings_held || 0}
                                 </span>
                               </td>
@@ -660,8 +660,8 @@ const LGADashboard = () => {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl">
-                    <p className="text-2xl font-bold text-green-600">{submittedCount}</p>
-                    <p className="text-xs text-green-700">Submitted</p>
+                    <p className="text-2xl font-bold text-primary-600">{submittedCount}</p>
+                    <p className="text-xs text-primary-700">Submitted</p>
                   </div>
                   <div className="text-center p-4 bg-gradient-to-br from-red-50 to-red-100 rounded-xl">
                     <p className="text-2xl font-bold text-red-600">{missingCount}</p>
@@ -670,7 +670,7 @@ const LGADashboard = () => {
                 </div>
                 <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
                   <span className="text-sm text-neutral-600">Submission Rate</span>
-                  <span className={`text-lg font-bold ${submissionRate >= 80 ? 'text-green-600' :
+                  <span className={`text-lg font-bold ${submissionRate >= 80 ? 'text-primary-600' :
                     submissionRate >= 60 ? 'text-yellow-600' : 'text-red-600'
                     }`}>
                     {submissionRate}%
@@ -794,9 +794,9 @@ const LGADashboard = () => {
 
             {/* Key Metrics */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200">
-                <p className="text-sm text-green-600 font-medium mb-1">Meetings Held</p>
-                <p className="font-bold text-3xl text-green-700">{selectedReport.meetings_held || 0}</p>
+              <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-primary-200">
+                <p className="text-sm text-primary-600 font-medium mb-1">Meetings Held</p>
+                <p className="font-bold text-3xl text-primary-700">{selectedReport.meetings_held || 0}</p>
               </div>
               <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200">
                 <p className="text-sm text-blue-600 font-medium mb-1">Total Attendees</p>
@@ -829,7 +829,7 @@ const LGADashboard = () => {
               {selectedReport.challenges && (
                 <div>
                   <p className="text-sm font-medium text-neutral-700 mb-2">Challenges Faced</p>
-                  <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                  <div className="bg-accent-50 p-4 rounded-lg border border-yellow-200">
                     <p className="text-sm text-yellow-900 whitespace-pre-wrap">{selectedReport.challenges}</p>
                   </div>
                 </div>

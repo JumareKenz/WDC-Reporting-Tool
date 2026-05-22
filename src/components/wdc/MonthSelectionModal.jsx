@@ -196,7 +196,7 @@ const MonthSelectionModal = ({
       const report = getReportForMonth(selectedMonth);
       setError(
         <div className="flex items-start gap-2">
-          <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+          <CheckCircle className="w-4 h-4 text-primary-600 flex-shrink-0 mt-0.5" />
           <div>
             <p className="font-medium">Report Already Submitted</p>
             <p className="text-sm opacity-90">
@@ -225,7 +225,7 @@ const MonthSelectionModal = ({
       if (isSubmitted) {
         setError(
           <div className="flex items-start gap-2">
-            <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+            <CheckCircle className="w-4 h-4 text-primary-600 flex-shrink-0 mt-0.5" />
             <div>
               <p className="font-medium">Report Already Submitted</p>
               <p className="text-sm opacity-90">
@@ -263,13 +263,13 @@ const MonthSelectionModal = ({
     const isSelected = selectedMonth === month.value;
 
     const statusStyles = {
-      submitted: 'bg-green-50 border-green-200 text-green-700 cursor-not-allowed',
+      submitted: 'bg-primary-50 border-primary-200 text-primary-700 cursor-not-allowed',
       future: 'bg-gray-50 border-gray-100 text-gray-400 cursor-not-allowed',
       available: 'bg-white border-gray-200 text-gray-700 hover:border-primary-400 hover:shadow-sm cursor-pointer',
     };
 
     const statusIcon = {
-      submitted: <CheckCircle className="w-3.5 h-3.5 text-green-600" />,
+      submitted: <CheckCircle className="w-3.5 h-3.5 text-primary-600" />,
       future: <Ban className="w-3.5 h-3.5 text-gray-400" />,
       available: null,
     };
@@ -292,7 +292,7 @@ const MonthSelectionModal = ({
           <div className="absolute top-1 right-1">{statusIcon[status]}</div>
         )}
         {status === 'submitted' && (
-          <span className="absolute bottom-1 text-[8px] font-medium text-green-600 uppercase">
+          <span className="absolute bottom-1 text-[8px] font-medium text-primary-600 uppercase">
             Done
           </span>
         )}
@@ -326,7 +326,7 @@ const MonthSelectionModal = ({
               <h3 className="font-semibold text-neutral-900">Submit Monthly Report</h3>
               <p className="text-sm text-neutral-600 mt-0.5">
                 Choose the month you want to submit a report for. 
-                <span className="font-medium text-amber-700"> Reports can only be submitted on the last day of each month.</span>
+                <span className="font-medium text-accent-800"> Reports can only be submitted on the last day of each month.</span>
               </p>
             </div>
           </div>
@@ -339,8 +339,8 @@ const MonthSelectionModal = ({
             <span className="text-neutral-600">Available</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-green-50 border-2 border-green-200" />
-            <CheckCircle className="w-3.5 h-3.5 text-green-600" />
+            <div className="w-4 h-4 rounded bg-primary-50 border-2 border-primary-200" />
+            <CheckCircle className="w-3.5 h-3.5 text-primary-600" />
             <span className="text-neutral-600">Submitted</span>
           </div>
           <div className="flex items-center gap-2">
@@ -430,12 +430,12 @@ const MonthSelectionModal = ({
                     <button
                       key={month}
                       onClick={() => report && navigate(`/reports/${report.id}`)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm hover:bg-green-100 transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-50 border border-primary-200 text-primary-700 text-sm hover:bg-primary-100 transition-colors"
                     >
                       <CheckCircle className="w-3.5 h-3.5" />
                       {formatMonthDisplay(month)}
                       {report?.status === 'REVIEWED' && (
-                        <span className="text-xs bg-green-200 text-green-800 px-1.5 py-0.5 rounded">
+                        <span className="text-xs bg-primary-200 text-primary-800 px-1.5 py-0.5 rounded">
                           Reviewed
                         </span>
                       )}

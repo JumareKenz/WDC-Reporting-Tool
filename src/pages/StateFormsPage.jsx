@@ -6,8 +6,8 @@ import FormBuilder from '../components/state/FormBuilder';
 const StatusBadge = ({ status }) => {
   const styles = {
     DRAFT: 'bg-neutral-100 text-neutral-700',
-    DEPLOYED: 'bg-green-100 text-green-700',
-    ARCHIVED: 'bg-yellow-100 text-yellow-700',
+    DEPLOYED: 'bg-primary-100 text-primary-700',
+    ARCHIVED: 'bg-accent-50 text-accent-800',
   };
   return (
     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${styles[status] || styles.DRAFT}`}>
@@ -67,8 +67,8 @@ const StateFormsPage = () => {
         <div className="grid grid-cols-3 gap-4 mb-6">
           {[
             { label: 'Draft', count: draftCount, icon: FileText, color: 'text-neutral-600 bg-neutral-50' },
-            { label: 'Deployed', count: deployedCount, icon: CheckCircle2, color: 'text-green-600 bg-green-50' },
-            { label: 'Archived', count: archivedCount, icon: Clock, color: 'text-yellow-600 bg-yellow-50' },
+            { label: 'Deployed', count: deployedCount, icon: CheckCircle2, color: 'text-primary-600 bg-primary-50' },
+            { label: 'Archived', count: archivedCount, icon: Clock, color: 'text-yellow-600 bg-accent-50' },
           ].map(({ label, count, icon: Icon, color }) => (
             <div key={label} className="bg-white rounded-xl border border-neutral-200 p-4 flex items-center gap-3">
               <div className={`p-2 rounded-lg ${color}`}>
@@ -126,7 +126,7 @@ const StateFormsPage = () => {
                               <div className="flex items-center gap-1">
                                 <button
                                   onClick={() => handleDeploy(form.id)}
-                                  className="text-xs px-2 py-0.5 bg-green-600 text-white rounded hover:bg-green-700"
+                                  className="text-xs px-2 py-0.5 bg-primary-600 text-white rounded hover:bg-primary-700"
                                 >
                                   Confirm
                                 </button>
@@ -140,7 +140,7 @@ const StateFormsPage = () => {
                             ) : (
                               <button
                                 onClick={() => setDeployConfirmId(form.id)}
-                                className="p-1.5 rounded text-neutral-500 hover:text-green-600 hover:bg-green-50 transition-colors"
+                                className="p-1.5 rounded text-neutral-500 hover:text-primary-600 hover:bg-primary-50 transition-colors"
                                 title="Deploy"
                               >
                                 <Rocket size={16} />

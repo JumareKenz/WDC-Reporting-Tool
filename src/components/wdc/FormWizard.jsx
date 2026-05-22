@@ -181,7 +181,7 @@ const FormWizard = ({
           <span className="text-xs font-medium text-gray-500">
             Step {currentStep + 1} of {totalSteps}
           </span>
-          <span className="text-xs font-semibold text-green-600">
+          <span className="text-xs font-semibold text-primary-600">
             {Math.round(progress)}% complete
           </span>
         </div>
@@ -233,9 +233,9 @@ const FormWizard = ({
                     <div
                       className={`relative z-10 flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full text-sm font-bold transition-all duration-300 ${
                         isCurrent
-                          ? 'bg-green-600 text-white shadow-lg shadow-green-600/30'
+                          ? 'bg-primary-600 text-white shadow-lg shadow-green-600/30'
                           : isVisited
-                          ? 'bg-green-100 text-green-700 border-2 border-green-300'
+                          ? 'bg-primary-100 text-primary-700 border-2 border-green-300'
                           : 'bg-gray-100 text-gray-400 border-2 border-gray-200'
                       }`}
                     >
@@ -253,9 +253,9 @@ const FormWizard = ({
                   <span
                     className={`hidden sm:block text-[10px] leading-tight text-center max-w-[80px] font-medium transition-colors duration-300 ${
                       isCurrent
-                        ? 'text-green-700'
+                        ? 'text-primary-700'
                         : isVisited
-                        ? 'text-green-600'
+                        ? 'text-primary-600'
                         : 'text-gray-400'
                     }`}
                   >
@@ -336,7 +336,7 @@ const FormWizard = ({
         <button
           type="button"
           onClick={onSaveDraft}
-          className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-gray-500 hover:text-green-700 hover:bg-green-50 transition-all duration-200 min-h-[48px] active:scale-[0.97]"
+          className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-gray-500 hover:text-primary-700 hover:bg-primary-50 transition-all duration-200 min-h-[48px] active:scale-[0.97]"
         >
           <Save className="w-4 h-4" />
           <span className="hidden sm:inline">
@@ -360,7 +360,7 @@ const FormWizard = ({
                 ? 'bg-gray-400 cursor-not-allowed shadow-none'
                 : isLastStep
                 ? 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 shadow-green-600/30'
-                : 'bg-green-600 hover:bg-green-700 shadow-green-600/25'
+                : 'bg-primary-600 hover:bg-primary-700 shadow-green-600/25'
             }`}
           >
             {isLastStep ? (

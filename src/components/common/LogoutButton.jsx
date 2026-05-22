@@ -61,11 +61,11 @@ const LogoutButton = ({
       >
         <div className="space-y-4">
           {/* Warning about persistent login */}
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex gap-3">
+          <div className="bg-accent-50 border border-amber-200 rounded-lg p-4 flex gap-3">
             <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
             <div>
               <h4 className="font-medium text-amber-900">Security Notice</h4>
-              <p className="text-sm text-amber-700 mt-1">
+              <p className="text-sm text-accent-800 mt-1">
                 This app keeps you logged in permanently for convenience. 
                 {user?.device_shared && (
                   <span className="font-medium block mt-1">

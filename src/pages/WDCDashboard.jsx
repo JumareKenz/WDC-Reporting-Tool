@@ -172,13 +172,13 @@ const WDCDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-teal-50 relative">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-primary-50 to-teal-50 relative">
       {/* Ambient background blobs */}
-      <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-300 rounded-full opacity-10 pointer-events-none" style={{ filter: 'blur(120px)' }} />
+      <div className="absolute top-0 right-0 w-96 h-96 bg-primary-300 rounded-full opacity-10 pointer-events-none" style={{ filter: 'blur(120px)' }} />
       <div className="absolute bottom-1/2 left-0 w-80 h-80 bg-teal-200 rounded-full opacity-10 pointer-events-none" style={{ filter: 'blur(100px)' }} />
 
       {/* Header */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-primary-600 via-emerald-600 to-teal-600 shadow-lg">
+      <div className="relative overflow-hidden bg-gradient-to-r from-primary-600 via-primary-600 to-teal-600 shadow-lg">
         <div className="absolute -top-16 -right-16 w-48 h-48 bg-white rounded-full opacity-5 pointer-events-none" />
         <div className="absolute -bottom-12 left-1/3 w-40 h-40 bg-white rounded-full opacity-5 pointer-events-none" />
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -188,7 +188,7 @@ const WDCDashboard = () => {
                 WDC Secretary Dashboard
               </h1>
               <div className="flex items-center gap-3 mt-1">
-                <p className="text-sm text-emerald-200">
+                <p className="text-sm text-primary-200">
                   {wardName} • {lgaName}
                 </p>
                 <DataFreshness
@@ -201,7 +201,7 @@ const WDCDashboard = () => {
             {/* Submit Button - Always Active */}
             <button
               onClick={handleSubmitReport}
-              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-yellow-400 hover:bg-yellow-300 active:bg-yellow-500 text-neutral-900 font-bold text-base shadow-lg shadow-yellow-500/30 hover:shadow-xl hover:shadow-yellow-400/40 transition-all duration-200 border-2 border-yellow-300"
+              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-yellow-400 hover:bg-yellow-300 active:bg-accent-500 text-neutral-900 font-bold text-base shadow-lg shadow-yellow-500/30 hover:shadow-xl hover:shadow-yellow-400/40 transition-all duration-200 border-2 border-yellow-300"
             >
               <PlusCircle className="w-5 h-5" />
               Submit New Report
@@ -248,7 +248,7 @@ const WDCDashboard = () => {
             value={totalReports}
             subtitle="All time submissions"
             trend={
-              <span className="text-green-600 flex items-center gap-1">
+              <span className="text-primary-600 flex items-center gap-1">
                 <TrendingUp className="w-3 h-3" />
                 {reviewedCount} reviewed
               </span>
@@ -276,9 +276,9 @@ const WDCDashboard = () => {
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl">
-                <Activity className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-green-700">{reviewedCount}</p>
-                <p className="text-xs text-green-600">Reports Reviewed</p>
+                <Activity className="w-8 h-8 text-primary-600 mx-auto mb-2" />
+                <p className="text-2xl font-bold text-primary-700">{reviewedCount}</p>
+                <p className="text-xs text-primary-600">Reports Reviewed</p>
               </div>
               <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl">
                 <BarChart3 className="w-8 h-8 text-blue-600 mx-auto mb-2" />
@@ -432,7 +432,7 @@ const WDCDashboard = () => {
                       .map((month) => (
                         <span
                           key={month}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-green-50 border border-green-200 text-green-700 text-xs font-medium"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary-50 border border-primary-200 text-primary-700 text-xs font-medium"
                         >
                           <CheckCircle className="w-3 h-3" />
                           {formatMonthDisplay(month)}
@@ -476,20 +476,20 @@ const WDCDashboard = () => {
               <div className="space-y-3">
                 <div className={`flex items-center gap-3 p-3 rounded-lg border ${
                   isSubmitted
-                    ? 'bg-green-50 border-green-200'
-                    : 'bg-yellow-50 border-yellow-200'
+                    ? 'bg-primary-50 border-primary-200'
+                    : 'bg-accent-50 border-yellow-200'
                 }`}>
-                  <CalendarDays className={`w-5 h-5 ${isSubmitted ? 'text-green-600' : 'text-yellow-600'}`} />
+                  <CalendarDays className={`w-5 h-5 ${isSubmitted ? 'text-primary-600' : 'text-yellow-600'}`} />
                   <div className="flex-1">
-                    <p className={`text-sm font-medium ${isSubmitted ? 'text-green-800' : 'text-yellow-800'}`}>
+                    <p className={`text-sm font-medium ${isSubmitted ? 'text-primary-800' : 'text-accent-900'}`}>
                       {submissionInfo.month_name} Report
                     </p>
-                    <p className={`text-xs ${isSubmitted ? 'text-green-600' : 'text-yellow-600'}`}>
+                    <p className={`text-xs ${isSubmitted ? 'text-primary-600' : 'text-yellow-600'}`}>
                       {isSubmitted ? '✓ Submitted successfully' : 'Submission pending'}
                     </p>
                   </div>
                   {isSubmitted ? (
-                    <CheckCircle className="w-5 h-5 text-green-500" />
+                    <CheckCircle className="w-5 h-5 text-primary-500" />
                   ) : (
                     <AlertCircle className="w-5 h-5 text-yellow-500" />
                   )}
@@ -688,12 +688,12 @@ const StatusBadge = ({ status }) => {
     REVIEWED: {
       icon: CheckCircle,
       text: 'Reviewed',
-      className: 'bg-green-50 text-green-700 border-green-200',
+      className: 'bg-primary-50 text-primary-700 border-primary-200',
     },
     FLAGGED: {
       icon: AlertCircle,
       text: 'Flagged',
-      className: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+      className: 'bg-accent-50 text-accent-800 border-yellow-200',
     },
     DRAFT: {
       icon: FileText,
@@ -741,7 +741,7 @@ const NotificationItem = ({ notification }) => {
       case 'REPORT_MISSING':
         return 'text-red-500 bg-red-50';
       case 'REPORT_SUBMITTED':
-        return 'text-green-500 bg-green-50';
+        return 'text-primary-500 bg-primary-50';
       case 'REPORT_REVIEWED':
         return 'text-blue-500 bg-blue-50';
       default:

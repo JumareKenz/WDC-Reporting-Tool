@@ -58,11 +58,11 @@ const NotificationsPage = () => {
       case 'REPORT_SUBMITTED':
         return 'text-blue-500 bg-blue-50';
       case 'REPORT_REVIEWED':
-        return 'text-green-500 bg-green-50';
+        return 'text-primary-500 bg-primary-50';
       case 'FEEDBACK':
         return 'text-purple-500 bg-purple-50';
       case 'REMINDER':
-        return 'text-yellow-500 bg-yellow-50';
+        return 'text-yellow-500 bg-accent-50';
       default:
         return 'text-primary-500 bg-primary-50';
     }

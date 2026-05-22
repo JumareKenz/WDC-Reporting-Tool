@@ -533,7 +533,7 @@ const FormBuilder = ({ form, onSave, onClose }) => {
             className="text-base font-semibold text-neutral-900 border-none outline-none bg-transparent w-64" />
           <input type="text" value={formDescription} onChange={e => setFormDescription(e.target.value)} placeholder="Description..."
             className="text-xs text-neutral-500 border-none outline-none bg-transparent flex-1" />
-          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${formStatus === 'DEPLOYED' ? 'bg-green-100 text-green-700' : formStatus === 'ARCHIVED' ? 'bg-yellow-100 text-yellow-700' : 'bg-neutral-100 text-neutral-600'}`}>
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${formStatus === 'DEPLOYED' ? 'bg-primary-100 text-primary-700' : formStatus === 'ARCHIVED' ? 'bg-accent-50 text-accent-800' : 'bg-neutral-100 text-neutral-600'}`}>
             {formStatus}
           </span>
         </div>
@@ -559,7 +559,7 @@ const FormBuilder = ({ form, onSave, onClose }) => {
             showDeployConfirm ? (
               <div className="flex items-center gap-1">
                 <button type="button" onClick={handleDeploy} disabled={saving}
-                  className="px-2.5 py-1.5 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700 disabled:opacity-60">
+                  className="px-2.5 py-1.5 bg-primary-600 text-white rounded-lg text-xs font-medium hover:bg-primary-700 disabled:opacity-60">
                   Confirm Deploy
                 </button>
                 <button type="button" onClick={() => setShowDeployConfirm(false)}
@@ -569,7 +569,7 @@ const FormBuilder = ({ form, onSave, onClose }) => {
               </div>
             ) : (
               <button type="button" onClick={() => setShowDeployConfirm(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-xs font-medium">
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-xs font-medium">
                 <Rocket size={13} /> Deploy
               </button>
             )

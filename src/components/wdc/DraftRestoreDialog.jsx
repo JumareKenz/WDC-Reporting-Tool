@@ -75,7 +75,7 @@ const DraftRestoreDialog = ({
           aria-labelledby="draft-restore-title"
         >
           {/* Header */}
-          <div className="bg-green-600 px-6 py-4">
+          <div className="bg-primary-600 px-6 py-4">
             <div className="flex items-center gap-3">
               <FileText className="w-6 h-6 text-white" aria-hidden="true" />
               <h2 id="draft-restore-title" className="text-lg font-semibold text-white">
@@ -90,9 +90,9 @@ const DraftRestoreDialog = ({
           <div className="p-6 space-y-4">
             {/* Conflict Warning */}
             {hasConflict && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+              <div className="bg-accent-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
-                <p className="text-sm text-amber-700">
+                <p className="text-sm text-accent-800">
                   Both a local draft and a server draft exist. Choose which version to continue with.
                 </p>
               </div>
@@ -107,13 +107,13 @@ const DraftRestoreDialog = ({
                     w-full flex items-center gap-4 p-4 rounded-xl border-2 text-left
                     transition-all duration-200
                     ${localIsNewer 
-                      ? 'border-green-500 bg-green-50 hover:bg-green-100' 
+                      ? 'border-green-500 bg-primary-50 hover:bg-primary-100' 
                       : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}
                   `}
                 >
                   <div className={`
                     w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0
-                    ${localIsNewer ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600'}
+                    ${localIsNewer ? 'bg-primary-500 text-white' : 'bg-gray-200 text-gray-600'}
                   `}>
                     <HardDrive className="w-5 h-5" aria-hidden="true" />
                   </div>
@@ -123,7 +123,7 @@ const DraftRestoreDialog = ({
                         Local Draft
                       </span>
                       {localIsNewer && (
-                        <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">
+                        <span className="text-xs bg-primary-500 text-white px-2 py-0.5 rounded-full">
                           Most Recent
                         </span>
                       )}
@@ -148,13 +148,13 @@ const DraftRestoreDialog = ({
                     w-full flex items-center gap-4 p-4 rounded-xl border-2 text-left
                     transition-all duration-200
                     ${!localIsNewer 
-                      ? 'border-green-500 bg-green-50 hover:bg-green-100' 
+                      ? 'border-green-500 bg-primary-50 hover:bg-primary-100' 
                       : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}
                   `}
                 >
                   <div className={`
                     w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0
-                    ${!localIsNewer ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-600'}
+                    ${!localIsNewer ? 'bg-primary-500 text-white' : 'bg-gray-200 text-gray-600'}
                   `}>
                     <Server className="w-5 h-5" aria-hidden="true" />
                   </div>
@@ -164,7 +164,7 @@ const DraftRestoreDialog = ({
                         Server Draft
                       </span>
                       {!localIsNewer && (
-                        <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">
+                        <span className="text-xs bg-primary-500 text-white px-2 py-0.5 rounded-full">
                           Most Recent
                         </span>
                       )}

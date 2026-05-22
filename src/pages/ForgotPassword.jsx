@@ -35,7 +35,7 @@ const ForgotPassword = () => {
     return (
       <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900">
         {/* Ambient glow blobs */}
-        <div className="absolute -top-24 left-1/4 w-96 h-96 bg-emerald-500 rounded-full opacity-20 pointer-events-none" style={{ filter: 'blur(100px)' }} />
+        <div className="absolute -top-24 left-1/4 w-96 h-96 bg-primary-500 rounded-full opacity-20 pointer-events-none" style={{ filter: 'blur(100px)' }} />
         <div className="absolute -bottom-32 -right-16 w-96 h-96 bg-teal-500 rounded-full opacity-15 pointer-events-none" style={{ filter: 'blur(120px)' }} />
 
         <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
@@ -51,7 +51,7 @@ const ForgotPassword = () => {
 
             <div className="rounded-2xl p-8" style={{ background: 'rgba(255,255,255,0.13)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.18)', boxShadow: '0 8px 32px rgba(0,0,0,0.25)' }}>
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-green-500/20 rounded-full mb-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-500/20 rounded-full mb-4">
                   <CheckCircle className="w-8 h-8 text-green-400" />
                 </div>
 
@@ -59,11 +59,11 @@ const ForgotPassword = () => {
                   Reset Link Sent
                 </h2>
 
-                <p className="text-emerald-200 mb-6">
+                <p className="text-primary-200 mb-6">
                   If an account exists with <strong>{email}</strong>, you will receive a password reset link shortly.
                 </p>
 
-                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 mb-6">
+                <div className="bg-accent-500/10 border border-amber-500/30 rounded-lg p-4 mb-6">
                   <p className="text-sm text-amber-200">
                     <strong>⏰ Link expires in 1 hour</strong>
                   </p>
@@ -91,7 +91,7 @@ const ForgotPassword = () => {
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900">
       {/* Ambient glow blobs */}
-      <div className="absolute -top-24 left-1/4 w-96 h-96 bg-emerald-500 rounded-full opacity-20 pointer-events-none" style={{ filter: 'blur(100px)' }} />
+      <div className="absolute -top-24 left-1/4 w-96 h-96 bg-primary-500 rounded-full opacity-20 pointer-events-none" style={{ filter: 'blur(100px)' }} />
       <div className="absolute -bottom-32 -right-16 w-96 h-96 bg-teal-500 rounded-full opacity-15 pointer-events-none" style={{ filter: 'blur(120px)' }} />
       <div className="absolute top-1/2 -left-24 w-72 h-72 bg-green-400 rounded-full opacity-10 pointer-events-none" style={{ filter: 'blur(90px)' }} />
 
@@ -105,7 +105,7 @@ const ForgotPassword = () => {
             <h1 className="text-3xl font-bold text-white mb-1.5 tracking-tight">
               Forgot Password?
             </h1>
-            <p className="text-emerald-300 text-sm">
+            <p className="text-primary-300 text-sm">
               Enter your email to receive a reset link
             </p>
           </div>
@@ -160,7 +160,7 @@ const ForgotPassword = () => {
               <button
                 type="button"
                 onClick={() => navigate('/login')}
-                className="w-full text-center text-sm text-emerald-300 hover:text-emerald-200 transition-colors flex items-center justify-center gap-2"
+                className="w-full text-center text-sm text-primary-300 hover:text-primary-200 transition-colors flex items-center justify-center gap-2"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Back to Login
@@ -170,7 +170,7 @@ const ForgotPassword = () => {
 
           {/* Footer */}
           <div className="mt-6 text-center">
-            <p className="text-sm text-emerald-300">
+            <p className="text-sm text-primary-300">
               {APP_CONFIG.STATE_NAME}, {APP_CONFIG.COUNTRY}
             </p>
           </div>

@@ -53,9 +53,14 @@ const Button = ({
       shadow-sm hover:shadow-lg hover:shadow-red-500/25
     `,
     success: `
-      bg-green-600 hover:bg-green-700 text-white
-      focus:ring-green-500
-      shadow-sm hover:shadow-lg hover:shadow-green-500/25
+      bg-primary-600 hover:bg-primary-700 text-white
+      focus:ring-primary-500
+      shadow-sm hover:shadow-lg hover:shadow-primary-500/25
+    `,
+    accent: `
+      bg-accent-500 hover:bg-accent-600 text-white
+      focus:ring-accent-400
+      shadow-sm hover:shadow-lg hover:shadow-accent-500/25
     `,
   };
 

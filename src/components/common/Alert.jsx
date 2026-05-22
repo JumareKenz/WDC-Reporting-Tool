@@ -14,10 +14,10 @@ const Alert = ({
   // Alert type configurations
   const types = {
     success: {
-      container: 'bg-green-50 border-green-200 text-green-900',
+      container: 'bg-primary-50 border-primary-200 text-primary-900',
       icon: CheckCircle,
-      iconColor: 'text-green-600',
-      titleColor: 'text-green-900',
+      iconColor: 'text-primary-600',
+      titleColor: 'text-primary-900',
     },
     error: {
       container: 'bg-red-50 border-red-200 text-red-900',
@@ -26,7 +26,7 @@ const Alert = ({
       titleColor: 'text-red-900',
     },
     warning: {
-      container: 'bg-yellow-50 border-yellow-200 text-yellow-900',
+      container: 'bg-accent-50 border-yellow-200 text-yellow-900',
       icon: AlertCircle,
       iconColor: 'text-yellow-600',
       titleColor: 'text-yellow-900',
@@ -125,9 +125,9 @@ export const Banner = ({
   action = null,
 }) => {
   const types = {
-    success: 'bg-green-600 text-white',
+    success: 'bg-primary-600 text-white',
     error: 'bg-red-600 text-white',
-    warning: 'bg-yellow-500 text-neutral-900',
+    warning: 'bg-accent-500 text-neutral-900',
     info: 'bg-blue-600 text-white',
   };
 
@@ -159,9 +159,9 @@ export const Banner = ({
  */
 export const InlineAlert = ({ type = 'info', message, className = '' }) => {
   const types = {
-    success: 'text-green-700',
+    success: 'text-primary-700',
     error: 'text-red-700',
-    warning: 'text-yellow-700',
+    warning: 'text-accent-800',
     info: 'text-blue-700',
   };
 

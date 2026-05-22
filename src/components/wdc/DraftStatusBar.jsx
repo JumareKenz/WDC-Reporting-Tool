@@ -61,7 +61,7 @@ const DraftStatusBar = ({
             return {
                 icon: CloudOff,
                 text: 'Offline - Changes saved locally',
-                className: 'bg-amber-50 text-amber-700 border-amber-200',
+                className: 'bg-accent-50 text-accent-800 border-amber-200',
                 iconClassName: 'text-amber-500',
             };
         }
@@ -107,8 +107,8 @@ const DraftStatusBar = ({
             return {
                 icon: Check,
                 text: `Saved ${formatRelativeTime(lastSavedAt)}`,
-                className: 'bg-green-50 text-green-700 border-green-200',
-                iconClassName: 'text-green-500',
+                className: 'bg-primary-50 text-primary-700 border-primary-200',
+                iconClassName: 'text-primary-500',
             };
         }
 
@@ -153,13 +153,13 @@ const DraftStatusBar = ({
             <div className="flex items-center gap-2">
                 {/* Online/Offline indicator */}
                 {isOnline ? (
-                    <span className="flex items-center gap-1 text-green-600">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                    <span className="flex items-center gap-1 text-primary-600">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary-500"></span>
                         <span className="hidden sm:inline">Online</span>
                     </span>
                 ) : (
                     <span className="flex items-center gap-1 text-amber-600">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-accent-500 animate-pulse"></span>
                         <span className="hidden sm:inline">Offline</span>
                     </span>
                 )}

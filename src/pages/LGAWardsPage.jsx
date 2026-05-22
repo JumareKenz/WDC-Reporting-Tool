@@ -123,7 +123,7 @@ const LGAWardsPage = () => {
           subtitle={`${submissionRate}% rate`}
           trend={
             submissionRate >= 80 ? (
-              <span className="text-green-600 flex items-center gap-1">
+              <span className="text-primary-600 flex items-center gap-1">
                 <TrendingUp className="w-3 h-3" /> Excellent
               </span>
             ) : (
@@ -187,15 +187,15 @@ const LGAWardsPage = () => {
                 key={ward.id}
                 className={`p-5 rounded-xl border-2 transition-all duration-200 hover:shadow-lg ${
                   ward.submitted
-                    ? 'border-green-200 bg-gradient-to-br from-green-50 to-white hover:border-green-300'
+                    ? 'border-primary-200 bg-gradient-to-br from-green-50 to-white hover:border-green-300'
                     : 'border-red-200 bg-gradient-to-br from-red-50 to-white hover:border-red-300 animate-pulse-subtle'
                 }`}
               >
                 {/* Ward Header */}
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <div className={`p-2 rounded-lg ${ward.submitted ? 'bg-green-100' : 'bg-red-100'}`}>
-                      <MapPin className={`w-5 h-5 ${ward.submitted ? 'text-green-600' : 'text-red-600'}`} />
+                    <div className={`p-2 rounded-lg ${ward.submitted ? 'bg-primary-100' : 'bg-red-100'}`}>
+                      <MapPin className={`w-5 h-5 ${ward.submitted ? 'text-primary-600' : 'text-red-600'}`} />
                     </div>
                     <div>
                       <h3 className="font-bold text-neutral-900">{ward.name}</h3>
@@ -203,7 +203,7 @@ const LGAWardsPage = () => {
                     </div>
                   </div>
                   {ward.submitted ? (
-                    <CheckCircle className="w-6 h-6 text-green-500" />
+                    <CheckCircle className="w-6 h-6 text-primary-500" />
                   ) : (
                     <XCircle className="w-6 h-6 text-red-500" />
                   )}
@@ -225,8 +225,8 @@ const LGAWardsPage = () => {
                   </div>
                   {ward.submitted && ward.submitted_at && (
                     <div className="flex items-center gap-2 text-sm">
-                      <Calendar className="w-4 h-4 text-green-600" />
-                      <span className="text-green-600 font-medium">
+                      <Calendar className="w-4 h-4 text-primary-600" />
+                      <span className="text-primary-600 font-medium">
                         {formatDate(ward.submitted_at)}
                       </span>
                     </div>
@@ -238,7 +238,7 @@ const LGAWardsPage = () => {
                   <span
                     className={`inline-block px-3 py-1 text-xs font-semibold rounded-full ${
                       ward.submitted
-                        ? 'bg-green-100 text-green-700'
+                        ? 'bg-primary-100 text-primary-700'
                         : 'bg-red-100 text-red-700'
                     }`}
                   >
@@ -250,7 +250,7 @@ const LGAWardsPage = () => {
                 {ward.submitted && (
                   <div className="grid grid-cols-2 gap-2 mb-4 p-3 bg-white rounded-lg border border-neutral-200">
                     <div className="text-center">
-                      <p className="text-lg font-bold text-green-600">{ward.total_meetings || 0}</p>
+                      <p className="text-lg font-bold text-primary-600">{ward.total_meetings || 0}</p>
                       <p className="text-xs text-neutral-600">Meetings</p>
                     </div>
                     <div className="text-center">
@@ -314,8 +314,8 @@ const LGAWardsPage = () => {
                 <h3 className="text-xl font-bold text-neutral-900">{selectedWard.name}</h3>
                 <p className="text-sm text-neutral-600">{selectedWard.code}</p>
               </div>
-              <div className={`p-3 rounded-lg ${selectedWard.submitted ? 'bg-green-100' : 'bg-red-100'}`}>
-                <MapPin className={`w-8 h-8 ${selectedWard.submitted ? 'text-green-600' : 'text-red-600'}`} />
+              <div className={`p-3 rounded-lg ${selectedWard.submitted ? 'bg-primary-100' : 'bg-red-100'}`}>
+                <MapPin className={`w-8 h-8 ${selectedWard.submitted ? 'text-primary-600' : 'text-red-600'}`} />
               </div>
             </div>
 
@@ -329,7 +329,7 @@ const LGAWardsPage = () => {
               </div>
               <div className="p-4 bg-neutral-50 rounded-lg">
                 <p className="text-sm text-neutral-500">Status</p>
-                <p className={`text-2xl font-bold ${selectedWard.submitted ? 'text-green-600' : 'text-red-600'}`}>
+                <p className={`text-2xl font-bold ${selectedWard.submitted ? 'text-primary-600' : 'text-red-600'}`}>
                   {selectedWard.submitted ? 'Submitted' : 'Missing'}
                 </p>
               </div>
@@ -351,7 +351,7 @@ const LGAWardsPage = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-neutral-600">Meetings Held</p>
-                    <p className="text-3xl font-bold text-green-600">{selectedWard.total_meetings || 0}</p>
+                    <p className="text-3xl font-bold text-primary-600">{selectedWard.total_meetings || 0}</p>
                   </div>
                   <div>
                     <p className="text-sm text-neutral-600">Total Attendees</p>

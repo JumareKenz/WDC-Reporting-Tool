@@ -38,7 +38,7 @@ const DataFreshness = ({
         ${isVeryStale 
           ? 'text-red-600 hover:text-red-700' 
           : isStale 
-            ? 'text-amber-600 hover:text-amber-700'
+            ? 'text-amber-600 hover:text-accent-800'
             : 'text-gray-400 hover:text-gray-600'}
         ${className}
       `}

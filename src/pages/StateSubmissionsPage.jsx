@@ -368,11 +368,11 @@ const StateSubmissionsPage = () => {
                   </span>
                   <span
                     className={`px-3 py-1 text-xs font-medium rounded-full ${lga.submission_rate >= 90
-                        ? 'bg-green-100 text-green-800'
+                        ? 'bg-primary-100 text-primary-800'
                         : lga.submission_rate >= 70
                           ? 'bg-blue-100 text-blue-800'
                           : lga.submission_rate >= 50
-                            ? 'bg-yellow-100 text-yellow-800'
+                            ? 'bg-accent-50 text-accent-900'
                             : 'bg-red-100 text-red-800'
                       }`}
                   >
@@ -646,7 +646,7 @@ const StateSubmissionsPage = () => {
                 {(fullReportData.attendance_photos?.length > 0 || fullReportData.attendance_photo_url) && (
                   <div className="bg-white rounded-lg border border-neutral-200 p-5">
                     <h4 className="font-semibold text-neutral-900 mb-3 flex items-center gap-2">
-                      <ImageIcon className="w-4 h-4 text-green-600" />
+                      <ImageIcon className="w-4 h-4 text-primary-600" />
                       Attendance Photos
                     </h4>
                     <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
@@ -736,7 +736,7 @@ const StateSubmissionsPage = () => {
                 </div>
               )}
               {!loadingReport && selectedReport.status === REPORT_STATUS.REVIEWED && (
-                <p className="text-xs text-green-700 font-medium flex items-center gap-1.5">
+                <p className="text-xs text-primary-700 font-medium flex items-center gap-1.5">
                   <CheckCircle className="w-4 h-4" />
                   This report has been approved.
                 </p>

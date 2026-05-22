@@ -1206,8 +1206,8 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
   if (submitSuccess) {
     return (
       <div className="text-center py-12">
-        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <CheckCircle className="w-8 h-8 text-green-600" />
+        <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <CheckCircle className="w-8 h-8 text-primary-600" />
         </div>
         <h3 className="text-xl font-semibold text-neutral-900 mb-2">Report Submitted Successfully!</h3>
         <p className="text-neutral-600">Your WDC monthly report has been recorded.</p>
@@ -1315,9 +1315,9 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
 
         {/* Error if user assignment is missing */}
         {(!userLGA?.id || !userWard?.id) && (
-          <div className="bg-amber-500/10 border border-amber-400/30 rounded-lg p-4 mb-4 backdrop-blur-sm">
+          <div className="bg-accent-500/10 border border-amber-400/30 rounded-lg p-4 mb-4 backdrop-blur-sm">
             <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-accent-500/20 flex items-center justify-center flex-shrink-0">
                 <AlertTriangle className="w-5 h-5 text-amber-200" />
               </div>
               <div className="flex-1">
@@ -2021,7 +2021,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
                 <div
                   id="attendance-hint"
                   className={`mt-3 px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 ${
-                    isValid ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+                    isValid ? 'bg-primary-50 text-primary-700 border border-primary-200' : 'bg-red-50 text-red-700 border border-red-200'
                   }`}
                   role="status"
                   aria-live="polite"
@@ -2097,7 +2097,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
                 
                 {/* Success Checkmark */}
                 {!attendancePhotoUploading && !attendancePhotoError && (
-                  <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center shadow-lg">
+                  <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary-500 text-white rounded-full flex items-center justify-center shadow-lg">
                     <Check className="w-4 h-4" />
                   </div>
                 )}

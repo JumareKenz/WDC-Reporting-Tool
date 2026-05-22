@@ -116,7 +116,7 @@ const FacilitySupportSection = ({ formData, onChange, errors, onVoiceNote, voice
                 key={opt}
                 className={`flex items-center gap-2 px-4 py-3 rounded-xl border cursor-pointer transition-all ${
                   formData.facility_renovated === opt
-                    ? 'bg-green-50 border-green-500 text-green-700 shadow-sm'
+                    ? 'bg-primary-50 border-green-500 text-primary-700 shadow-sm'
                     : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
                 }`}
               >
@@ -126,7 +126,7 @@ const FacilitySupportSection = ({ formData, onChange, errors, onVoiceNote, voice
                   value={opt}
                   checked={formData.facility_renovated === opt}
                   onChange={handleChange}
-                  className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
+                  className="w-4 h-4 text-primary-600 border-gray-300 focus:ring-green-500"
                 />
                 <span className="text-sm font-medium">{opt}</span>
               </label>
@@ -183,7 +183,7 @@ const FacilitySupportSection = ({ formData, onChange, errors, onVoiceNote, voice
                               onClick={() => toggleRenovationActor(idx, actor)}
                               className={`px-3 py-1.5 text-xs rounded-full border transition-all ${
                                 checked
-                                  ? 'bg-green-100 border-green-500 text-green-700 font-medium'
+                                  ? 'bg-primary-100 border-green-500 text-primary-700 font-medium'
                                   : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
                               }`}
                             >
@@ -198,7 +198,7 @@ const FacilitySupportSection = ({ formData, onChange, errors, onVoiceNote, voice
                 <button
                   type="button"
                   onClick={addRenovation}
-                  className="flex items-center gap-1 text-sm text-green-600 hover:text-green-700 font-medium"
+                  className="flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700 font-medium"
                 >
                   <Plus className="w-4 h-4" />
                   Add Facility
@@ -224,7 +224,7 @@ const FacilitySupportSection = ({ formData, onChange, errors, onVoiceNote, voice
                 key={opt}
                 className={`flex items-center gap-2 px-4 py-3 rounded-xl border cursor-pointer transition-all ${
                   formData.items_donated_wdc_yn === opt
-                    ? 'bg-green-50 border-green-500 text-green-700 shadow-sm'
+                    ? 'bg-primary-50 border-green-500 text-primary-700 shadow-sm'
                     : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
                 }`}
               >
@@ -234,7 +234,7 @@ const FacilitySupportSection = ({ formData, onChange, errors, onVoiceNote, voice
                   value={opt}
                   checked={formData.items_donated_wdc_yn === opt}
                   onChange={handleChange}
-                  className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
+                  className="w-4 h-4 text-primary-600 border-gray-300 focus:ring-green-500"
                 />
                 <span className="text-sm font-medium">{opt}</span>
               </label>
@@ -266,7 +266,7 @@ const FacilitySupportSection = ({ formData, onChange, errors, onVoiceNote, voice
                       onClick={() => handleMultiSelect('items_donated_types', item)}
                       className={`px-3 py-1.5 text-xs rounded-full border transition-all ${
                         (formData.items_donated_types || []).includes(item)
-                          ? 'bg-green-100 border-green-500 text-green-700 font-medium'
+                          ? 'bg-primary-100 border-green-500 text-primary-700 font-medium'
                           : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
                       }`}
                     >
@@ -310,7 +310,7 @@ const FacilitySupportSection = ({ formData, onChange, errors, onVoiceNote, voice
                 key={opt}
                 className={`flex items-center gap-2 px-4 py-3 rounded-xl border cursor-pointer transition-all ${
                   formData.items_donated_govt_yn === opt
-                    ? 'bg-green-50 border-green-500 text-green-700 shadow-sm'
+                    ? 'bg-primary-50 border-green-500 text-primary-700 shadow-sm'
                     : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
                 }`}
               >
@@ -320,7 +320,7 @@ const FacilitySupportSection = ({ formData, onChange, errors, onVoiceNote, voice
                   value={opt}
                   checked={formData.items_donated_govt_yn === opt}
                   onChange={handleChange}
-                  className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
+                  className="w-4 h-4 text-primary-600 border-gray-300 focus:ring-green-500"
                 />
                 <span className="text-sm font-medium">{opt}</span>
               </label>
@@ -352,7 +352,7 @@ const FacilitySupportSection = ({ formData, onChange, errors, onVoiceNote, voice
                       onClick={() => handleMultiSelect('items_donated_govt_types', item)}
                       className={`px-3 py-1.5 text-xs rounded-full border transition-all ${
                         (formData.items_donated_govt_types || []).includes(item)
-                          ? 'bg-green-100 border-green-500 text-green-700 font-medium'
+                          ? 'bg-primary-100 border-green-500 text-primary-700 font-medium'
                           : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
                       }`}
                     >
@@ -396,7 +396,7 @@ const FacilitySupportSection = ({ formData, onChange, errors, onVoiceNote, voice
                 key={opt}
                 className={`flex items-center gap-2 px-4 py-3 rounded-xl border cursor-pointer transition-all ${
                   formData.items_repaired_yn === opt
-                    ? 'bg-green-50 border-green-500 text-green-700 shadow-sm'
+                    ? 'bg-primary-50 border-green-500 text-primary-700 shadow-sm'
                     : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
                 }`}
               >
@@ -406,7 +406,7 @@ const FacilitySupportSection = ({ formData, onChange, errors, onVoiceNote, voice
                   value={opt}
                   checked={formData.items_repaired_yn === opt}
                   onChange={handleChange}
-                  className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
+                  className="w-4 h-4 text-primary-600 border-gray-300 focus:ring-green-500"
                 />
                 <span className="text-sm font-medium">{opt}</span>
               </label>
@@ -436,7 +436,7 @@ const FacilitySupportSection = ({ formData, onChange, errors, onVoiceNote, voice
                     onClick={() => handleRepairActorToggle(actor)}
                     className={`px-3 py-1.5 text-xs rounded-full border transition-all ${
                       repairActors.includes(actor)
-                        ? 'bg-green-100 border-green-500 text-green-700 font-medium'
+                        ? 'bg-primary-100 border-green-500 text-primary-700 font-medium'
                         : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
                     }`}
                   >
@@ -457,7 +457,7 @@ const FacilitySupportSection = ({ formData, onChange, errors, onVoiceNote, voice
                       onClick={() => handleMultiSelect('items_repaired_types', item)}
                       className={`px-3 py-1.5 text-xs rounded-full border transition-all ${
                         (formData.items_repaired_types || []).includes(item)
-                          ? 'bg-green-100 border-green-500 text-green-700 font-medium'
+                          ? 'bg-primary-100 border-green-500 text-primary-700 font-medium'
                           : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
                       }`}
                     >

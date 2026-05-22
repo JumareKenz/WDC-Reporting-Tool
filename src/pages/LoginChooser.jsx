@@ -32,11 +32,11 @@ const LoginChooser = () => {
           <button
             type="button"
             onClick={() => navigate('/login/secretary')}
-            className="w-full flex items-center gap-4 px-6 py-5 rounded-2xl bg-white border-2 border-amber-300 hover:border-amber-400 hover:bg-amber-50 shadow-sm hover:shadow-md active:scale-[0.98] transition-all duration-150"
+            className="w-full flex items-center gap-4 px-6 py-5 rounded-2xl bg-white border-2 border-amber-300 hover:border-amber-400 hover:bg-accent-50 shadow-sm hover:shadow-md active:scale-[0.98] transition-all duration-150"
             style={{ minHeight: 64 }}
           >
-            <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
-              <ShieldCheck className="w-6 h-6 text-amber-700" />
+            <div className="w-12 h-12 rounded-xl bg-accent-100 flex items-center justify-center flex-shrink-0">
+              <ShieldCheck className="w-6 h-6 text-accent-800" />
             </div>
             <div className="text-left">
               <span className="text-xl font-semibold text-neutral-900 block">

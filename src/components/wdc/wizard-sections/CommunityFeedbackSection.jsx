@@ -44,7 +44,7 @@ const CommunityFeedbackSection = ({ formData, onChange, onVoiceNote, voiceNotes 
               key={opt}
               className={`flex items-center gap-2 px-4 py-3 rounded-xl border cursor-pointer transition-all ${
                 formData.town_hall_conducted === opt
-                  ? 'bg-green-50 border-green-500 text-green-700 shadow-sm'
+                  ? 'bg-primary-50 border-green-500 text-primary-700 shadow-sm'
                   : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
               }`}
             >
@@ -54,7 +54,7 @@ const CommunityFeedbackSection = ({ formData, onChange, onVoiceNote, voiceNotes 
                 value={opt}
                 checked={formData.town_hall_conducted === opt}
                 onChange={handleChange}
-                className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
+                className="w-4 h-4 text-primary-600 border-gray-300 focus:ring-green-500"
               />
               <span className="text-sm font-medium">{opt}</span>
             </label>

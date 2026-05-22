@@ -29,12 +29,12 @@ const SubmissionHistory = ({ reports = [], loading = false, showPagination = fal
       [REPORT_STATUS.REVIEWED]: {
         icon: CheckCircle,
         text: 'Reviewed',
-        className: 'bg-green-100 text-green-800 border-green-200',
+        className: 'bg-primary-100 text-primary-800 border-primary-200',
       },
       [REPORT_STATUS.FLAGGED]: {
         icon: Flag,
         text: 'Flagged',
-        className: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+        className: 'bg-accent-50 text-accent-900 border-yellow-200',
       },
       [REPORT_STATUS.DRAFT]: {
         icon: FileText,
@@ -168,7 +168,7 @@ const SubmissionHistory = ({ reports = [], loading = false, showPagination = fal
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap">
                   {report.has_voice_note ? (
-                    <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-50 px-2 py-1 rounded">
+                    <span className="inline-flex items-center gap-1 text-xs text-primary-700 bg-primary-50 px-2 py-1 rounded">
                       <Mic className="w-3 h-3" />
                       Yes
                     </span>
@@ -235,7 +235,7 @@ const SubmissionHistory = ({ reports = [], loading = false, showPagination = fal
               <div className="flex items-center gap-3 text-xs text-neutral-600">
                 <span>{formatDate(report.submitted_at)}</span>
                 {report.has_voice_note && (
-                  <span className="inline-flex items-center gap-1 text-green-700">
+                  <span className="inline-flex items-center gap-1 text-primary-700">
                     <Mic className="w-3 h-3" />
                     Voice Note
                   </span>

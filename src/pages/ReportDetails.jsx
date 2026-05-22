@@ -100,12 +100,12 @@ const ReportDetails = () => {
       [REPORT_STATUS.REVIEWED]: {
         icon: CheckCircle,
         text: 'Reviewed',
-        className: 'bg-green-100 text-green-800 border-green-200',
+        className: 'bg-primary-100 text-primary-800 border-primary-200',
       },
       [REPORT_STATUS.FLAGGED]: {
         icon: Flag,
         text: 'Flagged',
-        className: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+        className: 'bg-accent-50 text-accent-900 border-yellow-200',
       },
       [REPORT_STATUS.DRAFT]: {
         icon: FileText,
@@ -466,7 +466,7 @@ const ReportDetails = () => {
                       <p className="text-sm font-medium text-neutral-700 mb-2">Items Donated by WDC</p>
                       <div className="flex flex-wrap gap-2">
                         {itemsDonatedTypes.map((item, idx) => (
-                          <span key={idx} className="px-2 py-1 bg-green-50 text-green-700 text-xs rounded-md">
+                          <span key={idx} className="px-2 py-1 bg-primary-50 text-primary-700 text-xs rounded-md">
                             {item}
                           </span>
                         ))}
@@ -637,12 +637,12 @@ const ReportDetails = () => {
                   <div className="p-4">
                     <div className="space-y-3">
                       {actionPlan.filter(a => a.issue).map((item, idx) => (
-                        <div key={idx} className="p-3 bg-amber-50 rounded-lg border border-amber-100">
+                        <div key={idx} className="p-3 bg-accent-50 rounded-lg border border-amber-100">
                           <p className="font-medium text-amber-900 text-sm">{item.issue}</p>
                           {item.action && (
-                            <p className="text-sm text-amber-800 mt-1"><strong>Action:</strong> {item.action}</p>
+                            <p className="text-sm text-accent-900 mt-1"><strong>Action:</strong> {item.action}</p>
                           )}
-                          <div className="flex gap-4 mt-2 text-xs text-amber-700">
+                          <div className="flex gap-4 mt-2 text-xs text-accent-800">
                             {item.timeline && <span><strong>Timeline:</strong> {item.timeline}</span>}
                             {item.responsible_person && <span><strong>By:</strong> {item.responsible_person}</span>}
                           </div>
@@ -863,7 +863,7 @@ const formatNumber = (num) => {
 const SummaryCard = ({ icon: Icon, color, label, value }) => {
   const colors = {
     primary: 'bg-primary-50 text-primary-600',
-    green: 'bg-green-50 text-green-600',
+    green: 'bg-primary-50 text-primary-600',
     red: 'bg-red-50 text-red-600',
     blue: 'bg-blue-50 text-blue-600',
   };
@@ -908,9 +908,9 @@ const AgendaTag = ({ label }) => (
 
 const StatusPill = ({ status }) => {
   const styles = {
-    'Completed': 'bg-green-100 text-green-700',
+    'Completed': 'bg-primary-100 text-primary-700',
     'In Progress': 'bg-blue-100 text-blue-700',
-    'Pending': 'bg-yellow-100 text-yellow-700',
+    'Pending': 'bg-accent-50 text-accent-800',
     'Delayed': 'bg-red-100 text-red-700',
   };
   return (
@@ -923,7 +923,7 @@ const StatusPill = ({ status }) => {
 const HealthStat = ({ label, value, color }) => {
   const colorMap = {
     blue: 'bg-blue-50 text-blue-700 border-blue-100',
-    green: 'bg-green-50 text-green-700 border-green-100',
+    green: 'bg-primary-50 text-primary-700 border-green-100',
     teal: 'bg-teal-50 text-teal-700 border-teal-100',
     cyan: 'bg-cyan-50 text-cyan-700 border-cyan-100',
     indigo: 'bg-indigo-50 text-indigo-700 border-indigo-100',
@@ -934,10 +934,10 @@ const HealthStat = ({ label, value, color }) => {
     fuchsia: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-100',
     violet: 'bg-violet-50 text-violet-700 border-violet-100',
     purple: 'bg-purple-50 text-purple-700 border-purple-100',
-    amber: 'bg-amber-50 text-amber-700 border-amber-100',
-    yellow: 'bg-yellow-50 text-yellow-700 border-yellow-100',
+    amber: 'bg-accent-50 text-accent-800 border-amber-100',
+    yellow: 'bg-accent-50 text-accent-800 border-yellow-100',
     lime: 'bg-lime-50 text-lime-700 border-lime-100',
-    emerald: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+    emerald: 'bg-primary-50 text-primary-700 border-primary-100',
   };
 
   return (

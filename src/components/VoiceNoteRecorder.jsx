@@ -336,9 +336,9 @@ const VoiceNoteRecorder = ({
   if (status === 'saved') {
     return (
       <div className="space-y-2">
-        <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-100">
-          <Check className="w-5 h-5 text-green-500" />
-          <span className="text-sm text-green-600 font-medium">Voice note saved</span>
+        <div className="flex items-center gap-3 p-3 bg-primary-50 rounded-lg border border-green-100">
+          <Check className="w-5 h-5 text-primary-500" />
+          <span className="text-sm text-primary-600 font-medium">Voice note saved</span>
           
           {/* Re-record button */}
           <button
@@ -370,10 +370,10 @@ const VoiceNoteRecorder = ({
   if (status === 'offline-pending') {
     return (
       <div className="space-y-2">
-        <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-lg border border-amber-100">
+        <div className="flex items-center gap-3 p-3 bg-accent-50 rounded-lg border border-amber-100">
           <CloudUpload className="w-5 h-5 text-amber-500" />
           <div className="flex-1">
-            <span className="text-sm text-amber-700 font-medium">Saved offline</span>
+            <span className="text-sm text-accent-800 font-medium">Saved offline</span>
             <p className="text-xs text-amber-600">Will upload when connected</p>
           </div>
           
@@ -382,7 +382,7 @@ const VoiceNoteRecorder = ({
             type="button"
             onClick={handleReRecord}
             disabled={disabled}
-            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-neutral-600 hover:text-amber-700 hover:bg-white rounded transition-colors disabled:opacity-50"
+            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-neutral-600 hover:text-accent-800 hover:bg-white rounded transition-colors disabled:opacity-50"
           >
             <RotateCcw className="w-3 h-3" />
             Re-record

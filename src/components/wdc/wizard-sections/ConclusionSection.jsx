@@ -176,9 +176,9 @@ const ConclusionSection = ({ formData, onChange, onVoiceNote, voiceNotes = {}, e
       />
 
       {/* Attendance Summary */}
-      <div className="bg-green-50 p-5 rounded-xl border border-green-200">
-        <h4 className="text-sm font-semibold text-green-800 mb-3">Attendance Summary</h4>
-        <p className="text-xs text-green-600 mb-4">
+      <div className="bg-primary-50 p-5 rounded-xl border border-primary-200">
+        <h4 className="text-sm font-semibold text-primary-800 mb-3">Attendance Summary</h4>
+        <p className="text-xs text-primary-600 mb-4">
           Enter male and female attendance. Total is automatically calculated.
         </p>
         <div className="grid grid-cols-3 gap-3">
@@ -188,7 +188,7 @@ const ConclusionSection = ({ formData, onChange, onVoiceNote, voiceNotes = {}, e
             <label className="block text-xs sm:text-sm font-medium text-gray-700">
               Total <span className="text-red-500">*</span>
             </label>
-            <div className="w-full rounded-xl border border-green-300 bg-green-100 px-4 py-3 text-sm font-semibold text-green-800">
+            <div className="w-full rounded-xl border border-green-300 bg-primary-100 px-4 py-3 text-sm font-semibold text-primary-800">
               {computedTotal}
             </div>
           </div>

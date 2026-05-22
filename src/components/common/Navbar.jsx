@@ -84,7 +84,7 @@ const Navbar = ({ onMenuToggle }) => {
 
                   <div className="absolute right-0 mt-2 w-64 glass-modal rounded-2xl z-20 animate-slide-down overflow-hidden">
                     {/* User Info Header */}
-                    <div className="px-4 py-4 bg-gradient-to-br from-primary-50 to-emerald-50 border-b border-white/50">
+                    <div className="px-4 py-4 bg-gradient-to-br from-primary-50 to-primary-50 border-b border-white/50">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center shadow-md">
                           <span className="text-white font-bold">

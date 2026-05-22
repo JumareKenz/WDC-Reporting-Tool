@@ -277,7 +277,7 @@ export const DynamicTable = ({
       <button
         type="button"
         onClick={onAddRow}
-        className="mt-3 flex items-center gap-1 text-sm text-green-600 hover:text-green-700 font-medium"
+        className="mt-3 flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700 font-medium"
       >
         <Plus className="w-4 h-4" />
         Add Row

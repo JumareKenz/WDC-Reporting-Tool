@@ -369,9 +369,9 @@ const VoiceRecorder = ({
 
     // Recording exists — show visible player
     return (
-      <div className="flex items-center gap-2 mt-1 p-2 bg-green-50 rounded-lg border border-green-200">
-        <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
-        <span className="text-xs text-green-700 font-medium">
+      <div className="flex items-center gap-2 mt-1 p-2 bg-primary-50 rounded-lg border border-primary-200">
+        <Check className="w-4 h-4 text-primary-500 flex-shrink-0" />
+        <span className="text-xs text-primary-700 font-medium">
           {isRestored ? 'Restored' : 'Recorded'}
         </span>
         {audioUrl && (
@@ -452,14 +452,14 @@ const VoiceRecorder = ({
           )}
         </div>
       ) : (
-        <div className="p-3 bg-green-50 rounded-xl border border-green-200 space-y-2">
+        <div className="p-3 bg-primary-50 rounded-xl border border-primary-200 space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Check className="w-4 h-4 text-green-500" />
-              <span className="text-sm text-green-700 font-medium">
+              <Check className="w-4 h-4 text-primary-500" />
+              <span className="text-sm text-primary-700 font-medium">
                 {isRestored ? 'Voice note restored from draft' : 'Voice note recorded'}
               </span>
-              <span className="text-xs text-green-600">({formatTime(recordingTime)})</span>
+              <span className="text-xs text-primary-600">({formatTime(recordingTime)})</span>
             </div>
             <div className="flex items-center gap-1">
               <button

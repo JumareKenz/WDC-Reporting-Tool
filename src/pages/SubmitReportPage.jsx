@@ -1039,10 +1039,10 @@ const SubmitReportPage = () => {
   // Success screen
   if (submitSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-primary-50 flex items-center justify-center p-4">
         <div className="text-center max-w-md">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-200">
-            <CheckCircle className="w-10 h-10 text-green-600" />
+          <div className="w-20 h-20 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-200">
+            <CheckCircle className="w-10 h-10 text-primary-600" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Report Submitted!</h2>
           <p className="text-gray-600 mb-1">Your WDC monthly report has been recorded successfully.</p>
@@ -1077,14 +1077,14 @@ const SubmitReportPage = () => {
             <div className="flex-1 min-w-0">
               <h1 className="text-base sm:text-xl font-bold text-neutral-900 flex items-center gap-2 truncate">
                 Submit Monthly Report
-                <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold whitespace-nowrap">
+                <span className="text-[10px] bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full font-semibold whitespace-nowrap">
                   v3.0
                 </span>
               </h1>
               <p className="text-xs sm:text-sm text-neutral-500 truncate">
                 {userWard?.name || 'Your Ward'} &bull; {userLGA?.name || 'Your LGA'}
                 {reportMonth && phase === 'form' && (
-                  <> &bull; <span className="font-semibold text-green-700">{formatMonthDisplay(reportMonth)}</span></>
+                  <> &bull; <span className="font-semibold text-primary-700">{formatMonthDisplay(reportMonth)}</span></>
                 )}
               </p>
             </div>
@@ -1099,8 +1099,8 @@ const SubmitReportPage = () => {
           <Card>
             <div className="py-8 px-4 sm:px-8">
               <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Calendar className="w-8 h-8 text-green-600" />
+                <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Calendar className="w-8 h-8 text-primary-600" />
                 </div>
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
                   Select Report Month
@@ -1145,7 +1145,7 @@ const SubmitReportPage = () => {
                   type="button"
                   onClick={handleMonthConfirm}
                   disabled={checkingMonth || !selectedMonth}
-                  className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-green-600/25"
+                  className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-green-600/25"
                 >
                   {checkingMonth ? (
                     <>
@@ -1186,7 +1186,7 @@ const SubmitReportPage = () => {
                 {!isUserReady ? (
                   <Card className="py-16">
                     <div className="text-center">
-                      <div className="w-10 h-10 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mx-auto mb-4" />
+                      <div className="w-10 h-10 border-4 border-primary-200 border-t-green-600 rounded-full animate-spin mx-auto mb-4" />
                       <p className="text-neutral-600 text-sm font-medium">Loading your profile...</p>
                       <p className="text-neutral-400 text-xs mt-2">Please wait while we verify your account</p>
                     </div>
@@ -1195,7 +1195,7 @@ const SubmitReportPage = () => {
                   /* Error State with Retry */
                   <Card className="py-12">
                     <div className="text-center max-w-md mx-auto px-4">
-                      <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <div className="w-16 h-16 bg-accent-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         {draftLoadError.isOffline ? (
                           <WifiOff className="w-8 h-8 text-amber-600" />
                         ) : (
@@ -1235,19 +1235,19 @@ const SubmitReportPage = () => {
                   /* Normal Loading */
                   <Card className="py-16">
                     <div className="text-center">
-                      <div className="w-10 h-10 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mx-auto mb-4" />
+                      <div className="w-10 h-10 border-4 border-primary-200 border-t-green-600 rounded-full animate-spin mx-auto mb-4" />
                       <p className="text-neutral-600 text-sm font-medium">Loading your saved draft...</p>
                       <p className="text-neutral-400 text-xs mt-2">This may take a few moments</p>
                       
                       {/* Timeout warning - show after some time */}
                       {draftLoadRetryCount > 0 && (
-                        <div className="mt-6 p-3 bg-amber-50 border border-amber-200 rounded-lg max-w-sm mx-auto">
-                          <p className="text-xs text-amber-700">
+                        <div className="mt-6 p-3 bg-accent-50 border border-amber-200 rounded-lg max-w-sm mx-auto">
+                          <p className="text-xs text-accent-800">
                             Taking longer than expected...
                           </p>
                           <button
                             onClick={handleSkipDraftLoad}
-                            className="text-xs text-amber-800 underline mt-1 hover:text-amber-900"
+                            className="text-xs text-accent-900 underline mt-1 hover:text-amber-900"
                           >
                             Skip and start fresh
                           </button>

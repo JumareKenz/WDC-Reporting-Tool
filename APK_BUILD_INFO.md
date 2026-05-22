@@ -3,14 +3,15 @@
 ## Build Details
 - **App Name**: Kaduna WDC Reports
 - **Package ID**: ng.gov.kaduna.wdc.reporting
-- **Version**: 1.0.7-FINAL ✅ **LATEST & RECOMMENDED**
-- **Build Date**: May 21, 2026
+- **Version**: 1.0.8-THEMED ✅ **LATEST & RECOMMENDED**
+- **Build Date**: May 22, 2026
 - **Build Type**: Release (Unsigned)
-- **APK Size**: 47 MB
+- **APK Size**: ~48 MB (pending rebuild)
 
 ## APK Location
 ```
-C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.7-FINAL.apk  ← USE THIS ONE ✅
+C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.8-THEMED.apk  ← USE THIS ONE ✅ (pending rebuild)
+C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.7-FINAL.apk  (Voice assistant fully fixed)
 C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.6-DEBUG.apk  (Debug with logging)
 C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.5-FINAL.apk  (Section order attempt 1)
 C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.4-FINAL.apk  (Console login fixed)
@@ -19,6 +20,20 @@ C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.2-FINAL.apk  (Voice + table sections
 C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.1.apk  (Voice fix attempt)
 C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.0.apk  (Initial build)
 ```
+
+## What's New in v1.0.8-THEMED
+✅ **Professional Government Theme**: Complete rebrand to match official logo colors
+- **Primary Green**: Deep forest government green (#3d8a63, #2f6b4d) from logo icon background
+- **Golden Accent**: Warm caramel/golden tones (#d4a574, #c18a4f) from logo dot
+- **Applied Throughout**:
+  - Login page background gradient and card borders with golden accent highlights
+  - All buttons, badges, and status indicators use brand colors
+  - Dashboard charts (State, LGA, WDC) use official color palette
+  - Success/warning states: green for approved, golden for pending/flagged
+  - Navigation, user avatars, progress indicators: primary green with golden accents
+  - Professional glassmorphic cards with subtle brand color borders
+- **Maintained**: All functionality from v1.0.7 (voice assistant, form wizard, offline support)
+- **Result**: Government-appropriate, professional appearance across entire app
 
 ## What's New in v1.0.7-FINAL
 ✅ **Voice Assistant FULLY FIXED**: Questions now follow exact form wizard order

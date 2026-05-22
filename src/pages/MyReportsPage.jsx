@@ -62,8 +62,8 @@ const MyReportsPage = () => {
   const getStatusBadge = (status) => {
     const config = {
       [REPORT_STATUS.SUBMITTED]: { color: 'bg-blue-100 text-blue-800', icon: Clock },
-      [REPORT_STATUS.REVIEWED]: { color: 'bg-green-100 text-green-800', icon: CheckCircle },
-      [REPORT_STATUS.FLAGGED]: { color: 'bg-yellow-100 text-yellow-800', icon: Flag },
+      [REPORT_STATUS.REVIEWED]: { color: 'bg-primary-100 text-primary-800', icon: CheckCircle },
+      [REPORT_STATUS.FLAGGED]: { color: 'bg-accent-50 text-accent-900', icon: Flag },
       [REPORT_STATUS.DRAFT]: { color: 'bg-neutral-100 text-neutral-800', icon: FileText },
     };
     const { color, icon: Icon } = config[status] || config[REPORT_STATUS.DRAFT];
