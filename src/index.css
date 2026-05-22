@@ -4,30 +4,31 @@
 
 @layer base {
   :root {
-    /* Kaduna WDC Brand Colors (Government Green + Golden Accent) */
-    --color-primary-50: #f0f7f3;
-    --color-primary-100: #d9ebe1;
-    --color-primary-200: #b3d7c3;
-    --color-primary-300: #8cc3a5;
-    --color-primary-400: #66af87;
-    --color-primary-500: #3d8a63;
-    --color-primary-600: #2f6b4d;
-    --color-primary-700: #235339;
-    --color-primary-800: #1a3f2b;
-    --color-primary-900: #0f2419;
-    --color-primary-950: #081410;
+    /* Kaduna WDC Brand Colors — exact match to logo */
+    /* Primary: Dark forest green from logo background (#1f4031) */
+    --color-primary-50: #eef4f0;
+    --color-primary-100: #d4e3da;
+    --color-primary-200: #a9c7b5;
+    --color-primary-300: #7eab90;
+    --color-primary-400: #538f6b;
+    --color-primary-500: #2f6b4d;
+    --color-primary-600: #1f4031;
+    --color-primary-700: #173026;
+    --color-primary-800: #10241c;
+    --color-primary-900: #0a1812;
+    --color-primary-950: #050c09;
 
-    /* Golden/Caramel Accent */
-    --color-accent-50: #fdf8f3;
-    --color-accent-100: #f9edd9;
-    --color-accent-200: #f3dbb3;
-    --color-accent-300: #edc98d;
-    --color-accent-400: #e7b767;
-    --color-accent-500: #d4a574;
-    --color-accent-600: #c18a4f;
-    --color-accent-700: #9a6d3f;
-    --color-accent-800: #73522f;
-    --color-accent-900: #4d371f;
+    /* Accent: Orange-brown caramel from logo dot (#c68043) */
+    --color-accent-50: #fbf5ee;
+    --color-accent-100: #f5e7d3;
+    --color-accent-200: #ebcfa7;
+    --color-accent-300: #e0b77b;
+    --color-accent-400: #d39f57;
+    --color-accent-500: #c68043;
+    --color-accent-600: #a86833;
+    --color-accent-700: #854f25;
+    --color-accent-800: #623a1b;
+    --color-accent-900: #3f2511;
 
     /* Neutral Grays */
     --color-neutral-50: #fafafa;
@@ -42,8 +43,8 @@
     --color-neutral-900: #171717;
 
     /* Status Colors */
-    --color-success: #3d8a63;
-    --color-warning: #d4a574;
+    --color-success: #2f6b4d;
+    --color-warning: #c68043;
     --color-error: #dc2626;
     --color-info: #3b82f6;
 

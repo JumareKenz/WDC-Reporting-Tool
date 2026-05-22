@@ -36,6 +36,7 @@ import LoadingSpinner from './components/common/LoadingSpinner';
 import PWAInstallPrompt from './components/common/PWAInstallPrompt';
 import OfflineBanner from './components/common/OfflineBanner';
 import OfflineStatusBar from './components/common/OfflineStatusBar';
+import ErrorBoundary from './components/common/ErrorBoundary';
 
 // Create a query client
 const queryClient = new QueryClient({
@@ -94,7 +95,7 @@ const ProtectedRoute = ({ children, allowedRoles = null }) => {
     return <Navigate to={defaultRoutes[user.role] || '/login'} replace />;
   }
 
-  return <Layout>{children}</Layout>;
+  return <Layout><ErrorBoundary>{children}</ErrorBoundary></Layout>;
 };
 
 /**

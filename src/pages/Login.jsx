@@ -46,13 +46,13 @@ const fetchJSON = async (path) => {
   return body?.data ?? body;
 };
 
-// Cream/parchment surface with subtle golden accent — warm contrast against the deep government green.
+// Cream/parchment surface with subtle caramel accent — warm contrast against the deep government green.
 const CARD_STYLE = {
-  background: 'linear-gradient(180deg, #FFFBF0 0%, #FDF8F3 50%, #F9EDD9 100%)',
+  background: 'linear-gradient(180deg, #FFFBF0 0%, #FBF5EE 50%, #F5E7D3 100%)',
   borderRadius: '28px',
-  border: '1px solid rgba(212, 165, 116, 0.2)',
+  border: '1px solid rgba(198, 128, 67, 0.25)',
   boxShadow:
-    '0 30px 70px -20px rgba(8, 20, 16, 0.65), 0 12px 32px -10px rgba(26, 63, 43, 0.4), inset 0 1px 0 rgba(255,255,255,0.7), 0 0 0 1px rgba(212, 165, 116, 0.1)',
+    '0 30px 70px -20px rgba(5, 12, 9, 0.7), 0 12px 32px -10px rgba(16, 36, 28, 0.45), inset 0 1px 0 rgba(255,255,255,0.7), 0 0 0 1px rgba(198, 128, 67, 0.12)',
 };
 
 const Login = () => {
@@ -235,17 +235,17 @@ const Login = () => {
       className="min-h-screen relative overflow-hidden"
       style={{
         background:
-          'radial-gradient(120% 80% at 50% 0%, #2f6b4d 0%, #1a3f2b 45%, #081410 100%)',
+          'radial-gradient(120% 80% at 50% 0%, #2f6b4d 0%, #1f4031 45%, #050c09 100%)',
       }}
     >
-      {/* Ambient highlights — brand greens for depth */}
+      {/* Ambient highlights — brand greens + caramel for depth */}
       <div
         className="absolute -top-32 left-1/4 w-[28rem] h-[28rem] rounded-full pointer-events-none"
-        style={{ background: 'rgba(61, 138, 99, 0.22)', filter: 'blur(120px)' }}
+        style={{ background: 'rgba(47, 107, 77, 0.25)', filter: 'blur(120px)' }}
       />
       <div
         className="absolute -bottom-40 -right-20 w-[30rem] h-[30rem] rounded-full pointer-events-none"
-        style={{ background: 'rgba(212, 165, 116, 0.18)', filter: 'blur(140px)' }}
+        style={{ background: 'rgba(198, 128, 67, 0.18)', filter: 'blur(140px)' }}
       />
       <div
         className="absolute top-1/2 -left-32 w-80 h-80 rounded-full pointer-events-none"

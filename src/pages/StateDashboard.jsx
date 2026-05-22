@@ -73,7 +73,7 @@ import MonthlyReportModal from '../components/state/MonthlyReportModal';
 import AIChatInterface from '../components/state/AIChatInterface';
 import apiClient from '../api/client';
 
-const COLORS = ['#3d8a63', '#2f6b4d', '#d4a574', '#c18a4f', '#3b82f6', '#dc2626'];
+const COLORS = ['#2f6b4d', '#2f6b4d', '#c68043', '#c18a4f', '#3b82f6', '#dc2626'];
 
 // Animation variants
 const containerVariants = {
@@ -192,11 +192,18 @@ const StateDashboard = () => {
   // Mutations
   const generateMonthlyMutation = useGenerateAIReport();
 
-  // Extract data (API layer already unwraps { success, data } wrapper)
+  // Extract data (API layer already unwraps { success, data } wrapper).
+  // Handle both shapes: array directly, or { lgas: [] } / { trends: [] }.
   const overview = overviewData || {};
-  const lgaComparison = comparisonData?.lgas || [];
-  const trends = trendsData?.trends || [];
-  const serviceDelivery = serviceDeliveryData || {};
+  const lgaComparison = Array.isArray(comparisonData)
+    ? comparisonData
+    : (comparisonData?.lgas || []);
+  const trends = Array.isArray(trendsData)
+    ? trendsData
+    : (trendsData?.trends || []);
+  const serviceDelivery = (serviceDeliveryData && !Array.isArray(serviceDeliveryData))
+    ? serviceDeliveryData
+    : {};
 
   // Calculate overview stats - prefer overview data, fallback to calculating from LGA comparison
   const totalLGAs = overview.total_lgas || lgaComparison.length || 23; // 23 LGAs in Kaduna
@@ -226,8 +233,8 @@ const StateDashboard = () => {
 
   const statusDistribution = [
     { name: 'Submitted', value: totalSubmitted - totalReviewed - totalFlagged, color: '#3b82f6' },
-    { name: 'Reviewed', value: totalReviewed, color: '#3d8a63' },
-    { name: 'Flagged', value: totalFlagged, color: '#d4a574' },
+    { name: 'Reviewed', value: totalReviewed, color: '#2f6b4d' },
+    { name: 'Flagged', value: totalFlagged, color: '#c68043' },
     { name: 'Missing', value: totalMissing, color: '#dc2626' },
   ].filter(item => item.value > 0);
 
@@ -397,7 +404,7 @@ const StateDashboard = () => {
           <XAxis dataKey="month" tick={{ fontSize: 12 }} />
           <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} tickFormatter={(v) => `${v}%`} />
           <Tooltip formatter={(value) => [`${value}%`, 'Submission Rate']} />
-          <Bar dataKey="submission_rate" fill="#3d8a63" radius={[4, 4, 0, 0]} name="Submission Rate" />
+          <Bar dataKey="submission_rate" fill="#2f6b4d" radius={[4, 4, 0, 0]} name="Submission Rate" />
         </BarChart>
       );
     }
@@ -409,7 +416,7 @@ const StateDashboard = () => {
           <XAxis dataKey="month" tick={{ fontSize: 12 }} />
           <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} tickFormatter={(v) => `${v}%`} />
           <Tooltip formatter={(value) => [`${value}%`, 'Submission Rate']} />
-          <Line type="monotone" dataKey="submission_rate" stroke="#3d8a63" strokeWidth={3} dot={{ fill: '#16a34a', r: 4 }} />
+          <Line type="monotone" dataKey="submission_rate" stroke="#2f6b4d" strokeWidth={3} dot={{ fill: '#16a34a', r: 4 }} />
         </LineChart>
       );
     }
@@ -427,7 +434,7 @@ const StateDashboard = () => {
         <XAxis dataKey="month" tick={{ fontSize: 12 }} />
         <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} tickFormatter={(v) => `${v}%`} />
         <Tooltip formatter={(value) => [`${value}%`, 'Submission Rate']} />
-        <Area type="monotone" dataKey="submission_rate" stroke="#3d8a63" strokeWidth={3} fill="url(#colorRate)" />
+        <Area type="monotone" dataKey="submission_rate" stroke="#2f6b4d" strokeWidth={3} fill="url(#colorRate)" />
       </AreaChart>
     );
   };
@@ -441,7 +448,7 @@ const StateDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-purple-50/20 to-blue-50/30">
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-primary-50/30 to-accent-50/20">
       {/* Header */}
       <div className="bg-white border-b border-neutral-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -517,7 +524,7 @@ const StateDashboard = () => {
                 <Button
                   icon={Bot}
                   onClick={() => setShowAIChat(true)}
-                  className="shadow-md bg-gradient-to-r from-purple-600 to-blue-600"
+                  className="shadow-md bg-gradient-to-r from-primary-600 to-accent-600"
                 >
                   AI Assistant
                 </Button>
@@ -1077,7 +1084,7 @@ const StateDashboard = () => {
                       <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
                       <YAxis dataKey="name" type="category" width={90} tick={{ fontSize: 11 }} />
                       <Tooltip formatter={(value, name) => [name === 'rate' ? `${value}%` : value, name === 'rate' ? 'Submission Rate' : name]} />
-                      <Bar dataKey="rate" fill="#3d8a63" radius={[0, 4, 4, 0]} name="Submission Rate" />
+                      <Bar dataKey="rate" fill="#2f6b4d" radius={[0, 4, 4, 0]} name="Submission Rate" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

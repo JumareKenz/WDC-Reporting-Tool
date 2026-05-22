@@ -85,7 +85,7 @@ const Layout = ({ children }) => {
         <button
           onClick={() => setShowAIChat(true)}
           aria-label="Chat with AI"
-          className="fixed bottom-24 right-4 z-40 flex items-center gap-2 px-4 py-3 rounded-full bg-gradient-to-r from-purple-600 to-primary-600 text-white shadow-lg shadow-primary-500/30 hover:shadow-xl hover:scale-105 transition-all"
+          className="fixed bottom-24 right-4 z-40 flex items-center gap-2 px-4 py-3 rounded-full bg-gradient-to-r from-primary-600 to-accent-600 text-white shadow-lg shadow-primary-500/30 hover:shadow-xl hover:scale-105 transition-all"
         >
           <Bot className="w-5 h-5" />
           <Sparkles className="w-4 h-4 animate-pulse" />

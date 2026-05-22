@@ -53,7 +53,7 @@ import { formatDate, getStatusColor, formatMonth, getCurrentMonth, formatPercent
 import { getTargetReportMonth, getSubmissionInfo } from '../utils/dateUtils';
 import { REPORT_STATUS, STATUS_LABELS } from '../utils/constants';
 
-const COLORS = ['#3d8a63', '#d4a574', '#3b82f6', '#dc2626'];
+const COLORS = ['#2f6b4d', '#c68043', '#3b82f6', '#dc2626'];
 
 const LGADashboard = () => {
   const { user } = useAuth();
@@ -123,9 +123,9 @@ const LGADashboard = () => {
 
   // Chart data
   const statusDistribution = [
-    { name: 'Approved', value: approvedCount, color: '#3d8a63' },
+    { name: 'Approved', value: approvedCount, color: '#2f6b4d' },
     { name: 'In Review', value: inReviewCount, color: '#3b82f6' },
-    { name: 'Returned', value: returnedCount, color: '#d4a574' },
+    { name: 'Returned', value: returnedCount, color: '#c68043' },
     { name: 'Missing', value: missingCount, color: '#dc2626' },
   ].filter(item => item.value > 0);
 
@@ -436,7 +436,7 @@ const LGADashboard = () => {
                     <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} />
                     <Tooltip />
-                    <Bar dataKey="meetings" fill="#3d8a63" name="Meetings" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="meetings" fill="#2f6b4d" name="Meetings" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="attendees" fill="#3b82f6" name="Attendees" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>

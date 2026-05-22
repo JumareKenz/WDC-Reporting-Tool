@@ -42,7 +42,7 @@ async function initApp() {
       // autoHide: false — we control when it disappears (see wdc:auth-ready below)
       await SplashScreen.show({ autoHide: false });
       await StatusBar.setStyle({ style: Style.Dark });
-      await StatusBar.setBackgroundColor({ color: '#1F4438' });
+      await StatusBar.setBackgroundColor({ color: '#1F4031' });
     } catch (err) {
       // Non-fatal: plugins may not register on the very first cold start
       console.warn('[init] Native plugin init error:', err.message);

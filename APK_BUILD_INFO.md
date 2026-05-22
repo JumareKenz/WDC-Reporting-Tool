@@ -3,14 +3,15 @@
 ## Build Details
 - **App Name**: Kaduna WDC Reports
 - **Package ID**: ng.gov.kaduna.wdc.reporting
-- **Version**: 1.0.8-THEMED ✅ **LATEST & RECOMMENDED**
+- **Version**: 1.0.9-FIXED ✅ **LATEST & RECOMMENDED**
 - **Build Date**: May 22, 2026
 - **Build Type**: Release (Unsigned)
 - **APK Size**: 47 MB
 
 ## APK Location
 ```
-C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.8-THEMED.apk  ← USE THIS ONE ✅
+C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.9-FIXED.apk  ← USE THIS ONE ✅
+C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.8-THEMED.apk  (Theme attempt 1)
 C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.7-FINAL.apk  (Voice assistant fully fixed)
 C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.6-DEBUG.apk  (Debug with logging)
 C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.5-FINAL.apk  (Section order attempt 1)
@@ -20,6 +21,24 @@ C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.2-FINAL.apk  (Voice + table sections
 C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.1.apk  (Voice fix attempt)
 C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.0.apk  (Initial build)
 ```
+
+## What's New in v1.0.9-FIXED
+✅ **EXACT Logo Colors**: Now matches the actual logo icon precisely
+- **Primary Green**: #1f4031 (deep forest green from logo background, not bright green)
+- **Accent Caramel**: #c68043 (orange-brown caramel from logo dot, not pale gold)
+- Darker, more government-appropriate palette
+- Replaced all #3d8a63 → #2f6b4d, #d4a574 → #c68043
+
+✅ **State Dashboard Blank Screen FIXED**:
+- Fixed data structure handling: `getLGAComparison` returns array directly, not `{lgas: []}`
+- Now safely handles both array and object responses
+- Added ErrorBoundary component wrapping all routes to prevent blank screens
+- Errors now show a friendly retry UI instead of white screen
+
+✅ **Android Native Theme Updated**:
+- colors.xml: colorPrimary, splashBackground, etc. updated to #1F4031
+- StatusBar background color matches new brand green
+- Status bar style remains dark for native look
 
 ## What's New in v1.0.8-THEMED
 ✅ **Professional Government Theme**: Complete rebrand to match official logo colors
