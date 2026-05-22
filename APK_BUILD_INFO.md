@@ -6,11 +6,11 @@
 - **Version**: 1.0.8-THEMED ✅ **LATEST & RECOMMENDED**
 - **Build Date**: May 22, 2026
 - **Build Type**: Release (Unsigned)
-- **APK Size**: ~48 MB (pending rebuild)
+- **APK Size**: 47 MB
 
 ## APK Location
 ```
-C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.8-THEMED.apk  ← USE THIS ONE ✅ (pending rebuild)
+C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.8-THEMED.apk  ← USE THIS ONE ✅
 C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.7-FINAL.apk  (Voice assistant fully fixed)
 C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.6-DEBUG.apk  (Debug with logging)
 C:\Users\INEWTON\kadwdc\kaduna-wdc-app-v1.0.5-FINAL.apk  (Section order attempt 1)

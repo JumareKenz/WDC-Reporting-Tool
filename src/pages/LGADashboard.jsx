@@ -123,10 +123,10 @@ const LGADashboard = () => {
 
   // Chart data
   const statusDistribution = [
-    { name: 'Approved', value: approvedCount, color: '#16a34a' },
+    { name: 'Approved', value: approvedCount, color: '#3d8a63' },
     { name: 'In Review', value: inReviewCount, color: '#3b82f6' },
-    { name: 'Returned', value: returnedCount, color: '#f59e0b' },
-    { name: 'Missing', value: missingCount, color: '#ef4444' },
+    { name: 'Returned', value: returnedCount, color: '#d4a574' },
+    { name: 'Missing', value: missingCount, color: '#dc2626' },
   ].filter(item => item.value > 0);
 
   const wardPerformance = wards.slice(0, 10).map(ward => ({

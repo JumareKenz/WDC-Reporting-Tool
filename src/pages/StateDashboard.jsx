@@ -226,9 +226,9 @@ const StateDashboard = () => {
 
   const statusDistribution = [
     { name: 'Submitted', value: totalSubmitted - totalReviewed - totalFlagged, color: '#3b82f6' },
-    { name: 'Reviewed', value: totalReviewed, color: '#16a34a' },
-    { name: 'Flagged', value: totalFlagged, color: '#f59e0b' },
-    { name: 'Missing', value: totalMissing, color: '#ef4444' },
+    { name: 'Reviewed', value: totalReviewed, color: '#3d8a63' },
+    { name: 'Flagged', value: totalFlagged, color: '#d4a574' },
+    { name: 'Missing', value: totalMissing, color: '#dc2626' },
   ].filter(item => item.value > 0);
 
   // Performance categories
