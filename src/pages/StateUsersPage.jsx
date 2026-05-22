@@ -549,8 +549,8 @@ export default function StateUsersPage() {
   // ── filtered LGAs ──
   const filteredLGAs = lgas.filter(
     (lga) =>
-      lga.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lga.code.toLowerCase().includes(searchQuery.toLowerCase())
+      String(lga?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      String(lga?.code || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // ---------------------------------------------------------------------------

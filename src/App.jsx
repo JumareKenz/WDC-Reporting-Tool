@@ -436,21 +436,23 @@ const VoiceNoteSync = () => {
  */
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <ToastProvider>
-          <AuthProvider>
-            <SessionGuard />
-            <VoiceNoteSync />
-            <AppRoutes />
-            <ToastContainer />
-          </AuthProvider>
-        </ToastProvider>
-        <PWAInstallPrompt />
-        <OfflineBanner />
-        <OfflineStatusBar />
-      </BrowserRouter>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <ToastProvider>
+            <AuthProvider>
+              <SessionGuard />
+              <VoiceNoteSync />
+              <AppRoutes />
+              <ToastContainer />
+            </AuthProvider>
+          </ToastProvider>
+          <PWAInstallPrompt />
+          <OfflineBanner />
+          <OfflineStatusBar />
+        </BrowserRouter>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

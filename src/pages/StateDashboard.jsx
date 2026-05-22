@@ -151,6 +151,14 @@ const InfoTooltip = ({ children, text }) => {
 };
 
 const StateDashboard = () => {
+  // Mount diagnostic — appears in browser console so we can confirm the
+  // component itself is loading even when the screen renders blank.
+  if (typeof window !== 'undefined' && !window.__stateDashboardMounted) {
+    window.__stateDashboardMounted = true;
+    // eslint-disable-next-line no-console
+    console.log('[StateDashboard] mounting');
+  }
+
   const navigate = useNavigate();
   const currentMonth = getCurrentMonth();
 
@@ -214,9 +222,10 @@ const StateDashboard = () => {
   const totalFlagged = (overview.total_flagged !== undefined) ? overview.total_flagged : lgaComparison.reduce((sum, lga) => sum + (lga.flagged_count || 0), 0);
   const submissionRate = overview.submission_rate !== undefined ? overview.submission_rate : (totalWards > 0 ? Math.round((totalSubmitted / totalWards) * 100) : 0);
 
-  // Sort and filter LGAs
+  // Sort and filter LGAs. Defensive: lga.name may be undefined (analytics layer
+  // doesn't always populate it), so guard with String() before .includes().
   const sortedLGAs = useMemo(() => [...lgaComparison]
-    .filter(lga => lga.name?.toLowerCase().includes(searchTerm.toLowerCase()))
+    .filter(lga => String(lga?.name || '').toLowerCase().includes(searchTerm.toLowerCase()))
     .sort((a, b) => {
       const aVal = a[sortBy] || 0;
       const bVal = b[sortBy] || 0;
