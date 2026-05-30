@@ -1,6 +1,5 @@
 import React, { memo } from 'react';
 import { AlertTriangle, Plus, Trash2 } from 'lucide-react';
-import VoiceRecorder from '../VoiceRecorder';
 
 // ── Shared input class names ──────────────────────────────────────────────
 // Explicit `bg-white text-gray-900` is required so the browser does not
@@ -40,14 +39,9 @@ const TextInput = memo(({
 
   return (
     <div className="space-y-1">
-      <div className={onVoiceNote ? 'flex items-center justify-between gap-2' : ''}>
-        <label htmlFor={`wiz-${name}`} className={labelClass}>
-          {label} {required && <span className="text-red-500">*</span>}
-        </label>
-        {onVoiceNote && (
-          <VoiceRecorder fieldName={name} onRecordingComplete={onVoiceNote} existingRecording={existingVoiceNote} compact draftContext={draftContext} />
-        )}
-      </div>
+      <label htmlFor={`wiz-${name}`} className={labelClass}>
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
       {isTextarea ? (
         <textarea
           id={`wiz-${name}`}

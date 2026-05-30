@@ -26,13 +26,11 @@ import {
 import Button from '../common/Button';
 import Alert from '../common/Alert';
 import Tooltip from '../common/Tooltip';
-import VoiceRecorder from './VoiceRecorder';
 import { useToast } from '../../hooks/useToast';
 import DraftStatusBar from './DraftStatusBar';
 import apiClient from '../../api/client';
 import { getTargetReportMonth, formatMonthDisplay, getSubmissionPeriodDescription } from '../../utils/dateUtils';
 import { saveDraft, getExistingDraft, uploadAttendancePhoto, fetchVoiceNotes } from '../../api/reports';
-import VoiceNoteRecorder from '../VoiceNoteRecorder';
 import { useAuth } from '../../hooks/useAuth';
 import { useLocalDraft } from '../../hooks/useLocalDraft';
 import { useOfflineQueue } from '../../hooks/useOfflineQueue';
@@ -127,14 +125,9 @@ const TextInput = ({
 
   return (
     <div className="space-y-1">
-      <div className={onVoiceNote ? 'flex items-center justify-between gap-2' : ''}>
-        <label htmlFor={inputId} className="block text-xs sm:text-sm font-medium text-neutral-700">
-          {label} {required && <span className="text-red-500">*</span>}
-        </label>
-        {onVoiceNote && (
-          <VoiceRecorder fieldName={name} onRecordingComplete={onVoiceNote} compact />
-        )}
-      </div>
+      <label htmlFor={inputId} className="block text-xs sm:text-sm font-medium text-neutral-700">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
       {isTextarea ? (
         <textarea
           id={inputId}
@@ -360,13 +353,6 @@ const DeathCauses = ({ label, field, formData, setFormData, reportIdForVoiceNote
           placeholder="Enter cause..."
         />
       ))}
-    </div>
-    <div className="mt-3">
-      <VoiceNoteRecorder
-        reportId={reportIdForVoiceNotes}
-        fieldName={field}
-        existingNote={existingVoiceNotes[field]}
-      />
     </div>
   </div>
 );
@@ -1538,13 +1524,6 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
           onAddRow={addActionTrackerRow}
           onRemoveRow={removeActionTrackerRow}
         />
-        <div className="mt-3">
-          <VoiceNoteRecorder
-            reportId={reportIdForVoiceNotes}
-            fieldName="action_tracker"
-            existingNote={existingVoiceNotes.action_tracker}
-          />
-        </div>
       </FormSection>
 
       {/* Section 3: Report on Health System */}
@@ -1784,13 +1763,6 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
                       />
                     </div>
                   </div>
-                  <div className="mt-2">
-                    <VoiceNoteRecorder 
-                      reportId={reportIdForVoiceNotes}
-                      fieldName={`community_feedback_${idx}`}
-                      existingNote={existingVoiceNotes[`community_feedback_${idx}`]}
-                    />
-                  </div>
                 </div>
               ))}
             </div>}
@@ -1812,13 +1784,6 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
           onAddRow={addVDCRow}
           onRemoveRow={removeVDCRow}
         />
-        <div className="mt-3">
-          <VoiceNoteRecorder
-            reportId={reportIdForVoiceNotes}
-            fieldName="vdc_reports"
-            existingNote={existingVoiceNotes.vdc_reports}
-          />
-        </div>
       </FormSection>
 
       {/* Section 6: Community Mobilization Activities */}
@@ -1832,14 +1797,6 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
               onChange={handleChange}
               placeholder="Enter theme..."
             />
-            <div className="mt-2">
-              <VoiceNoteRecorder 
-                reportId={reportIdForVoiceNotes}
-                fieldName="awareness_theme"
-                existingNote={existingVoiceNotes.awareness_theme}
-              />
-            </div>
-          </div>
           <div>
             <TextInput
               label="Traditional Leaders Support Needed"
@@ -1850,14 +1807,6 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
               placeholder="Describe support needed..."
               rows={2}
             />
-            <div className="mt-2">
-              <VoiceNoteRecorder 
-                reportId={reportIdForVoiceNotes}
-                fieldName="traditional_leaders_support"
-                existingNote={existingVoiceNotes.traditional_leaders_support}
-              />
-            </div>
-          </div>
           <div>
             <TextInput
               label="Religious Leaders Support Needed"
@@ -1868,13 +1817,6 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
               placeholder="Describe support needed..."
               rows={2}
             />
-            <div className="mt-2">
-              <VoiceNoteRecorder 
-                reportId={reportIdForVoiceNotes}
-                fieldName="religious_leaders_support"
-                existingNote={existingVoiceNotes.religious_leaders_support}
-              />
-            </div>
           </div>
         </div>
       </FormSection>
@@ -1894,13 +1836,6 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
           onAddRow={addActionPlanRow}
           onRemoveRow={removeActionPlanRow}
         />
-        <div className="mt-3">
-          <VoiceNoteRecorder
-            reportId={reportIdForVoiceNotes}
-            fieldName="action_plan"
-            existingNote={existingVoiceNotes.action_plan}
-          />
-        </div>
       </FormSection>
 
       {/* Section 8: Support Required & Conclusion */}
@@ -1916,14 +1851,6 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
               placeholder="List support required..."
               rows={3}
             />
-            <div className="mt-2">
-              <VoiceNoteRecorder 
-                reportId={reportIdForVoiceNotes}
-                fieldName="support_required"
-                existingNote={existingVoiceNotes.support_required}
-              />
-            </div>
-          </div>
           <div>
             <TextInput
               label="Any Other Business (AOB)"
@@ -1934,13 +1861,6 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
               placeholder="Other business..."
               rows={3}
             />
-            <div className="mt-2">
-              <VoiceNoteRecorder 
-                reportId={reportIdForVoiceNotes}
-                fieldName="aob"
-                existingNote={existingVoiceNotes.aob}
-              />
-            </div>
           </div>
 
           {/* ─── Attendance Summary ─────────────────────────────── */}
