@@ -3,7 +3,9 @@ import apiClient from '../api/client';
 import { secretaryLogin, fetchLgas, fetchWards } from '../api/auth';
 import { API_ENDPOINTS, STORAGE_KEYS, USER_ROLES } from '../utils/constants';
 
-// Map backend role strings (any casing/spelling) to canonical USER_ROLES values
+// Map backend role strings (any casing/spelling) to canonical USER_ROLES values.
+// Backend uses "director" for state-level admins — must map to STATE_OFFICIAL so
+// the router knows to redirect them to /state instead of falling through to "/".
 const ROLE_ALIASES = {
   secretary: USER_ROLES.WDC_SECRETARY,
   wdc_secretary: USER_ROLES.WDC_SECRETARY,
@@ -14,6 +16,11 @@ const ROLE_ALIASES = {
   official: USER_ROLES.STATE_OFFICIAL,
   state_official: USER_ROLES.STATE_OFFICIAL,
   stateofficial: USER_ROLES.STATE_OFFICIAL,
+  director: USER_ROLES.STATE_OFFICIAL,
+  state_director: USER_ROLES.STATE_OFFICIAL,
+  statedirector: USER_ROLES.STATE_OFFICIAL,
+  admin: USER_ROLES.STATE_OFFICIAL,
+  system: USER_ROLES.STATE_OFFICIAL,
 };
 
 const normalizeRole = (role) => {
@@ -44,7 +51,13 @@ export const AuthProvider = ({ children }) => {
           // Parse stored user data
           const parsedUser = JSON.parse(userData);
           if (parsedUser?.role) {
-            parsedUser.role = normalizeRole(parsedUser.role);
+            const normalized = normalizeRole(parsedUser.role);
+            // Persist the normalized form so subsequent reads (and other tabs)
+            // start from a clean value instead of a stale backend string.
+            if (normalized !== parsedUser.role) {
+              parsedUser.role = normalized;
+              localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(parsedUser));
+            }
           }
           setUser(parsedUser);
         } catch (err) {
@@ -228,7 +241,11 @@ export const AuthProvider = ({ children }) => {
   const getDefaultRoute = () => {
     if (!user) return '/login';
 
-    switch (user.role) {
+    // Re-normalize at lookup time so a stale localStorage role (saved by an
+    // older build that didn't recognise "director") still routes correctly.
+    const role = normalizeRole(user.role);
+
+    switch (role) {
       case USER_ROLES.WDC_SECRETARY:
         return '/wdc';
       case USER_ROLES.LGA_COORDINATOR:
@@ -236,7 +253,11 @@ export const AuthProvider = ({ children }) => {
       case USER_ROLES.STATE_OFFICIAL:
         return '/state';
       default:
-        return '/';
+        // Unknown role — surface it in console so it's debuggable instead of
+        // silently redirecting to "/" (which then bounces back, looking blank).
+        // eslint-disable-next-line no-console
+        console.warn('[useAuth] Unknown role, defaulting to /state:', user.role);
+        return '/state';
     }
   };
 

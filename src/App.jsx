@@ -74,7 +74,7 @@ const queryClient = new QueryClient({
  * Protected Route Component
  */
 const ProtectedRoute = ({ children, allowedRoles = null }) => {
-  const { user, loading, isAuthenticated } = useAuth();
+  const { user, loading, isAuthenticated, getDefaultRoute } = useAuth();
 
   if (loading) {
     return <LoadingSpinner fullScreen text="Loading..." />;
@@ -84,15 +84,11 @@ const ProtectedRoute = ({ children, allowedRoles = null }) => {
     return <Navigate to="/login" replace />;
   }
 
-  // Check role-based access
+  // Check role-based access — route via getDefaultRoute so unknown/legacy role
+  // strings (e.g. "director" from backend) get resolved consistently instead of
+  // bouncing to "/".
   if (allowedRoles && !allowedRoles.includes(user?.role)) {
-    // Redirect to user's default dashboard
-    const defaultRoutes = {
-      [USER_ROLES.WDC_SECRETARY]: '/wdc',
-      [USER_ROLES.LGA_COORDINATOR]: '/lga',
-      [USER_ROLES.STATE_OFFICIAL]: '/state',
-    };
-    return <Navigate to={defaultRoutes[user.role] || '/login'} replace />;
+    return <Navigate to={getDefaultRoute()} replace />;
   }
 
   return <Layout><ErrorBoundary>{children}</ErrorBoundary></Layout>;

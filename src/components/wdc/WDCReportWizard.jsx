@@ -43,10 +43,10 @@ import ConclusionSection from './wizard-sections/ConclusionSection';
  */
 const NUMERIC_FIELDS = {
   health_data: [
-    'health_general_attendance_total', 'health_routine_immunization_total',
+    'health_general_attendance_total',
     'health_penta1', 'health_bcg', 'health_penta3', 'health_measles',
-    'health_opd_under5_total', 'health_malaria_under5', 'health_diarrhea_under5',
-    'health_anc_total', 'health_anc_first_visit', 'health_anc_fourth_visit', 'health_anc_eighth_visit',
+    'health_malaria_under5', 'health_diarrhea_under5',
+    'health_anc_first_visit', 'health_anc_fourth_visit',
     'health_deliveries', 'health_postnatal',
     'health_fp_counselling', 'health_fp_new_acceptors',
     'health_hepb_tested', 'health_hepb_positive',

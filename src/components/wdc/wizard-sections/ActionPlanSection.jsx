@@ -44,7 +44,7 @@ const ActionPlanSection = ({ formData, onChange, onVoiceNote, voiceNotes = {}, d
         columns={[
           { name: 'issue', label: 'Issues Identified', type: 'textarea', placeholder: 'Describe issue...' },
           { name: 'action', label: 'Actions Agreed', type: 'textarea', placeholder: 'Action to take...' },
-          { name: 'timeline', label: 'Timeline', type: 'text', placeholder: 'e.g., 2 weeks' },
+          { name: 'timeline', label: 'Timeline', type: 'date' },
           { name: 'responsible_person', label: 'Responsible Person', type: 'text', placeholder: 'Name...' },
         ]}
         rows={formData.action_plan}

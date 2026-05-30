@@ -32,7 +32,7 @@ const VoiceAssistantModal = ({ isOpen, onClose, formData, onFieldsCollected }) =
       }
 
       // Log some formData to see what's pre-filled
-      const sampleFields = ['meeting_type', 'report_date', 'health_general_attendance_total', 'health_anc_eighth_visit'];
+      const sampleFields = ['meeting_type', 'report_date', 'health_general_attendance_total', 'health_anc_fourth_visit'];
       const fieldValues = sampleFields.reduce((acc, field) => {
         acc[field] = formData?.[field];
         return acc;

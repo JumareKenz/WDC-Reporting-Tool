@@ -42,9 +42,9 @@ const ActionTrackerSection = ({ formData, onChange, errors, onVoiceNote, voiceNo
 
       <DynamicTable
         columns={[
-          { name: 'action_point', label: 'Agreed Action Point', type: 'textarea', placeholder: 'Enter action...' },
           { name: 'challenges', label: 'Challenges', type: 'textarea', placeholder: 'Any challenges...' },
-          { name: 'timeline', label: 'Timeline', type: 'text', placeholder: 'e.g., 2 weeks' },
+          { name: 'action_point', label: 'Agreed Action Point', type: 'textarea', placeholder: 'Enter action...' },
+          { name: 'timeline', label: 'Timeline', type: 'date' },
           { name: 'responsible_person', label: 'Responsible Person', type: 'text', placeholder: 'Name...' },
           { name: 'status', label: 'Status', type: 'select', options: ['Completed', 'On-going', 'Not Started'] },
         ]}

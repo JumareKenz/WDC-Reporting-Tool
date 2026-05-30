@@ -93,12 +93,6 @@ const voiceQuestions = [
     en: 'How many women came for their fourth ANC visit?',
     ha: 'Mata nawa suka zo ziyarar ANC ta hudu?',
   },
-  {
-    field: 'health_anc_eighth_visit',
-    type: 'number',
-    en: 'How many women came for their eighth ANC visit?',
-    ha: 'Mata nawa suka zo ziyarar ANC ta takwas?',
-  },
 
   // Labour & Deliveries
   {

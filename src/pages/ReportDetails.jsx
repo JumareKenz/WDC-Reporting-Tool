@@ -391,11 +391,10 @@ const ReportDetails = () => {
                   {/* ANC */}
                   <div>
                     <h4 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">ANC (Antenatal Care)</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                       <HealthStat label="ANC Total" value={report.health_anc_total} color="pink" />
                       <HealthStat label="1st Visit" value={report.health_anc_first_visit} color="rose" />
                       <HealthStat label="4th Visit" value={report.health_anc_fourth_visit} color="fuchsia" />
-                      <HealthStat label="8th Visit" value={report.health_anc_eighth_visit} color="purple" />
                     </div>
                   </div>
 

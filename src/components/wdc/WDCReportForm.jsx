@@ -174,16 +174,17 @@ const TextInput = ({
 };
 
 // Number input (numerical fields are filled manually â€” AI does not populate these)
-const NumberInput = ({ label, name, value, onChange, min = 0, ...props }) => (
+const NumberInput = ({ label, name, value, onChange, min = 0, readOnly, ...props }) => (
   <div className="space-y-1">
     <label className="block text-xs sm:text-sm font-medium text-neutral-700 whitespace-normal">{label}</label>
     <input
       type="number"
       name={name}
       value={value}
-      onChange={onChange}
+      onChange={readOnly ? undefined : onChange}
       min={min}
-      className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+      readOnly={readOnly}
+      className={`w-full px-3 py-2 text-sm border rounded-lg ${readOnly ? 'bg-neutral-50 border-neutral-200 text-neutral-500 cursor-default' : 'border-neutral-300 focus:ring-2 focus:ring-primary-500 focus:border-transparent'}`}
       {...props}
     />
   </div>
@@ -412,7 +413,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
     health_anc_total: '',
     health_anc_first_visit: '',
     health_anc_fourth_visit: '',
-    health_anc_eighth_visit: '',
+
     // Labour and Deliveries
     health_deliveries: '',
     health_postnatal: '',
@@ -718,6 +719,22 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
 
     loadDraft();
   }, [reportMonth, user?.id, userWard?.id, isOnline, loadDraftFromLocal]);
+
+  // Auto-calc derived totals
+  useEffect(() => {
+    const total = (parseInt(formData.health_malaria_under5) || 0) + (parseInt(formData.health_diarrhea_under5) || 0);
+    setFormData(prev => (parseInt(prev.health_opd_under5_total) || 0) === total ? prev : { ...prev, health_opd_under5_total: String(total) });
+  }, [formData.health_malaria_under5, formData.health_diarrhea_under5]);
+
+  useEffect(() => {
+    const total = (parseInt(formData.health_anc_first_visit) || 0) + (parseInt(formData.health_anc_fourth_visit) || 0);
+    setFormData(prev => (parseInt(prev.health_anc_total) || 0) === total ? prev : { ...prev, health_anc_total: String(total) });
+  }, [formData.health_anc_first_visit, formData.health_anc_fourth_visit]);
+
+  useEffect(() => {
+    const total = (parseInt(formData.attendance_male) || 0) + (parseInt(formData.attendance_female) || 0);
+    setFormData(prev => (parseInt(prev.attendance_total) || 0) === total ? prev : { ...prev, attendance_total: String(total) });
+  }, [formData.attendance_male, formData.attendance_female]);
 
   // Fetch existing voice notes when we have a report ID
   useEffect(() => {
@@ -1038,15 +1055,6 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
       errors.push('Meeting type is required');
     }
 
-    // Attendance validation
-    const attendanceTotal = formData.attendance_total || 0;
-    const attendanceMale = formData.attendance_male || 0;
-    const attendanceFemale = formData.attendance_female || 0;
-
-    if (attendanceTotal < (attendanceMale + attendanceFemale)) {
-      errors.push(`Attendance total (${attendanceTotal}) must be >= sum of male (${attendanceMale}) and female (${attendanceFemale})`);
-    }
-
     // Health data validation - Hepatitis B
     const hepbTested = formData.health_hepb_tested || 0;
     const hepbPositive = formData.health_hepb_positive || 0;
@@ -1088,7 +1096,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
       'attendees_count', 'health_penta1', 'health_bcg',
       'health_penta3', 'health_measles', 'health_malaria_under5',
       'health_diarrhea_under5', 'health_anc_first_visit', 'health_anc_fourth_visit',
-      'health_anc_eighth_visit', 'health_deliveries', 'health_postnatal',
+      'health_deliveries', 'health_postnatal',
       'health_fp_counselling', 'health_fp_new_acceptors', 'health_hepb_tested',
       'health_hepb_positive', 'health_tb_presumptive', 'health_tb_on_treatment',
       'facilities_renovated_govt', 'facilities_renovated_partners',
@@ -1433,10 +1441,10 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
         <DynamicTable
           tableId="action_tracker"
           columns={[
+            { name: 'challenges', label: 'Challenges', type: 'textarea', placeholder: 'Any challenges...' },
             { name: 'action_point', label: 'Agreed Action Point', type: 'textarea', placeholder: 'Enter action...' },
             { name: 'status', label: 'Status (Completed/On-going/Not Started)', type: 'select', options: ['Completed', 'On-going', 'Not Started'] },
-            { name: 'challenges', label: 'Challenges', type: 'textarea', placeholder: 'Any challenges...' },
-            { name: 'timeline', label: 'Timeline', type: 'text', placeholder: 'e.g., 2 weeks' },
+            { name: 'timeline', label: 'Timeline', type: 'date' },
             { name: 'responsible_person', label: 'Responsible Person', type: 'text', placeholder: 'Name...' },
           ]}
           rows={formData.action_tracker}
@@ -1473,17 +1481,16 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
 
             <h5 className="text-xs sm:text-sm font-semibold text-neutral-700 mt-6 mb-3">OPD Under 5</h5>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-              <NumberInput label="OPD Under 5 Total" name="health_opd_under5_total" value={formData.health_opd_under5_total} onChange={handleChange} />
+              <NumberInput label="OPD Under 5 Total" name="health_opd_under5_total" value={formData.health_opd_under5_total} onChange={handleChange} readOnly />
               <NumberInput label="MALARIA UNDER 5" name="health_malaria_under5" value={formData.health_malaria_under5} onChange={handleChange} />
               <NumberInput label="DIARRHEA UNDER 5" name="health_diarrhea_under5" value={formData.health_diarrhea_under5} onChange={handleChange} />
             </div>
 
             <h5 className="text-xs sm:text-sm font-semibold text-neutral-700 mt-6 mb-3">ANC</h5>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-              <NumberInput label="ANC Total" name="health_anc_total" value={formData.health_anc_total} onChange={handleChange} />
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+              <NumberInput label="ANC Total" name="health_anc_total" value={formData.health_anc_total} onChange={handleChange} readOnly />
               <NumberInput label="FIRST VISIT" name="health_anc_first_visit" value={formData.health_anc_first_visit} onChange={handleChange} />
               <NumberInput label="FOURTH VISIT" name="health_anc_fourth_visit" value={formData.health_anc_fourth_visit} onChange={handleChange} />
-              <NumberInput label="EIGHTH VISIT" name="health_anc_eighth_visit" value={formData.health_anc_eighth_visit} onChange={handleChange} />
             </div>
 
             <h5 className="text-xs sm:text-sm font-semibold text-neutral-700 mt-6 mb-3">Labour, Deliveries & Post-Natal</h5>
@@ -1870,7 +1877,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
           columns={[
             { name: 'issue', label: 'Issues Identified', type: 'textarea', placeholder: 'Issue...' },
             { name: 'action', label: 'Actions Agreed', type: 'textarea', placeholder: 'Action...' },
-            { name: 'timeline', label: 'Timeline', type: 'text', placeholder: 'Timeline' },
+            { name: 'timeline', label: 'Timeline', type: 'date' },
             { name: 'responsible_person', label: 'Responsible Person', type: 'text', placeholder: 'Name' },
           ]}
           rows={formData.action_plan}
@@ -1948,24 +1955,24 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
             </p>
 
             <div className="grid grid-cols-3 gap-3 sm:gap-4">
-              {/* Total */}
+              {/* Total — auto-calculated */}
               <div className="space-y-1">
                 <label
                   htmlFor="attendance_total"
                   className="block text-xs sm:text-sm font-medium text-neutral-700"
                 >
                   Total
-                  <Tooltip text="Total people present at the meeting (must equal Male + Female)." position="top" />
+                  <Tooltip text="Automatically calculated as Male + Female." position="top" />
                 </label>
                 <input
                   id="attendance_total"
                   type="number"
                   name="attendance_total"
                   value={formData.attendance_total}
-                  onChange={handleChange}
+                  readOnly
                   min={0}
                   aria-describedby="attendance-hint"
-                  className="w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg bg-neutral-50 text-neutral-500 cursor-default"
                 />
               </div>
               {/* Male */}
@@ -2008,37 +2015,20 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
               </div>
             </div>
 
-            {/* Live gender-balance indicator */}
+            {/* Live gender breakdown */}
             {(() => {
-              const total = parseInt(formData.attendance_total) || 0;
               const male = parseInt(formData.attendance_male) || 0;
               const female = parseInt(formData.attendance_female) || 0;
-              const genSum = male + female;
-              const hasValues = total > 0 || genSum > 0;
-              if (!hasValues) return null;
-              const isValid = total >= genSum;
+              if (male === 0 && female === 0) return null;
               return (
                 <div
                   id="attendance-hint"
-                  className={`mt-3 px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 ${
-                    isValid ? 'bg-primary-50 text-primary-700 border border-primary-200' : 'bg-red-50 text-red-700 border border-red-200'
-                  }`}
+                  className="mt-3 px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 bg-primary-50 text-primary-700 border border-primary-200"
                   role="status"
                   aria-live="polite"
                 >
-                  {isValid ? (
-                    <>
-                      <span aria-hidden="true">✓</span>
-                      Total ({total}) equals Male ({male}) + Female ({female}) = {genSum}
-                      {total > genSum && ` — ${total - genSum} additional attendee(s) counted`}
-                    </>
-                  ) : (
-                    <>
-                      <AlertTriangle className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
-                      Total ({total}) is less than Male ({male}) + Female ({female}) = {genSum}.
-                      Please correct the numbers.
-                    </>
-                  )}
+                  <span aria-hidden="true">✓</span>
+                  Total ({male + female}) = Male ({male}) + Female ({female})
                 </div>
               );
             })()}

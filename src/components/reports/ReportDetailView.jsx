@@ -309,10 +309,10 @@ const ReportDetailView = ({ report }) => {
               <thead>
                 <tr className="bg-neutral-100 text-left">
                   <th className="px-3 py-2 font-semibold text-neutral-700 rounded-tl-lg">#</th>
+                  <th className="px-3 py-2 font-semibold text-neutral-700">Challenges</th>
                   <th className="px-3 py-2 font-semibold text-neutral-700">Action Point</th>
                   <th className="px-3 py-2 font-semibold text-neutral-700">Responsible</th>
                   <th className="px-3 py-2 font-semibold text-neutral-700">Timeline</th>
-                  <th className="px-3 py-2 font-semibold text-neutral-700">Challenges</th>
                   <th className="px-3 py-2 font-semibold text-neutral-700 rounded-tr-lg">Status</th>
                 </tr>
               </thead>
@@ -320,10 +320,10 @@ const ReportDetailView = ({ report }) => {
                 {report.action_tracker.filter(i => i.action_point?.trim()).map((item, index) => (
                   <tr key={index} className="hover:bg-neutral-50">
                     <td className="px-3 py-2.5 text-neutral-500 font-medium">{index + 1}</td>
+                    <td className="px-3 py-2.5 text-neutral-700">{item.challenges || '—'}</td>
                     <td className="px-3 py-2.5 text-neutral-900">{item.action_point}</td>
                     <td className="px-3 py-2.5 text-neutral-700">{item.responsible_person || '—'}</td>
                     <td className="px-3 py-2.5 text-neutral-700">{item.timeline || '—'}</td>
-                    <td className="px-3 py-2.5 text-neutral-700">{item.challenges || '—'}</td>
                     <td className="px-3 py-2.5">
                       <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
                         item.status === 'completed' ? 'bg-primary-100 text-primary-800' :
@@ -418,12 +418,7 @@ const ReportDetailView = ({ report }) => {
                     <p className="text-xs text-purple-600 mt-1">ANC 4th Visit</p>
                   </div>
                 )}
-                {report.health_anc_eighth_visit !== null && (
-                  <div className="bg-purple-50 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-bold text-purple-700">{report.health_anc_eighth_visit}</p>
-                    <p className="text-xs text-purple-600 mt-1">ANC 8th Visit</p>
-                  </div>
-                )}
+
                 {report.health_deliveries !== null && (
                   <div className="bg-purple-50 rounded-lg p-3 text-center">
                     <p className="text-2xl font-bold text-purple-700">{report.health_deliveries}</p>

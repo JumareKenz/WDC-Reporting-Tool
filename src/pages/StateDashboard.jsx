@@ -1467,7 +1467,7 @@ const StateDashboard = () => {
                   <p>ANC Total: {selectedReport.health_anc_total}</p>
                   <p>1st Visit: {selectedReport.health_anc_first_visit}</p>
                   <p>4th Visit: {selectedReport.health_anc_fourth_visit}</p>
-                  <p>8th Visit: {selectedReport.health_anc_eighth_visit}</p>
+
                 </div>
                 <div>
                   <p className="font-medium text-primary-700">Labour, Deliveries & Post-Natal</p>

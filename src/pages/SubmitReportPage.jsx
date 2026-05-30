@@ -99,7 +99,7 @@ const buildInitialFormData = (userWard, userLGA) => ({
   health_anc_total: '',
   health_anc_first_visit: '',
   health_anc_fourth_visit: '',
-  health_anc_eighth_visit: '',
+
   health_deliveries: '',
   health_postnatal: '',
   health_fp_counselling: '',

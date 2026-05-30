@@ -159,15 +159,7 @@ const DEFAULT_FIELD_CONFIG = {
     },
     ocr: { patterns: ['(?:4th|fourth)\\s*visit[:\\s]*(\\d+)'], keywords: ['Fourth Visit', '4th Visit'] },
   },
-  health_anc_eighth_visit: {
-    type: 'number',
-    section: 'health_data',
-    voice: {
-      question_en: 'How many women came for their eighth ANC visit?',
-      question_ha: 'Mata nawa suka zo ziyarar ANC ta takwas?',
-    },
-    ocr: { patterns: ['(?:8th|eighth)\\s*visit[:\\s]*(\\d+)'], keywords: ['Eighth Visit', '8th Visit'] },
-  },
+
   health_deliveries: {
     type: 'number',
     section: 'health_data',

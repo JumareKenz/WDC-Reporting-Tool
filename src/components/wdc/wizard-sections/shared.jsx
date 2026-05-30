@@ -88,7 +88,7 @@ export { TextInput };
 
 // ── NumberInput ────────────────────────────────────────────────────────────
 // Memoized for consistency with TextInput
-const NumberInput = memo(({ label, name, value, onChange, min = 0, required, error, ...props }) => {
+const NumberInput = memo(({ label, name, value, onChange, min = 0, required, error, readOnly, ...props }) => {
   const handleChange = (e) => {
     const raw = e.target.value;
     if (raw === '' || raw === '-') {
@@ -114,10 +114,11 @@ const NumberInput = memo(({ label, name, value, onChange, min = 0, required, err
       type="number"
       name={name}
       value={value}
-      onChange={handleChange}
+      onChange={readOnly ? undefined : handleChange}
       min={min}
       required={required}
-      className={error ? inputErrorClass : inputClass}
+      readOnly={readOnly}
+      className={readOnly ? `${inputClass} bg-neutral-50 border-neutral-200 text-neutral-500 cursor-default` : (error ? inputErrorClass : inputClass)}
       {...props}
     />
     {error && (
