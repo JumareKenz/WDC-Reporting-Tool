@@ -4,6 +4,34 @@ import Button from '../common/Button';
 import { listenForSpeech, stopListening, parseSpokenValue } from '../../services/speechService';
 import { loadActiveFieldConfig, buildVoiceQuestions } from '../../services/formConfigService';
 
+// Name fragments that indicate a female voice across common TTS engines
+// (Chrome/Google, Windows/Edge, macOS/iOS, Android).
+const FEMALE_VOICE_HINTS = [
+  'female', 'woman',
+  'samantha', 'victoria', 'karen', 'moira', 'fiona', 'tessa', 'serena', 'allison', 'susan', 'linda', 'zoe',
+  'zira', 'hazel', 'heera', 'aria', 'jenny', 'michelle', 'sonia', 'libby', 'clara',
+  'google uk english female', 'google us english',
+];
+
+/**
+ * Choose a female voice for the given language, falling back sensibly:
+ * female match in-language → any in-language voice → female match overall →
+ * first available. Returns null if no voices are loaded yet.
+ */
+const pickFemaleVoice = (voices, lang) => {
+  if (!voices || voices.length === 0) return null;
+  const prefix = (lang || 'en').split('-')[0].toLowerCase();
+  const inLang = voices.filter((v) => (v.lang || '').toLowerCase().startsWith(prefix));
+  const isFemale = (v) => FEMALE_VOICE_HINTS.some((h) => (v.name || '').toLowerCase().includes(h));
+  return (
+    inLang.find(isFemale) ||
+    inLang[0] ||
+    voices.find(isFemale) ||
+    voices[0] ||
+    null
+  );
+};
+
 const VoiceAssistantModal = ({ isOpen, onClose, formData, onFieldsCollected }) => {
   const [language, setLanguage] = useState('en');
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -71,10 +99,32 @@ const VoiceAssistantModal = ({ isOpen, onClose, formData, onFieldsCollected }) =
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = language === 'ha' ? 'ha-NG' : 'en-US';
     utterance.rate = 0.9;
+    utterance.pitch = 1.05; // slightly higher to reinforce a female voice
     utterance.onend = () => setPhase('listening');
     utterance.onerror = () => setPhase('listening');
     synthRef.current = utterance;
-    window.speechSynthesis.speak(utterance);
+
+    // Pick a female voice for the language. getVoices() can be empty until the
+    // engine loads them, so retry on the 'voiceschanged' event, with a timeout
+    // fallback so speech never gets stuck waiting.
+    const speakWithVoice = () => {
+      const female = pickFemaleVoice(window.speechSynthesis.getVoices(), utterance.lang);
+      if (female) utterance.voice = female;
+      window.speechSynthesis.speak(utterance);
+    };
+    if (window.speechSynthesis.getVoices().length > 0) {
+      speakWithVoice();
+    } else {
+      let spoken = false;
+      const once = () => {
+        if (spoken) return;
+        spoken = true;
+        window.speechSynthesis.removeEventListener('voiceschanged', once);
+        speakWithVoice();
+      };
+      window.speechSynthesis.addEventListener('voiceschanged', once);
+      setTimeout(once, 250);
+    }
   }, [language]);
 
   const handleStartRecording = async () => {

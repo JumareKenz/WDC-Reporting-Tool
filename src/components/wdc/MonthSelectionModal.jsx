@@ -20,6 +20,22 @@ import { formatMonthDisplay } from '../../utils/dateUtils';
 import { checkSubmitted, getMySubmissions } from '../../api/reports';
 
 /**
+ * Normalize any month-ish value to "YYYY-MM" so comparisons are robust to
+ * backend variations ("2026-4", "2026-04-01", ISO dates, camelCase fields).
+ */
+const normMonth = (m) => {
+  if (!m) return null;
+  const s = String(m).trim();
+  const ym = s.match(/(\d{4})-(\d{1,2})/);
+  if (ym) return `${ym[1]}-${ym[2].padStart(2, '0')}`;
+  const d = new Date(s);
+  if (!Number.isNaN(d.getTime())) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }
+  return s;
+};
+
+/**
  * MonthSelectionModal - A professional modal for WDC Secretary to select report month
  * 
  * Features:
@@ -118,12 +134,14 @@ const MonthSelectionModal = ({
   // reports list (the same data the dashboard stats cards use) so blocking does
   // not depend on the backend also returning a separate `submitted_months`
   // array. Any report whose status/state is not a draft counts as submitted.
+  // Months are normalized to "YYYY-MM" so a backend value like "2026-4" or a
+  // full ISO date still matches the calendar cells.
   const effectiveSubmittedMonths = useMemo(() => {
-    const set = new Set(submittedMonths || []);
+    const set = new Set((submittedMonths || []).map(normMonth).filter(Boolean));
     for (const r of reports || []) {
       const st = String(r.status || r.state || '').toLowerCase();
       if (st && st !== 'draft') {
-        const month = r.report_month || r.reportMonth || r.month;
+        const month = normMonth(r.report_month || r.reportMonth || r.month);
         if (month) set.add(month);
       }
     }
@@ -132,7 +150,7 @@ const MonthSelectionModal = ({
 
   // Check if a month is already submitted
   const isMonthSubmitted = (monthValue) => {
-    return effectiveSubmittedMonths.includes(monthValue);
+    return effectiveSubmittedMonths.includes(normMonth(monthValue));
   };
 
   // Check if month is in the future
@@ -146,7 +164,7 @@ const MonthSelectionModal = ({
 
   // Get report for a specific month
   const getReportForMonth = (monthValue) => {
-    return reports.find((r) => (r.report_month || r.reportMonth || r.month) === monthValue);
+    return reports.find((r) => normMonth(r.report_month || r.reportMonth || r.month) === normMonth(monthValue));
   };
 
   // Handle month selection
