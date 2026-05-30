@@ -122,6 +122,17 @@ const WDCDashboard = () => {
     submissionsError: submissionsError?.message,
     checkSubmissionError: checkSubmissionError?.message,
   });
+  // Temporary: reveal the exact report shape so month-matching can be verified.
+  if (reports.length > 0) {
+    console.log('WDCDashboard report[0] keys:', Object.keys(reports[0]));
+    console.log('WDCDashboard report shapes:', reports.map((r) => ({
+      report_month: r.report_month,
+      reportMonth: r.reportMonth,
+      month: r.month,
+      status: r.status,
+      state: r.state,
+    })));
+  }
   
   const notifications = notificationsData?.data?.notifications || notificationsData?.notifications || [];
 
