@@ -608,7 +608,7 @@ const DEFAULT_FIELD_CONFIG = {
       question_en: 'How many male attendees were at the meeting?',
       question_ha: 'Maza nawa suka halarci taron?',
     },
-    ocr: { patterns: ['male[:\\s]*(\\d+)'], keywords: ['Male'] },
+    ocr: { patterns: ['\\bmale[:\\s]*(\\d+)'], keywords: ['Male'] },
   },
   attendance_female: {
     type: 'number',

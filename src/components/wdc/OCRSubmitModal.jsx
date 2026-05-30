@@ -9,6 +9,7 @@ const OCRSubmitModal = ({ isOpen, onClose, onFieldsExtracted }) => {
   const [status, setStatus] = useState('idle'); // idle | uploading | processing | done | error
   const [errorMessage, setErrorMessage] = useState('');
   const [extractedFields, setExtractedFields] = useState(null);
+  const [totalPatternFields, setTotalPatternFields] = useState(0);
 
   const handleCapture = async (source) => {
     try {
@@ -25,13 +26,14 @@ const OCRSubmitModal = ({ isOpen, onClose, onFieldsExtracted }) => {
       setStatus('processing');
 
       const rawText = await performOCR(imageData.base64, imageData.format);
-      const fields = await mapTextToFields(rawText);
+      const { fields, totalPatternFields: total } = await mapTextToFields(rawText);
 
       if (Object.keys(fields).length === 0) {
-        throw new Error('Could not extract any data from the photo. Make sure the text is clear and readable.');
+        throw new Error('No data could be extracted from the photo. Check that the form is well-lit, in focus, and that labels are clearly printed next to their values.');
       }
 
       setExtractedFields(fields);
+      setTotalPatternFields(total);
       setStatus('done');
     } catch (err) {
       if (err.message === 'No file selected') {
@@ -55,6 +57,7 @@ const OCRSubmitModal = ({ isOpen, onClose, onFieldsExtracted }) => {
     setStatus('idle');
     setErrorMessage('');
     setExtractedFields(null);
+    setTotalPatternFields(0);
   };
 
   const handleClose = () => {
@@ -112,14 +115,26 @@ const OCRSubmitModal = ({ isOpen, onClose, onFieldsExtracted }) => {
           </div>
         )}
 
-        {status === 'done' && extractedFields && (
+        {status === 'done' && extractedFields && (() => {
+          const matchedCount = Object.keys(extractedFields).length;
+          const isPartial = totalPatternFields > 0 && matchedCount < totalPatternFields;
+          return (
           <div>
-            <div className="flex items-center gap-2 mb-4 p-3 bg-primary-50 border border-primary-200 rounded-lg">
-              <CheckCircle className="w-5 h-5 text-primary-600 flex-shrink-0" />
-              <p className="text-sm font-medium text-primary-800">
-                Fields filled automatically — please review before submitting
-              </p>
-            </div>
+            {isPartial ? (
+              <div className="flex items-start gap-2 mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                <p className="text-sm font-medium text-amber-800">
+                  Extracted {matchedCount} of {totalPatternFields} fields — fill the rest manually. Table rows (Action Tracker, VDC Reports, Action Plan) only extract when the scanned form has printed table borders.
+                </p>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 mb-4 p-3 bg-primary-50 border border-primary-200 rounded-lg">
+                <CheckCircle className="w-5 h-5 text-primary-600 flex-shrink-0" />
+                <p className="text-sm font-medium text-primary-800">
+                  {matchedCount} field{matchedCount === 1 ? '' : 's'} filled automatically — please review before submitting
+                </p>
+              </div>
+            )}
             <div className="max-h-64 overflow-y-auto border border-neutral-200 rounded-lg">
               <table className="w-full text-sm">
                 <thead className="bg-neutral-50 sticky top-0">
@@ -147,7 +162,8 @@ const OCRSubmitModal = ({ isOpen, onClose, onFieldsExtracted }) => {
               </Button>
             </div>
           </div>
-        )}
+          );
+        })()}
       </div>
     </Modal>
   );
