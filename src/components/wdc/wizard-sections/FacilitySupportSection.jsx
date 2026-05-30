@@ -26,7 +26,33 @@ const RENOVATION_ACTORS = ['Government', 'Partners', 'WDC'];
 const FacilitySupportSection = ({ formData, onChange, errors, onVoiceNote, voiceNotes = {}, draftContext }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
-    onChange((prev) => ({ ...prev, [name]: value }));
+    onChange((prev) => {
+      const update = { ...prev, [name]: value };
+      if (name === 'facility_renovated' && value === 'No') {
+        update.facility_renovated_count = '';
+        update.facility_renovations = [];
+      }
+      if (name === 'items_donated_wdc_yn' && value === 'No') {
+        update.items_donated_facility = '';
+        update.items_donated_count = '';
+        update.items_donated_types = [];
+        update.items_donated_other_specify = '';
+      }
+      if (name === 'items_donated_govt_yn' && value === 'No') {
+        update.items_donated_govt_facility = '';
+        update.items_donated_govt_count = '';
+        update.items_donated_govt_types = [];
+        update.items_donated_govt_other_specify = '';
+      }
+      if (name === 'items_repaired_yn' && value === 'No') {
+        update.items_repaired_facility = '';
+        update.items_repaired_by = [];
+        update.items_repaired_count = '';
+        update.items_repaired_types = [];
+        update.items_repaired_other_specify = '';
+      }
+      return update;
+    });
   };
 
   const handleMultiSelect = (field, value) => {

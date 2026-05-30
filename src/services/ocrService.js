@@ -69,7 +69,7 @@ async function performTesseractOCR(base64Image, format) {
 //              (SN column is stripped automatically; columns map to form field keys)
 const TABLE_SECTIONS = [
   {
-    // Section 2 columns (paper form order): Challenges | Agreed Action Point | Timeline | Responsible Person | Status
+    // Section 2 columns (app order): Challenges | Agreed Action Point | Timeline | Responsible Person | Status
     detect: /\baction\s*tracker\b/i,
     stopAt: /\b(?:health\s*data|section\s*3|vdc|action\s*plan|mobiliz|transport)\b/i,
     prefix: 'action_tracker',

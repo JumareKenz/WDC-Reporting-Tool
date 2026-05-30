@@ -35,6 +35,8 @@
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
     "lucide-react": "^0.303.0",
+    "mirada": "^0.0.15",
+    "opencv.js": "^1.2.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-markdown": "^10.1.0",

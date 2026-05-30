@@ -50,8 +50,9 @@ const DEFAULT_FIELD_CONFIG = {
       question_ha: 'Menene jimlar masu zuwa OPD a wannan watan?',
     },
     ocr: {
-      patterns: ['opd\\s*general\\s*attendance[:\\s]*(\\d+)', 'opd\\s*(?:total|attendance)[:\\s]*(\\d+)'],
-      keywords: ['OPD General Attendance', 'OPD Total'],
+      // "OPD General Attendance Total | 284" — skip "Total" label, limit to same line
+      patterns: ['opd\\s*general\\s*attendance[^0-9\\n]{0,20}(\\d+)', 'general\\s*attendance\\s*total[^0-9\\n]{0,20}(\\d+)'],
+      keywords: ['OPD General Attendance Total'],
     },
   },
   health_routine_immunization_total: {
@@ -62,8 +63,9 @@ const DEFAULT_FIELD_CONFIG = {
       question_ha: 'Menene jimlar masu karbar allurai a OPD a wannan watan?',
     },
     ocr: {
-      patterns: ['(?:opd\\s*)?immuni[sz]ation\\s*(?:total)?[:\\s]*(\\d+)'],
-      keywords: ['OPD Immunization Total', 'Immunization Total'],
+      // "OPD Total (Immunization) | 97" — skip parentheses, limit to same line
+      patterns: ['opd\\s*total[^0-9\\n]{0,30}(\\d+)', 'immuni[sz]ation[^0-9\\n]{0,20}(\\d+)'],
+      keywords: ['OPD Total (Immunization)', 'Immunization Total'],
     },
   },
   health_penta1: {
@@ -110,8 +112,9 @@ const DEFAULT_FIELD_CONFIG = {
       question_ha: 'Menene jimlar yara kasa da shekaru 5 da suka zo OPD a wannan watan?',
     },
     ocr: {
-      patterns: ['(?:opd\\s*)?under\\s*5\\s*(?:total)?[:\\s]*(\\d+)'],
-      keywords: ['OPD Under 5 Total', 'Under 5 Total'],
+      // "OPD Under 5 Total | 112" — limit to same line
+      patterns: ['under\\s*5\\s*total[^0-9\\n]{0,20}(\\d+)', 'opd\\s*under\\s*5[^0-9\\n]{0,20}(\\d+)'],
+      keywords: ['OPD Under 5 Total'],
     },
   },
   health_malaria_under5: {
@@ -121,7 +124,11 @@ const DEFAULT_FIELD_CONFIG = {
       question_en: 'How many children under 5 were treated for malaria?',
       question_ha: 'Yara nawa kasa da shekaru 5 aka yi wa maganin zazzabin cizon sauro?',
     },
-    ocr: { patterns: ['malaria\\s*(?:under\\s*5)?[:\\s]*(\\d+)'], keywords: ['MALARIA UNDER 5'] },
+    ocr: {
+      // "Malaria (Under 5) | 43" — skip parentheses, limit to same line
+      patterns: ['malaria[^0-9\\n]{0,25}(\\d+)'],
+      keywords: ['Malaria (Under 5)'],
+    },
   },
   health_diarrhea_under5: {
     type: 'number',
@@ -130,7 +137,11 @@ const DEFAULT_FIELD_CONFIG = {
       question_en: 'How many children under 5 were treated for diarrhea?',
       question_ha: 'Yara nawa kasa da shekaru 5 aka yi wa maganin gudawa?',
     },
-    ocr: { patterns: ['diarr?h?oea?[:\\s]*(\\d+)'], keywords: ['DIARRHEA UNDER 5'] },
+    ocr: {
+      // "Diarrhoea (Under 5) | 18" — skip parentheses, limit to same line
+      patterns: ['diarr?h?[o]?ea[^0-9\\n]{0,25}(\\d+)'],
+      keywords: ['Diarrhoea (Under 5)'],
+    },
   },
   health_anc_total: {
     type: 'number',
@@ -139,7 +150,11 @@ const DEFAULT_FIELD_CONFIG = {
       question_en: 'What was the total ANC attendance this month?',
       question_ha: 'Menene jimlar mata masu zuwa kulawa kafin haihuwa a wannan watan?',
     },
-    ocr: { patterns: ['anc\\s*(?:total)?[:\\s]*(\\d+)'], keywords: ['ANC Total'] },
+    ocr: {
+      // "ANC Total | 61" — limit to same line
+      patterns: ['anc\\s*total[^0-9\\n]{0,20}(\\d+)'],
+      keywords: ['ANC Total'],
+    },
   },
   health_anc_first_visit: {
     type: 'number',
@@ -148,7 +163,11 @@ const DEFAULT_FIELD_CONFIG = {
       question_en: 'How many women came for their first ANC visit?',
       question_ha: 'Mata nawa suka zo ziyarar ANC ta farko?',
     },
-    ocr: { patterns: ['(?:1st|first)\\s*visit[:\\s]*(\\d+)'], keywords: ['First Visit', '1st Visit'] },
+    ocr: {
+      // "First Visit | 25" — limit to same line
+      patterns: ['(?:1st|first)\\s*visit[^0-9\\n]{0,20}(\\d+)'],
+      keywords: ['First Visit'],
+    },
   },
   health_anc_fourth_visit: {
     type: 'number',
@@ -157,7 +176,11 @@ const DEFAULT_FIELD_CONFIG = {
       question_en: 'How many women came for their fourth ANC visit?',
       question_ha: 'Mata nawa suka zo ziyarar ANC ta hudu?',
     },
-    ocr: { patterns: ['(?:4th|fourth)\\s*visit[:\\s]*(\\d+)'], keywords: ['Fourth Visit', '4th Visit'] },
+    ocr: {
+      // "Fourth Visit | 21" — limit to same line
+      patterns: ['(?:4th|fourth)\\s*visit[^0-9\\n]{0,20}(\\d+)'],
+      keywords: ['Fourth Visit'],
+    },
   },
 
   health_deliveries: {
@@ -167,7 +190,11 @@ const DEFAULT_FIELD_CONFIG = {
       question_en: 'How many deliveries took place at the health facility this month?',
       question_ha: 'Haihuwa nawa aka yi a asibitin wannan watan?',
     },
-    ocr: { patterns: ['deliver(?:y|ies)[:\\s]*(\\d+)'], keywords: ['Deliveries'] },
+    ocr: {
+      // "Deliveries (Total) | 22" — skip parentheses, limit to same line
+      patterns: ['deliver(?:y|ies)[^0-9\\n]{0,20}(\\d+)'],
+      keywords: ['Deliveries (Total)'],
+    },
   },
   health_postnatal: {
     type: 'number',
@@ -185,7 +212,11 @@ const DEFAULT_FIELD_CONFIG = {
       question_en: 'How many people received family planning counselling?',
       question_ha: 'Mutane nawa suka sami shawarar tsarin iyali?',
     },
-    ocr: { patterns: ['counsel(?:l)?ing[:\\s]*(\\d+)'], keywords: ['Counselling'] },
+    ocr: {
+      // "Counselling (Family Planning) | 17" — skip parentheses, limit to same line
+      patterns: ['counsel(?:l)?ing[^0-9\\n]{0,30}(\\d+)'],
+      keywords: ['Counselling (Family Planning)'],
+    },
   },
   health_fp_new_acceptors: {
     type: 'number',
@@ -203,7 +234,11 @@ const DEFAULT_FIELD_CONFIG = {
       question_en: 'How many people were tested for Hepatitis B?',
       question_ha: 'Mutane nawa aka gwada cutar Hepatitis B?',
     },
-    ocr: { patterns: ['hep\\s*b\\s*tested[:\\s]*(\\d+)'], keywords: ['Hep B Tested'] },
+    ocr: {
+      // "18 Persons Tested (HEP B) | 38" — row number 18 comes first; skip it and parentheses
+      patterns: ['persons?\\s*tested[^0-9\\n]{0,25}(\\d+)', 'tested[^0-9\\n]{0,15}hep[^0-9\\n]{0,15}(\\d+)'],
+      keywords: ['Persons Tested (HEP B)'],
+    },
   },
   health_hepb_positive: {
     type: 'number',
@@ -212,7 +247,11 @@ const DEFAULT_FIELD_CONFIG = {
       question_en: 'How many people tested positive for Hepatitis B?',
       question_ha: 'Mutane nawa suka gwada positive na Hepatitis B?',
     },
-    ocr: { patterns: ['hep\\s*b\\s*positive[:\\s]*(\\d+)'], keywords: ['Hep B Positive'] },
+    ocr: {
+      // "18 Persons Tested Positive (HEP B) | 3" — skip row number and parentheses
+      patterns: ['tested\\s*positive[^0-9\\n]{0,25}(\\d+)', 'positive[^0-9\\n]{0,15}hep[^0-9\\n]{0,15}(\\d+)'],
+      keywords: ['Persons Tested Positive (HEP B)'],
+    },
   },
   health_tb_presumptive: {
     type: 'number',
@@ -221,7 +260,11 @@ const DEFAULT_FIELD_CONFIG = {
       question_en: 'How many presumptive TB cases were identified this month?',
       question_ha: 'Mutane nawa ake zargi da cutar tarin fuka?',
     },
-    ocr: { patterns: ['tb\\s*presumptive[:\\s]*(\\d+)'], keywords: ['TB Presumptive'] },
+    ocr: {
+      // "20 Total Presumptive TB Cases | 7" — skip row number, limit to same line to avoid next row
+      patterns: ['presumptive\\s*tb[^0-9\\n]{0,20}(\\d+)', 'total\\s*presumptive[^0-9\\n]{0,20}(\\d+)'],
+      keywords: ['Total Presumptive TB Cases'],
+    },
   },
   health_tb_on_treatment: {
     type: 'number',
@@ -230,7 +273,11 @@ const DEFAULT_FIELD_CONFIG = {
       question_en: 'How many people are currently on TB treatment?',
       question_ha: 'Mutane nawa suke kan maganin tarin fuka yanzu?',
     },
-    ocr: { patterns: ['tb\\s*(?:on\\s*)?treatment[:\\s]*(\\d+)'], keywords: ['TB On Treatment'] },
+    ocr: {
+      // "21 Total on TB Treatment | 4" — limit to same line
+      patterns: ['(?:on\\s*)?tb\\s*treatment[^0-9\\n]{0,20}(\\d+)', 'total\\s*on\\s*tb[^0-9\\n]{0,20}(\\d+)'],
+      keywords: ['Total on TB Treatment'],
+    },
   },
 
   // ─── Section 3B: Facility Support (Yes/No gates) ──────────────────────────
@@ -346,7 +393,11 @@ const DEFAULT_FIELD_CONFIG = {
       question_en: 'How many women were transported to a facility for ANC by the WDC?',
       question_ha: 'Mata nawa WDC ta kai asibiti don kulawa kafin haihuwa?',
     },
-    ocr: { patterns: ['women.*anc[:\\s]*(\\d+)'], keywords: ['Women ANC'] },
+    ocr: {
+      // "Number of women transported to facility for ANC by WDC | 7" — long label, limit match
+      patterns: ['women[^0-9\\n]{0,60}anc[^0-9\\n]{0,15}(\\d+)', 'transport.*anc.*wdc[^0-9\\n]{0,15}(\\d+)'],
+      keywords: ['Women ANC WDC'],
+    },
   },
   women_transported_delivery: {
     type: 'number',
@@ -355,7 +406,11 @@ const DEFAULT_FIELD_CONFIG = {
       question_en: 'How many women were transported to a facility for delivery by the WDC?',
       question_ha: 'Mata nawa WDC ta kai asibiti don haihuwa?',
     },
-    ocr: { patterns: ['women.*deliver[:\\s]*(\\d+)'], keywords: ['Women Delivery'] },
+    ocr: {
+      // "Number of women transported to facility for delivery by WDC | 4" — limit to same line
+      patterns: ['women[^0-9\\n]{0,60}deliver[^0-9\\n]{0,15}(\\d+)', 'transport.*deliver.*wdc[^0-9\\n]{0,15}(\\d+)'],
+      keywords: ['Women Delivery WDC'],
+    },
   },
   children_transported_danger: {
     type: 'number',
@@ -364,7 +419,11 @@ const DEFAULT_FIELD_CONFIG = {
       question_en: 'How many children under 5 with danger signs were transported to a facility?',
       question_ha: 'Yara nawa kasa da shekaru 5 masu alamun hatsari aka kai asibiti?',
     },
-    ocr: { patterns: ['children.*danger[:\\s]*(\\d+)'], keywords: ['Children Danger'] },
+    ocr: {
+      // "Number of children under 5 with danger signs transported | 2" — limit to same line
+      patterns: ['children[^0-9\\n]{0,50}danger[^0-9\\n]{0,20}(\\d+)', 'danger\\s*signs[^0-9\\n]{0,20}(\\d+)'],
+      keywords: ['Children Danger Signs'],
+    },
   },
   women_supported_delivery_items: {
     type: 'number',
@@ -373,7 +432,11 @@ const DEFAULT_FIELD_CONFIG = {
       question_en: 'How many women were supported with delivery items through WDC efforts?',
       question_ha: 'Mata nawa aka taimaka musu da kayan haihuwa ta hanyar WDC?',
     },
-    ocr: { patterns: ['delivery\\s*items[:\\s]*(\\d+)'], keywords: ['Delivery Items'] },
+    ocr: {
+      // "Number of women supported with delivery items through WDC efforts | 5" — limit to same line
+      patterns: ['supported[^0-9\\n]{0,60}delivery\\s*items[^0-9\\n]{0,20}(\\d+)', 'delivery\\s*items[^0-9\\n]{0,30}(\\d+)'],
+      keywords: ['Women Delivery Items'],
+    },
   },
 
   // ─── Section 3D: MPDSR ────────────────────────────────────────────────────
@@ -384,7 +447,11 @@ const DEFAULT_FIELD_CONFIG = {
       question_en: 'How many maternal deaths were recorded last month? Say zero if none.',
       question_ha: 'Mutuwar uwaye nawa aka rubuta a wannan watan? Idan babu ka ce sifili.',
     },
-    ocr: { patterns: ['maternal\\s*deaths?[:\\s]*(\\d+)'], keywords: ['Maternal Deaths'] },
+    ocr: {
+      // "Number of Maternal Deaths (last month): | 1" — skip parentheses, limit to same line
+      patterns: ['maternal\\s*deaths?[^0-9\\n]{0,30}(\\d+)', 'number.*maternal[^0-9\\n]{0,30}(\\d+)'],
+      keywords: ['Number of Maternal Deaths'],
+    },
   },
   perinatal_deaths: {
     type: 'number',
@@ -393,7 +460,11 @@ const DEFAULT_FIELD_CONFIG = {
       question_en: 'How many perinatal deaths were recorded last month? Say zero if none.',
       question_ha: 'Mutuwar jarirai nawa aka rubuta a wannan watan? Idan babu ka ce sifili.',
     },
-    ocr: { patterns: ['perinatal\\s*deaths?[:\\s]*(\\d+)'], keywords: ['Perinatal Deaths'] },
+    ocr: {
+      // "Number of Perinatal Deaths (last month): | 2" — skip parentheses, limit to same line
+      patterns: ['perinatal\\s*deaths?[^0-9\\n]{0,30}(\\d+)', 'number.*perinatal[^0-9\\n]{0,30}(\\d+)'],
+      keywords: ['Number of Perinatal Deaths'],
+    },
   },
 
   // ─── Section 2: Action Tracker (Row 1) ────────────────────────────────────
@@ -513,7 +584,12 @@ const DEFAULT_FIELD_CONFIG = {
       question_en: 'What was the awareness creation topic for this month?',
       question_ha: "Menene taken wayar da kan jama'a a wannan watan?",
     },
-    ocr: { patterns: ['awareness[:\\s]*([^\\n]+)'], keywords: ['Awareness Topic'] },
+    ocr: {
+      // Paper label: "Awareness Creation Topic for the Month:" with value on same or next line
+      // Match the full label to avoid capturing the label words as the value
+      patterns: ['topic\\s*for\\s*the\\s*month[:\\s]+(.+)', 'awareness\\s*creation\\s*topic[^:]*:\\s*(.+)'],
+      keywords: ['Awareness Creation Topic'],
+    },
   },
   traditional_leaders_support: {
     type: 'text',
@@ -608,7 +684,11 @@ const DEFAULT_FIELD_CONFIG = {
       question_en: 'How many male attendees were at the meeting?',
       question_ha: 'Maza nawa suka halarci taron?',
     },
-    ocr: { patterns: ['\\bmale[:\\s]*(\\d+)'], keywords: ['Male'] },
+    ocr: {
+      // "Male: | 21" — limit to same line, word boundary to avoid "female"
+      patterns: ['\\bmale[^0-9\\n]{0,10}(\\d+)'],
+      keywords: ['Male:'],
+    },
   },
   attendance_female: {
     type: 'number',
@@ -617,7 +697,11 @@ const DEFAULT_FIELD_CONFIG = {
       question_en: 'How many female attendees were at the meeting?',
       question_ha: 'Mata nawa suka halarci taron?',
     },
-    ocr: { patterns: ['female[:\\s]*(\\d+)'], keywords: ['Female'] },
+    ocr: {
+      // "Female: | 17" — limit to same line
+      patterns: ['female[^0-9\\n]{0,10}(\\d+)'],
+      keywords: ['Female:'],
+    },
   },
   next_meeting_date: {
     type: 'date',
@@ -626,7 +710,12 @@ const DEFAULT_FIELD_CONFIG = {
       question_en: 'When is the next meeting scheduled?',
       question_ha: 'Yaushe aka shirya taro na gaba?',
     },
-    ocr: { patterns: ['next\\s*meeting[:\\s]*([\\d/-]+)'], keywords: ['Next Meeting'] },
+    ocr: {
+      // Paper: "pate of Next Meeting: Tuesday, 27 May 2025" (OCR read "Date" as "pate")
+      // Capture full date string, allow for OCR typos in "date"
+      patterns: ['[dp]ate\\s*of\\s*next\\s*meeting[^:]*:\\s*(.+)', 'next\\s*meeting[^:]*:\\s*(.+)'],
+      keywords: ['Date of Next Meeting'],
+    },
   },
   chairman_signature: {
     type: 'text',
