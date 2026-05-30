@@ -92,10 +92,23 @@ const VoiceAssistantModal = ({ isOpen, onClose, formData, onFieldsCollected }) =
       setIsRecording(false);
       setTranscription(transcript);
 
-      const value = parseSpokenValue(transcript, currentQuestion.type, {
+      let value = parseSpokenValue(transcript, currentQuestion.type, {
         options: currentQuestion.options,
         language,
       });
+
+      // For *_has_more gate questions, map natural "add row" variants to "Yes"
+      // and "stop / no more / done" variants to "No" — these are spoken commands,
+      // not literal Yes/No answers, so parseSpokenValue doesn't cover them.
+      if (/^.+_has_more$/.test(currentQuestion.field)) {
+        const lower = transcript.trim().toLowerCase();
+        if (/\b(add(\s+(another|new|a))?\s+(row|entry|action|point|report|plan|one)|new\s+(row|entry|action|plan)|next\s+(row|entry|one))\b/i.test(lower)) {
+          value = 'Yes';
+        } else if (/\b(no\s+more|stop|done|finish|that'?s\s+all)\b/i.test(lower)) {
+          value = 'No';
+        }
+      }
+
       setExtractedValue(value);
       setPhase('confirm');
     } catch (err) {
@@ -111,16 +124,64 @@ const VoiceAssistantModal = ({ isOpen, onClose, formData, onFieldsCollected }) =
   };
 
   const handleConfirm = () => {
-    const newAnswers = { ...answers, [currentQuestion.field]: extractedValue };
-    setAnswers(newAnswers);
     setTranscription('');
     setExtractedValue('');
     setError('');
 
-    if (currentIndex + 1 >= totalQuestions) {
+    // Check if this is a row-gate question (e.g. action_tracker_has_more)
+    const hasMoreMatch = currentQuestion.field.match(/^(.+)_has_more$/);
+
+    // Compute the question list we'll advance into (may grow if user said Yes)
+    let nextQuestions = filteredQuestions;
+
+    if (hasMoreMatch) {
+      // *_has_more is a control gate — never store it as a form field value.
+      // "Yes" → inject the next row's questions immediately after this position.
+      // "No" → do nothing; the loop stops because no row-N data will exist.
+      if (extractedValue === 'Yes') {
+        const arrayName = hasMoreMatch[1];
+
+        // Determine the highest row index already answered for this array
+        const existingRows = Object.keys(answers).reduce((max, key) => {
+          const m = key.match(new RegExp(`^${arrayName}_(\\d+)_`));
+          return m ? Math.max(max, parseInt(m[1], 10)) : max;
+        }, 0);
+        const nextRow = existingRows + 1;
+
+        // nextRow must be ≥2 (row 1 was just completed) and within the 10-row cap
+        if (nextRow >= 2 && nextRow <= 10) {
+          // Use the row-1 questions already in filteredQuestions as a template
+          const row1Pattern = new RegExp(`^${arrayName}_1_`);
+          const rowTemplate = filteredQuestions.filter(q => row1Pattern.test(q.field));
+
+          if (rowTemplate.length > 0) {
+            const nextRowQs = rowTemplate.map(q => ({
+              ...q,
+              field: q.field.replace(`${arrayName}_1_`, `${arrayName}_${nextRow}_`),
+            }));
+            // Splice: new row questions + a fresh has_more gate right after current index
+            const insertAt = currentIndex + 1;
+            nextQuestions = [
+              ...filteredQuestions.slice(0, insertAt),
+              ...nextRowQs,
+              { ...currentQuestion }, // re-ask has_more after the new row completes
+              ...filteredQuestions.slice(insertAt),
+            ];
+            setFilteredQuestions(nextQuestions);
+          }
+        }
+      }
+      // (No-answer path: nextQuestions stays as-is, advance normally)
+    } else {
+      // Normal field — store its value
+      setAnswers(prev => ({ ...prev, [currentQuestion.field]: extractedValue }));
+    }
+
+    const nextIndex = currentIndex + 1;
+    if (nextIndex >= nextQuestions.length) {
       setPhase('summary');
     } else {
-      setCurrentIndex(currentIndex + 1);
+      setCurrentIndex(nextIndex);
       setPhase('speaking');
     }
   };
