@@ -14,10 +14,10 @@ import { useToast } from '../hooks/useToast';
 import { useOfflineQueue } from '../hooks/useOfflineQueue';
 import { useVoiceNoteDraft, clearVoiceNoteDrafts } from '../hooks/useVoiceNoteDraft';
 import { useImageDraft, clearImageDrafts } from '../hooks/useImageDraft';
-import apiClient from '../api/client';
 import { API_ENDPOINTS } from '../utils/constants';
 import { getSubmissionInfo as getLocalSubmissionInfo, getTargetReportMonth, formatMonthDisplay, getSubmissionPeriodDescription } from '../utils/dateUtils';
-import { getSubmissionInfo, getExistingDraft, saveDraft, checkSubmitted } from '../api/reports';
+import { getSubmissionInfo, getExistingDraft, saveDraft, checkSubmitted, submitNewReport, createReport, appendFieldOp, submitReport } from '../api/reports';
+import { getCurrentFormVersionId } from '../services/formConfigService';
 import { STATE_QUERY_KEYS } from '../hooks/useStateData';
 
 // ────────────────────────────────────────────────────────────────
@@ -746,13 +746,16 @@ const SubmitReportPage = () => {
 
   // ── Offline queue ───────────────────────────────────────────
   const { addToQueue, getQueueStats, retryFailed, isSyncing } = useOfflineQueue({
-    submitFn: async (data, month, headers) => {
-      const formPayload = new FormData();
-      formPayload.append('report_month', month);
-      formPayload.append('report_data', JSON.stringify(data));
-      return apiClient.post('/reports', formPayload, {
-        headers: { 'Content-Type': 'multipart/form-data', ...headers },
-      });
+    // Replayed when connectivity returns. Field-only (queued payloads can't
+    // carry File objects); follows the v1 flow: create draft → set fields → submit.
+    submitFn: async (data, month) => {
+      const { state: _s, lga_id: _l, ward_id: _w, ...rest } = data || {};
+      const fields = { ...rest, report_month: month };
+      const draft = await createReport({ formVersionId: getCurrentFormVersionId(), submissionMethod: 'wizard' });
+      const reportId = draft?.id ?? draft?.report?.id;
+      if (!reportId) throw new Error('Failed to create draft report');
+      await appendFieldOp(reportId, fields);
+      return submitReport(reportId);
     },
     verifyFn: async (month) => {
       const check = await checkSubmitted(month);
@@ -763,27 +766,26 @@ const SubmitReportPage = () => {
   // ── Submit mutation ─────────────────────────────────────────
   const submitMutation = useMutation({
     mutationFn: async (data) => {
-      const formPayload = new FormData();
-      formPayload.append('report_month', reportMonth);
-      formPayload.append('report_data', JSON.stringify(serializableFormData(data)));
+      // v1 contract: create draft → set each field (incl. report_month) →
+      // upload attachments/voice notes → submit. lga/ward are derived from the
+      // authenticated secretary server-side, so they are not sent as fields.
+      const { state: _s, lga_id: _l, ward_id: _w, ...rest } = serializableFormData(data);
+      const fields = { ...rest, report_month: reportMonth };
 
-      // Voice notes
-      Object.entries(voiceNotes).forEach(([fieldName, file]) => {
-        if (file) formPayload.append(`voice_${fieldName}`, file);
-      });
+      const attachments = [
+        ...((data._attendance_pictures || []).filter((p) => p?.file).map((p) => ({ file: p.file, kind: 'attendance_photo' }))),
+        ...((data._group_photos || []).filter((p) => p?.file).map((p) => ({ file: p.file, kind: 'group_photo' }))),
+      ];
+      const vnotes = Object.entries(voiceNotes)
+        .filter(([, file]) => file)
+        .map(([fieldName, file]) => ({ file, fieldName }));
 
-      // Attendance pictures
-      (data._attendance_pictures || []).forEach((pic, idx) => {
-        formPayload.append(`attendance_picture_${idx}`, pic.file);
-      });
-
-      // Group photos
-      (data._group_photos || []).forEach((pic, idx) => {
-        formPayload.append(`group_photo_${idx}`, pic.file);
-      });
-
-      return apiClient.post('/reports', formPayload, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      return submitNewReport({
+        formVersionId: getCurrentFormVersionId(),
+        submissionMethod: 'wizard',
+        fields,
+        attachments,
+        voiceNotes: vnotes,
       });
     },
     onSuccess: async () => {
@@ -872,26 +874,16 @@ const SubmitReportPage = () => {
   // ── Server draft save mutation ──────────────────────────────
   const draftMutation = useMutation({
     mutationFn: async (data) => {
-      const formPayload = new FormData();
-      formPayload.append('report_month', reportMonth);
-      formPayload.append('report_data', JSON.stringify(serializableFormData(data)));
-
-      // Attach ALL voice notes
-      Object.entries(voiceNotes).forEach(([fieldName, file]) => {
-        if (file) formPayload.append(`voice_${fieldName}`, file);
+      // Server draft: append fields to the existing draft for this month, or
+      // create one. Files are handled by the local draft store / submit step.
+      const { state: _s, lga_id: _l, ward_id: _w, ...rest } = serializableFormData(data);
+      const existing = await getExistingDraft(reportMonth).catch(() => null);
+      const reportId = existing?.id ?? existing?.report?.id;
+      return saveDraft({
+        ...(reportId ? { reportId } : { formVersionId: getCurrentFormVersionId() }),
+        report_month: reportMonth,
+        ...rest,
       });
-
-      // Attach attendance pictures
-      (data._attendance_pictures || []).forEach((pic, idx) => {
-        if (pic.file) formPayload.append(`attendance_picture_${idx}`, pic.file);
-      });
-
-      // Attach group photos
-      (data._group_photos || []).forEach((pic, idx) => {
-        if (pic.file) formPayload.append(`group_photo_${idx}`, pic.file);
-      });
-
-      return saveDraft(formPayload);
     },
     onSuccess: () => {
       toast.success('Draft saved to server.');

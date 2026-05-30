@@ -369,8 +369,8 @@ describe('isValidMonth', () => {
 describe('getStatusColor', () => {
   it('returns correct class for known statuses', () => {
     expect(getStatusColor('SUBMITTED')).toBe('bg-blue-100 text-blue-800');
-    expect(getStatusColor('REVIEWED')).toBe('bg-green-100 text-green-800');
-    expect(getStatusColor('FLAGGED')).toBe('bg-yellow-100 text-yellow-800');
+    expect(getStatusColor('REVIEWED')).toBe('bg-primary-100 text-primary-800');
+    expect(getStatusColor('FLAGGED')).toBe('bg-accent-100 text-accent-900');
     expect(getStatusColor('DRAFT')).toBe('bg-neutral-100 text-neutral-800');
   });
 
@@ -380,9 +380,9 @@ describe('getStatusColor', () => {
 });
 
 describe('getSubmissionRateColor', () => {
-  it('returns green for >= 90', () => {
-    expect(getSubmissionRateColor(90)).toBe('text-green-600');
-    expect(getSubmissionRateColor(100)).toBe('text-green-600');
+  it('returns primary for >= 90', () => {
+    expect(getSubmissionRateColor(90)).toBe('text-primary-600');
+    expect(getSubmissionRateColor(100)).toBe('text-primary-600');
   });
 
   it('returns blue for 70-89', () => {
@@ -390,9 +390,9 @@ describe('getSubmissionRateColor', () => {
     expect(getSubmissionRateColor(89)).toBe('text-blue-600');
   });
 
-  it('returns yellow for 50-69', () => {
-    expect(getSubmissionRateColor(50)).toBe('text-yellow-600');
-    expect(getSubmissionRateColor(69)).toBe('text-yellow-600');
+  it('returns accent for 50-69', () => {
+    expect(getSubmissionRateColor(50)).toBe('text-accent-600');
+    expect(getSubmissionRateColor(69)).toBe('text-accent-600');
   });
 
   it('returns red for < 50', () => {

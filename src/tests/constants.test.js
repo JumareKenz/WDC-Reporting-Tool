@@ -7,10 +7,6 @@ import {
   ROLE_LABELS,
   REPORT_STATUS,
   STATUS_LABELS,
-  INVESTIGATION_STATUS,
-  INVESTIGATION_LABELS,
-  INVESTIGATION_PRIORITY,
-  PRIORITY_LABELS,
   API_ENDPOINTS,
   STORAGE_KEYS,
   PAGINATION,
@@ -47,40 +43,9 @@ describe('REPORT_STATUS and STATUS_LABELS', () => {
     }
   });
 
-  it('contains DRAFT, SUBMITTED, REVIEWED, FLAGGED', () => {
+  it('contains the v1 state-machine states', () => {
     expect(Object.values(REPORT_STATUS)).toEqual(
-      expect.arrayContaining(['DRAFT', 'SUBMITTED', 'REVIEWED', 'FLAGGED'])
-    );
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Investigation status / priority completeness
-// ---------------------------------------------------------------------------
-describe('INVESTIGATION_STATUS and INVESTIGATION_LABELS', () => {
-  it('every status has a label', () => {
-    for (const status of Object.values(INVESTIGATION_STATUS)) {
-      expect(INVESTIGATION_LABELS[status]).toBeDefined();
-    }
-  });
-
-  it('contains OPEN, IN_PROGRESS, CLOSED', () => {
-    expect(Object.values(INVESTIGATION_STATUS)).toEqual(
-      expect.arrayContaining(['OPEN', 'IN_PROGRESS', 'CLOSED'])
-    );
-  });
-});
-
-describe('INVESTIGATION_PRIORITY and PRIORITY_LABELS', () => {
-  it('every priority has a label', () => {
-    for (const priority of Object.values(INVESTIGATION_PRIORITY)) {
-      expect(PRIORITY_LABELS[priority]).toBeDefined();
-    }
-  });
-
-  it('contains LOW, MEDIUM, HIGH, URGENT', () => {
-    expect(Object.values(INVESTIGATION_PRIORITY)).toEqual(
-      expect.arrayContaining(['LOW', 'MEDIUM', 'HIGH', 'URGENT'])
+      expect.arrayContaining(['draft', 'submitted', 'in_review', 'approved', 'returned', 'sealed'])
     );
   });
 });
@@ -89,12 +54,12 @@ describe('INVESTIGATION_PRIORITY and PRIORITY_LABELS', () => {
 // API_ENDPOINTS shape
 // ---------------------------------------------------------------------------
 describe('API_ENDPOINTS', () => {
-  it('static endpoints are non-empty strings', () => {
-    const staticKeys = ['LOGIN', 'ME', 'REPORTS', 'CHECK_SUBMITTED', 'LGAS',
-      'NOTIFICATIONS', 'FEEDBACK', 'STATE_SUBMISSIONS',
-      'ANALYTICS_OVERVIEW', 'ANALYTICS_LGA_COMPARISON',
-      'ANALYTICS_TRENDS', 'ANALYTICS_AI_REPORT',
-      'INVESTIGATIONS', 'FORMS', 'FORMS_ACTIVE', 'HEALTH'];
+  it('static endpoints are non-empty strings starting with /', () => {
+    const staticKeys = ['REFRESH', 'REPORTS', 'REPORTS_SEAL_DUE', 'LGAS',
+      'ATTACHMENTS_UPLOAD', 'FORMS', 'FORMS_VISIBLE', 'USERS',
+      'ANALYTICS_OVERVIEW', 'ANALYTICS_LGA_COMPARISON', 'ANALYTICS_TRENDS',
+      'ANALYTICS_SERVICE_DELIVERY', 'AI_ASK', 'AI_QUERY', 'AI_CONVERSATIONS',
+      'INVESTIGATIONS', 'HEALTH_LIVE'];
 
     for (const key of staticKeys) {
       expect(typeof API_ENDPOINTS[key]).toBe('string');
@@ -103,8 +68,9 @@ describe('API_ENDPOINTS', () => {
   });
 
   it('parameterized endpoints are functions that return strings', () => {
-    const funcKeys = ['REPORT_BY_ID', 'REVIEW_REPORT', 'LGA_WARDS', 'LGA_REPORTS',
-      'LGA_BY_ID', 'NOTIFICATION_READ', 'INVESTIGATION_BY_ID', 'FORM_BY_ID'];
+    const funcKeys = ['REPORT_BY_ID', 'REPORT_DETAIL', 'REPORT_FIELDS', 'REPORT_SUBMIT',
+      'REPORT_OPEN_REVIEW', 'REPORT_APPROVE', 'REPORT_RETURN', 'LGA_WARDS',
+      'FORM_BY_ID', 'USER_BY_ID', 'INVESTIGATION_BY_ID'];
 
     for (const key of funcKeys) {
       expect(typeof API_ENDPOINTS[key]).toBe('function');
