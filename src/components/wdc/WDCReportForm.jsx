@@ -341,9 +341,36 @@ const DynamicTable = ({ columns, rows, onRowChange, onAddRow, onRemoveRow, table
   </div>
 );
 
-/**
- * Comprehensive WDC Monthly Report Form
- */
+// Reusable cause-of-death inputs (maternal or perinatal)
+const DeathCauses = ({ label, field, formData, setFormData, reportIdForVoiceNotes, existingVoiceNotes }) => (
+  <div>
+    <h5 className="text-xs sm:text-sm font-semibold text-neutral-700 mb-3">{label}</h5>
+    <div className="space-y-2">
+      {[0, 1, 2].map(i => (
+        <TextInput
+          key={i}
+          label={`Cause ${i + 1}`}
+          name={`${field}_${i + 1}`}
+          value={formData[field][i] || ''}
+          onChange={(e) => {
+            const next = [...formData[field]];
+            next[i] = e.target.value;
+            setFormData(prev => ({ ...prev, [field]: next }));
+          }}
+          placeholder="Enter cause..."
+        />
+      ))}
+    </div>
+    <div className="mt-3">
+      <VoiceNoteRecorder
+        reportId={reportIdForVoiceNotes}
+        fieldName={field}
+        existingNote={existingVoiceNotes[field]}
+      />
+    </div>
+  </div>
+);
+
 const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo }) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -735,6 +762,61 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
     const total = (parseInt(formData.attendance_male) || 0) + (parseInt(formData.attendance_female) || 0);
     setFormData(prev => (parseInt(prev.attendance_total) || 0) === total ? prev : { ...prev, attendance_total: String(total) });
   }, [formData.attendance_male, formData.attendance_female]);
+
+  // Reset Section 4 data when meeting changes away from Quarterly
+  useEffect(() => {
+    if (formData.meeting_type !== 'Quarterly Town Hall') {
+      setFormData(prev => {
+        const alreadyClear = !prev.town_hall_conducted &&
+          prev.community_feedback.every(i => !i.feedback && !i.action_required);
+        if (alreadyClear) return prev;
+        return {
+          ...prev,
+          town_hall_conducted: '',
+          community_feedback: prev.community_feedback.map(i => ({ ...i, feedback: '', action_required: '' })),
+        };
+      });
+    }
+  }, [formData.meeting_type]);
+
+  // Clear maternal death causes when count drops to zero
+  useEffect(() => {
+    if (!parseInt(formData.maternal_deaths)) {
+      setFormData(prev => {
+        if (prev.maternal_death_causes.every(c => !c)) return prev;
+        return { ...prev, maternal_death_causes: ['', '', ''] };
+      });
+    }
+  }, [formData.maternal_deaths]);
+
+  // Clear perinatal death causes when count drops to zero
+  useEffect(() => {
+    if (!parseInt(formData.perinatal_deaths)) {
+      setFormData(prev => {
+        if (prev.perinatal_death_causes.every(c => !c)) return prev;
+        return { ...prev, perinatal_death_causes: ['', '', ''] };
+      });
+    }
+  }, [formData.perinatal_deaths]);
+
+  // Clear donation/repair type selections when their count drops to zero
+  useEffect(() => {
+    if (!parseInt(formData.items_donated_count)) {
+      setFormData(prev => prev.items_donated_types?.length ? { ...prev, items_donated_types: [] } : prev);
+    }
+  }, [formData.items_donated_count]);
+
+  useEffect(() => {
+    if (!parseInt(formData.items_donated_govt_count)) {
+      setFormData(prev => prev.items_donated_govt_types?.length ? { ...prev, items_donated_govt_types: [] } : prev);
+    }
+  }, [formData.items_donated_govt_count]);
+
+  useEffect(() => {
+    if (!parseInt(formData.items_repaired_count)) {
+      setFormData(prev => prev.items_repaired_types?.length ? { ...prev, items_repaired_types: [] } : prev);
+    }
+  }, [formData.items_repaired_count]);
 
   // Fetch existing voice notes when we have a report ID
   useEffect(() => {
@@ -1238,6 +1320,10 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
     );
   }
 
+  // Section 4 is only present for Quarterly Town Hall; shift subsequent section numbers down when absent
+  const s4Present = formData.meeting_type === 'Quarterly Town Hall';
+  const sn = (n) => String(s4Present ? n : n - 1);
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
       {/* Header Alert */}
@@ -1534,27 +1620,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <NumberInput label="Number of items donated to health facilities by WDC" name="items_donated_count" value={formData.items_donated_count} onChange={handleChange} />
-                  <div className="mt-2">
-                    <label className="block text-xs text-neutral-600 mb-1">Type of items donated:</label>
-                    <div className="flex flex-wrap gap-1 sm:gap-2">
-                      {DONATION_ITEMS.slice(0, 6).map(item => (
-                        <button
-                          key={item}
-                          type="button"
-                          onClick={() => handleMultiSelect('items_donated_types', item)}
-                          className={`px-2 py-1 text-xs rounded-full border transition-colors ${formData.items_donated_types.includes(item)
-                            ? 'bg-primary-100 border-primary-500 text-primary-700'
-                            : 'bg-neutral-50 border-neutral-200 text-neutral-600'
-                            }`}
-                        >
-                          {item}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="mt-4">
-                    <NumberInput label="Number of items donated to health facilities by Government" name="items_donated_govt_count" value={formData.items_donated_govt_count} onChange={handleChange} />
+                  {parseInt(formData.items_donated_count) > 0 && (
                     <div className="mt-2">
                       <label className="block text-xs text-neutral-600 mb-1">Type of items donated:</label>
                       <div className="flex flex-wrap gap-1 sm:gap-2">
@@ -1562,8 +1628,8 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
                           <button
                             key={item}
                             type="button"
-                            onClick={() => handleMultiSelect('items_donated_govt_types', item)}
-                            className={`px-2 py-1 text-xs rounded-full border transition-colors ${formData.items_donated_govt_types.includes(item)
+                            onClick={() => handleMultiSelect('items_donated_types', item)}
+                            className={`px-2 py-1 text-xs rounded-full border transition-colors ${formData.items_donated_types.includes(item)
                               ? 'bg-primary-100 border-primary-500 text-primary-700'
                               : 'bg-neutral-50 border-neutral-200 text-neutral-600'
                               }`}
@@ -1573,28 +1639,54 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
                         ))}
                       </div>
                     </div>
+                  )}
+
+                  <div className="mt-4">
+                    <NumberInput label="Number of items donated to health facilities by Government" name="items_donated_govt_count" value={formData.items_donated_govt_count} onChange={handleChange} />
+                    {parseInt(formData.items_donated_govt_count) > 0 && (
+                      <div className="mt-2">
+                        <label className="block text-xs text-neutral-600 mb-1">Type of items donated:</label>
+                        <div className="flex flex-wrap gap-1 sm:gap-2">
+                          {DONATION_ITEMS.slice(0, 6).map(item => (
+                            <button
+                              key={item}
+                              type="button"
+                              onClick={() => handleMultiSelect('items_donated_govt_types', item)}
+                              className={`px-2 py-1 text-xs rounded-full border transition-colors ${formData.items_donated_govt_types.includes(item)
+                                ? 'bg-primary-100 border-primary-500 text-primary-700'
+                                : 'bg-neutral-50 border-neutral-200 text-neutral-600'
+                                }`}
+                            >
+                              {item}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div>
                   <NumberInput label="Number of items repaired in health facilities through WDC/Government/Partners" name="items_repaired_count" value={formData.items_repaired_count} onChange={handleChange} />
-                  <div className="mt-2">
-                    <label className="block text-xs text-neutral-600 mb-1">Type of items repaired:</label>
-                    <div className="flex flex-wrap gap-1 sm:gap-2">
-                      {REPAIR_ITEMS.slice(0, 6).map(item => (
-                        <button
-                          key={item}
-                          type="button"
-                          onClick={() => handleMultiSelect('items_repaired_types', item)}
-                          className={`px-2 py-1 text-xs rounded-full border transition-colors ${formData.items_repaired_types.includes(item)
-                            ? 'bg-primary-100 border-primary-500 text-primary-700'
-                            : 'bg-neutral-50 border-neutral-200 text-neutral-600'
-                            }`}
-                        >
-                          {item}
-                        </button>
-                      ))}
+                  {parseInt(formData.items_repaired_count) > 0 && (
+                    <div className="mt-2">
+                      <label className="block text-xs text-neutral-600 mb-1">Type of items repaired:</label>
+                      <div className="flex flex-wrap gap-1 sm:gap-2">
+                        {REPAIR_ITEMS.slice(0, 6).map(item => (
+                          <button
+                            key={item}
+                            type="button"
+                            onClick={() => handleMultiSelect('items_repaired_types', item)}
+                            className={`px-2 py-1 text-xs rounded-full border transition-colors ${formData.items_repaired_types.includes(item)
+                              ? 'bg-primary-100 border-primary-500 text-primary-700'
+                              : 'bg-neutral-50 border-neutral-200 text-neutral-600'
+                              }`}
+                          >
+                            {item}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1627,99 +1719,16 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <h5 className="text-xs sm:text-sm font-semibold text-neutral-700 mb-3">Causes of maternal deaths identified by community:</h5>
-                <div className="space-y-2">
-                  <TextInput
-                    label="Cause 1"
-                    name="maternal_death_cause_1"
-                    value={formData.maternal_death_causes[0] || ''}
-                    onChange={(e) => {
-                      const newCauses = [...formData.maternal_death_causes];
-                      newCauses[0] = e.target.value;
-                      setFormData(prev => ({ ...prev, maternal_death_causes: newCauses }));
-                    }}
-                    placeholder="Enter cause..."
-                  />
-                  <TextInput
-                    label="Cause 2"
-                    name="maternal_death_cause_2"
-                    value={formData.maternal_death_causes[1] || ''}
-                    onChange={(e) => {
-                      const newCauses = [...formData.maternal_death_causes];
-                      newCauses[1] = e.target.value;
-                      setFormData(prev => ({ ...prev, maternal_death_causes: newCauses }));
-                    }}
-                    placeholder="Enter cause..."
-                  />
-                  <TextInput
-                    label="Cause 3"
-                    name="maternal_death_cause_3"
-                    value={formData.maternal_death_causes[2] || ''}
-                    onChange={(e) => {
-                      const newCauses = [...formData.maternal_death_causes];
-                      newCauses[2] = e.target.value;
-                      setFormData(prev => ({ ...prev, maternal_death_causes: newCauses }));
-                    }}
-                    placeholder="Enter cause..."
-                  />
-                </div>
-                <div className="mt-3">
-                  <VoiceNoteRecorder 
-                    reportId={reportIdForVoiceNotes}
-                    fieldName="maternal_death_causes"
-                    existingNote={existingVoiceNotes.maternal_death_causes}
-                  />
-                </div>
+            {parseInt(formData.maternal_deaths) > 0 && parseInt(formData.perinatal_deaths) > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <DeathCauses label="Causes of maternal deaths identified by community:" field="maternal_death_causes" formData={formData} setFormData={setFormData} reportIdForVoiceNotes={reportIdForVoiceNotes} existingVoiceNotes={existingVoiceNotes} />
+                <DeathCauses label="Causes of perinatal deaths identified by community:" field="perinatal_death_causes" formData={formData} setFormData={setFormData} reportIdForVoiceNotes={reportIdForVoiceNotes} existingVoiceNotes={existingVoiceNotes} />
               </div>
-
-              <div>
-                <h5 className="text-xs sm:text-sm font-semibold text-neutral-700 mb-3">Causes of perinatal deaths identified by community:</h5>
-                <div className="space-y-2">
-                  <TextInput
-                    label="Cause 1"
-                    name="perinatal_death_cause_1"
-                    value={formData.perinatal_death_causes[0] || ''}
-                    onChange={(e) => {
-                      const newCauses = [...formData.perinatal_death_causes];
-                      newCauses[0] = e.target.value;
-                      setFormData(prev => ({ ...prev, perinatal_death_causes: newCauses }));
-                    }}
-                    placeholder="Enter cause..."
-                  />
-                  <TextInput
-                    label="Cause 2"
-                    name="perinatal_death_cause_2"
-                    value={formData.perinatal_death_causes[1] || ''}
-                    onChange={(e) => {
-                      const newCauses = [...formData.perinatal_death_causes];
-                      newCauses[1] = e.target.value;
-                      setFormData(prev => ({ ...prev, perinatal_death_causes: newCauses }));
-                    }}
-                    placeholder="Enter cause..."
-                  />
-                  <TextInput
-                    label="Cause 3"
-                    name="perinatal_death_cause_3"
-                    value={formData.perinatal_death_causes[2] || ''}
-                    onChange={(e) => {
-                      const newCauses = [...formData.perinatal_death_causes];
-                      newCauses[2] = e.target.value;
-                      setFormData(prev => ({ ...prev, perinatal_death_causes: newCauses }));
-                    }}
-                    placeholder="Enter cause..."
-                  />
-                </div>
-                <div className="mt-3">
-                  <VoiceNoteRecorder 
-                    reportId={reportIdForVoiceNotes}
-                    fieldName="perinatal_death_causes"
-                    existingNote={existingVoiceNotes.perinatal_death_causes}
-                  />
-                </div>
-              </div>
-            </div>
+            ) : parseInt(formData.maternal_deaths) > 0 ? (
+              <DeathCauses label="Causes of maternal deaths identified by community:" field="maternal_death_causes" formData={formData} setFormData={setFormData} reportIdForVoiceNotes={reportIdForVoiceNotes} existingVoiceNotes={existingVoiceNotes} />
+            ) : parseInt(formData.perinatal_deaths) > 0 ? (
+              <DeathCauses label="Causes of perinatal deaths identified by community:" field="perinatal_death_causes" formData={formData} setFormData={setFormData} reportIdForVoiceNotes={reportIdForVoiceNotes} existingVoiceNotes={existingVoiceNotes} />
+            ) : null}
           </div>
         </div>
       </FormSection>
@@ -1749,7 +1758,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
               </div>
             </div>
 
-            <div className="space-y-3">
+            {formData.town_hall_conducted === 'Yes' && <div className="space-y-3">
               {formData.community_feedback.map((item, idx) => (
                 <div key={idx} className="p-3 bg-neutral-50 rounded-lg">
                   <p className="text-xs sm:text-sm font-medium text-neutral-700 mb-2">{item.indicator}</p>
@@ -1784,13 +1793,13 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
                   </div>
                 </div>
               ))}
-            </div>
+            </div>}
           </div>
         </FormSection>
       )}
 
       {/* Section 5: Reports from Village Development Committees (VDCs) */}
-      <FormSection title="REPORTS FROM VILLAGE DEVELOPMENT COMMITTEES (VDCs)" number="5" icon={MapPin}>
+      <FormSection title="REPORTS FROM VILLAGE DEVELOPMENT COMMITTEES (VDCs)" number={sn(5)} icon={MapPin}>
         <DynamicTable
           tableId="vdc_reports"
           columns={[
@@ -1813,7 +1822,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
       </FormSection>
 
       {/* Section 6: Community Mobilization Activities */}
-      <FormSection title="COMMUNITY MOBILIZATION ACTIVITIES" number="6" icon={Users}>
+      <FormSection title="COMMUNITY MOBILIZATION ACTIVITIES" number={sn(6)} icon={Users}>
         <div className="space-y-4">
           <div>
             <TextInput
@@ -1871,7 +1880,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
       </FormSection>
 
       {/* Section 7: Community Action Plan */}
-      <FormSection title="COMMUNITY ACTION PLAN" number="7" icon={Calendar}>
+      <FormSection title="COMMUNITY ACTION PLAN" number={sn(7)} icon={Calendar}>
         <DynamicTable
           tableId="action_plan"
           columns={[
@@ -1895,7 +1904,7 @@ const WDCReportForm = ({ onSuccess, onCancel, userWard, userLGA, submissionInfo 
       </FormSection>
 
       {/* Section 8: Support Required & Conclusion */}
-      <FormSection title="SUPPORT REQUIRED & CONCLUSION" number="8" icon={AlertTriangle}>
+      <FormSection title="SUPPORT REQUIRED & CONCLUSION" number={sn(8)} icon={AlertTriangle}>
         <div className="space-y-4">
           <div>
             <TextInput

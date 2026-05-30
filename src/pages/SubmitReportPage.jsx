@@ -728,6 +728,22 @@ const SubmitReportPage = () => {
     }
   }, [imagesDraftInitialized, draftImages]);
 
+  // Reset Section 4 data when meeting type changes away from Quarterly Town Hall
+  useEffect(() => {
+    if (formData.meeting_type !== 'Quarterly Town Hall') {
+      setFormData(prev => {
+        const alreadyClear = !prev.town_hall_conducted &&
+          (prev.community_feedback || []).every(i => !i.feedback && !i.action_required);
+        if (alreadyClear) return prev;
+        return {
+          ...prev,
+          town_hall_conducted: '',
+          community_feedback: (prev.community_feedback || []).map(i => ({ ...i, feedback: '', action_required: '' })),
+        };
+      });
+    }
+  }, [formData.meeting_type]);
+
   // ── Offline queue ───────────────────────────────────────────
   const { addToQueue, getQueueStats, retryFailed, isSyncing } = useOfflineQueue({
     submitFn: async (data, month, headers) => {
