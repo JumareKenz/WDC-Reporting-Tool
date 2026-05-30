@@ -114,9 +114,25 @@ const MonthSelectionModal = ({
 
   const years = useMemo(() => Object.keys(monthsByYear).sort((a, b) => b - a), [monthsByYear]);
 
+  // The authoritative set of already-submitted months. We derive it from the
+  // reports list (the same data the dashboard stats cards use) so blocking does
+  // not depend on the backend also returning a separate `submitted_months`
+  // array. Any report whose status/state is not a draft counts as submitted.
+  const effectiveSubmittedMonths = useMemo(() => {
+    const set = new Set(submittedMonths || []);
+    for (const r of reports || []) {
+      const st = String(r.status || r.state || '').toLowerCase();
+      if (st && st !== 'draft') {
+        const month = r.report_month || r.reportMonth || r.month;
+        if (month) set.add(month);
+      }
+    }
+    return [...set];
+  }, [submittedMonths, reports]);
+
   // Check if a month is already submitted
   const isMonthSubmitted = (monthValue) => {
-    return submittedMonths.includes(monthValue);
+    return effectiveSubmittedMonths.includes(monthValue);
   };
 
   // Check if month is in the future
@@ -130,7 +146,7 @@ const MonthSelectionModal = ({
 
   // Get report for a specific month
   const getReportForMonth = (monthValue) => {
-    return reports.find((r) => r.report_month === monthValue);
+    return reports.find((r) => (r.report_month || r.reportMonth || r.month) === monthValue);
   };
 
   // Handle month selection
@@ -413,14 +429,14 @@ const MonthSelectionModal = ({
         )}
 
         {/* Submission History Summary */}
-        {submittedMonths.length > 0 && (
+        {effectiveSubmittedMonths.length > 0 && (
           <div className="border-t border-neutral-200 pt-4">
             <h4 className="text-sm font-semibold text-neutral-700 mb-3 flex items-center gap-2">
               <FileText className="w-4 h-4" />
-              Your Submission History ({submittedMonths.length} reports)
+              Your Submission History ({effectiveSubmittedMonths.length} reports)
             </h4>
             <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto">
-              {submittedMonths
+              {effectiveSubmittedMonths
                 .slice()
                 .sort()
                 .reverse()

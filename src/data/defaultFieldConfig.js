@@ -396,7 +396,7 @@ const DEFAULT_FIELD_CONFIG = {
     ocr: {
       // "Number of women transported to facility for ANC by WDC | 7" — long label, limit match
       patterns: ['women[^0-9\\n]{0,60}anc[^0-9\\n]{0,15}(\\d+)', 'transport.*anc.*wdc[^0-9\\n]{0,15}(\\d+)'],
-      keywords: ['Women ANC WDC'],
+      keywords: ['women transported to facility for ANC', 'ANC by WDC'],
     },
   },
   women_transported_delivery: {
@@ -409,7 +409,7 @@ const DEFAULT_FIELD_CONFIG = {
     ocr: {
       // "Number of women transported to facility for delivery by WDC | 4" — limit to same line
       patterns: ['women[^0-9\\n]{0,60}deliver[^0-9\\n]{0,15}(\\d+)', 'transport.*deliver.*wdc[^0-9\\n]{0,15}(\\d+)'],
-      keywords: ['Women Delivery WDC'],
+      keywords: ['women transported to facility for delivery', 'delivery by WDC'],
     },
   },
   children_transported_danger: {
@@ -422,7 +422,7 @@ const DEFAULT_FIELD_CONFIG = {
     ocr: {
       // "Number of children under 5 with danger signs transported | 2" — limit to same line
       patterns: ['children[^0-9\\n]{0,50}danger[^0-9\\n]{0,20}(\\d+)', 'danger\\s*signs[^0-9\\n]{0,20}(\\d+)'],
-      keywords: ['Children Danger Signs'],
+      keywords: ['children under 5 with danger signs', 'danger signs'],
     },
   },
   women_supported_delivery_items: {
@@ -435,7 +435,7 @@ const DEFAULT_FIELD_CONFIG = {
     ocr: {
       // "Number of women supported with delivery items through WDC efforts | 5" — limit to same line
       patterns: ['supported[^0-9\\n]{0,60}delivery\\s*items[^0-9\\n]{0,20}(\\d+)', 'delivery\\s*items[^0-9\\n]{0,30}(\\d+)'],
-      keywords: ['Women Delivery Items'],
+      keywords: ['women supported with delivery items'],
     },
   },
 
@@ -714,7 +714,7 @@ const DEFAULT_FIELD_CONFIG = {
       // Paper: "pate of Next Meeting: Tuesday, 27 May 2025" (OCR read "Date" as "pate")
       // Capture full date string, allow for OCR typos in "date"
       patterns: ['[dp]ate\\s*of\\s*next\\s*meeting[^:]*:\\s*(.+)', 'next\\s*meeting[^:]*:\\s*(.+)'],
-      keywords: ['Date of Next Meeting'],
+      keywords: ['Next Meeting', 'Date of Next Meeting'],
     },
   },
   chairman_signature: {

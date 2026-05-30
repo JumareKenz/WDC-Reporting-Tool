@@ -84,9 +84,6 @@ export default defineConfig({
         navigateFallback: 'index.html',
         // Pre-cache the app shell so all routes work offline
         globPatterns: ['**/*.{js,css,html,ico,svg,png,woff2}'],
-        // The opencv.js chunk (~7.7MB) powers offline template OCR; precache it
-        // so the reader works with no network. Raise the per-file precache cap.
-        maximumFileSizeToCacheInBytes: 12 * 1024 * 1024,
         // Prevent caching auth/mutation endpoints that should never be served stale
         navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [

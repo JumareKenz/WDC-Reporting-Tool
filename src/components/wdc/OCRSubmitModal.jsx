@@ -3,7 +3,7 @@ import { Camera, Upload, X, AlertTriangle, CheckCircle, Loader2 } from 'lucide-r
 import Modal from '../common/Modal';
 import Button from '../common/Button';
 import { camera } from '../../plugins/capacitor';
-import { performOCR, mapTextToFields } from '../../services/ocrService';
+import { runOCRDetailed, mapTextToFields } from '../../services/ocrService';
 
 const OCRSubmitModal = ({ isOpen, onClose, onFieldsExtracted }) => {
   const [status, setStatus] = useState('idle'); // idle | uploading | processing | done | error
@@ -25,8 +25,8 @@ const OCRSubmitModal = ({ isOpen, onClose, onFieldsExtracted }) => {
 
       setStatus('processing');
 
-      const rawText = await performOCR(imageData.base64, imageData.format);
-      const { fields, totalPatternFields: total } = await mapTextToFields(rawText);
+      const { text: rawText, tokens } = await runOCRDetailed(imageData.base64, imageData.format);
+      const { fields, totalPatternFields: total } = await mapTextToFields(rawText, tokens);
 
       if (Object.keys(fields).length === 0) {
         throw new Error('No data could be extracted from the photo. Check that the form is well-lit, in focus, and that labels are clearly printed next to their values.');

@@ -9,8 +9,12 @@ import { API_ENDPOINTS } from '../utils/constants';
  * - All payloads are camelCase. forbidNonWhitelisted: true → no extra fields.
  */
 
-export const createReport = async (data = {}) =>
-  apiClient.post(API_ENDPOINTS.REPORTS, data);
+// Backend contract: POST /reports { formVersionId, submissionMethod } → draft.
+export const createReport = async ({ formVersionId, submissionMethod = 'wizard' } = {}) => {
+  const body = { submissionMethod };
+  if (formVersionId) body.formVersionId = formVersionId;
+  return apiClient.post(API_ENDPOINTS.REPORTS, body);
+};
 
 export const getReports = async (params = {}) => {
   const queryString = buildQueryString(params);
@@ -20,11 +24,33 @@ export const getReports = async (params = {}) => {
 export const getReportById = async (reportId) =>
   apiClient.get(API_ENDPOINTS.REPORT_BY_ID(reportId));
 
+// Full report contents (all fields + attachments) per the v1 contract.
+export const getReportDetail = async (reportId) =>
+  apiClient.get(API_ENDPOINTS.REPORT_DETAIL(reportId));
+
 export const getReportOps = async (reportId) =>
   apiClient.get(API_ENDPOINTS.REPORT_OPS(reportId));
 
-export const appendFieldOp = async (reportId, fields) =>
-  apiClient.post(API_ENDPOINTS.REPORT_FIELDS(reportId), { fields });
+// Backend stores complex (array/object) field values as JSON strings.
+const serializeFieldValue = (v) => (v !== null && typeof v === 'object' ? JSON.stringify(v) : v);
+
+// Backend contract: POST /reports/:id/fields { key, value, source } — one field
+// per request. Set each field individually; blanks/undefined are skipped.
+export const setField = async (reportId, key, value, source = 'typed') =>
+  apiClient.post(API_ENDPOINTS.REPORT_FIELDS(reportId), {
+    key,
+    value: serializeFieldValue(value),
+    source,
+  });
+
+export const appendFieldOp = async (reportId, fields, source = 'typed') => {
+  const results = [];
+  for (const [key, value] of Object.entries(fields || {})) {
+    if (value === undefined || value === null || value === '') continue;
+    results.push(await setField(reportId, key, value, source));
+  }
+  return results;
+};
 
 export const submitReport = async (reportId) =>
   apiClient.post(API_ENDPOINTS.REPORT_SUBMIT(reportId));
@@ -81,14 +107,14 @@ export const sealDue = async () =>
  * uploading any voice notes/attachments, and submitting it in one go.
  * Returns the final report.
  */
-export const submitNewReport = async ({ formId, formVersion, fields = {}, attachments = [], voiceNotes = [] } = {}) => {
-  const draft = await createReport({ formId, formVersion });
+export const submitNewReport = async ({ formVersionId, submissionMethod = 'wizard', fields = {}, attachments = [], voiceNotes = [], source = 'typed' } = {}) => {
+  const draft = await createReport({ formVersionId, submissionMethod });
   const reportId = draft?.id ?? draft?.report?.id;
   if (!reportId) {
     throw new Error('Failed to create draft report');
   }
   if (Object.keys(fields).length) {
-    await appendFieldOp(reportId, fields);
+    await appendFieldOp(reportId, fields, source);
   }
   for (const att of attachments) {
     await uploadAttachment(reportId, att);
@@ -128,7 +154,19 @@ const isVoiceNote = (att) =>
 export const getMySubmissions = async () => {
   const reports = await getReports();
   const list = Array.isArray(reports) ? reports : reports?.reports || [];
-  const submittedMonths = [...new Set(list.map((r) => r.reportMonth || r.report_month).filter(Boolean))];
+  // A month counts as "submitted" only when a non-draft report exists for it.
+  // Drafts must not block re-entering the form for that month.
+  const submittedMonths = [
+    ...new Set(
+      list
+        .filter((r) => {
+          const st = String(r.state || r.status || '').toLowerCase();
+          return st && st !== 'draft';
+        })
+        .map((r) => r.reportMonth || r.report_month || r.month)
+        .filter(Boolean),
+    ),
+  ];
   return { reports: list, submitted_months: submittedMonths, submittedMonths };
 };
 
@@ -137,9 +175,10 @@ export const getSubmissionInfo = async (reportMonth = null) => {
     const params = reportMonth ? { reportMonth } : {};
     const reports = await getReports(params);
     const list = Array.isArray(reports) ? reports : reports?.reports || [];
-    const match = reportMonth ? list.find((r) => (r.reportMonth || r.report_month) === reportMonth) : list[0];
+    const match = reportMonth ? list.find((r) => (r.reportMonth || r.report_month || r.month) === reportMonth) : list[0];
+    const st = String(match?.state || match?.status || '').toLowerCase();
     return {
-      submitted: !!match && match.state !== 'draft',
+      submitted: !!match && st !== 'draft',
       report: match || null,
       reportMonth: reportMonth || match?.reportMonth || match?.report_month || null,
     };
@@ -166,12 +205,12 @@ export const getExistingDraft = async (reportMonth = null) => {
 };
 
 export const saveDraft = async (data = {}) => {
-  const { reportId, id, ...fields } = data;
+  const { reportId, id, formVersionId, submissionMethod, ...fields } = data;
   if (reportId || id) {
     await appendFieldOp(reportId || id, fields);
     return getReportById(reportId || id);
   }
-  const draft = await createReport({ formId: data.formId, formVersion: data.formVersion });
+  const draft = await createReport({ formVersionId, submissionMethod });
   const newId = draft?.id ?? draft?.report?.id;
   if (newId && Object.keys(fields).length) {
     await appendFieldOp(newId, fields);

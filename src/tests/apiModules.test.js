@@ -36,8 +36,8 @@ vi.mock('../api/client', () => ({
 }));
 
 // Import after mock is set up
-const { submitReport, getReports, getReportById, updateReport,
-  checkSubmitted, getSubmissionInfo, reviewReport } = await import('../api/reports');
+const { submitReport, getReports, getReportById, getReportDetail, createReport,
+  appendFieldOp, updateReport, checkSubmitted, getSubmissionInfo, reviewReport } = await import('../api/reports');
 const { getProfile, updateProfile, updateEmail, changePassword } = await import('../api/profile');
 const { uploadFile, downloadFile } = await import('../api/client');
 
@@ -54,10 +54,20 @@ describe('reports API module', () => {
     downloadFile.mockClear();
   });
 
-  it('submitReport calls uploadFile with /reports endpoint', async () => {
-    const payload = { report_month: '2026-01', meetings_held: '2' };
-    await submitReport(payload);
-    expect(uploadFile).toHaveBeenCalledWith('/reports', payload);
+  it('createReport POSTs /reports with { formVersionId, submissionMethod }', async () => {
+    await createReport({ formVersionId: 'v-uuid', submissionMethod: 'wizard' });
+    expect(mockPost).toHaveBeenCalledWith('/reports', { submissionMethod: 'wizard', formVersionId: 'v-uuid' });
+  });
+
+  it('appendFieldOp POSTs one /reports/:id/fields request per field { key, value, source }', async () => {
+    await appendFieldOp('r1', { report_date: '2026-05-30', health_bcg: 29 });
+    expect(mockPost).toHaveBeenCalledWith('/reports/r1/fields', { key: 'report_date', value: '2026-05-30', source: 'typed' });
+    expect(mockPost).toHaveBeenCalledWith('/reports/r1/fields', { key: 'health_bcg', value: 29, source: 'typed' });
+  });
+
+  it('submitReport POSTs /reports/:id/submit', async () => {
+    await submitReport('r5');
+    expect(mockPost).toHaveBeenCalledWith('/reports/r5/submit');
   });
 
   it('getReports calls GET /reports (no params)', async () => {
@@ -66,8 +76,8 @@ describe('reports API module', () => {
   });
 
   it('getReports appends query string when params given', async () => {
-    await getReports({ limit: 5, offset: 10 });
-    expect(mockGet).toHaveBeenCalledWith('/reports?limit=5&offset=10');
+    await getReports({ state: 'submitted' });
+    expect(mockGet).toHaveBeenCalledWith('/reports?state=submitted');
   });
 
   it('getReportById calls GET /reports/:id', async () => {
@@ -75,25 +85,15 @@ describe('reports API module', () => {
     expect(mockGet).toHaveBeenCalledWith('/reports/42');
   });
 
-  it('updateReport calls PUT /reports/:id', async () => {
-    const data = { meetings_held: '3' };
-    await updateReport(7, data);
-    expect(mockPut).toHaveBeenCalledWith('/reports/7', data);
+  it('getReportDetail calls GET /reports/:id/detail', async () => {
+    await getReportDetail(42);
+    expect(mockGet).toHaveBeenCalledWith('/reports/42/detail');
   });
 
-  it('checkSubmitted calls GET /reports/check-submitted?month=...', async () => {
-    await checkSubmitted('2026-01');
-    expect(mockGet).toHaveBeenCalledWith('/reports/check-submitted?month=2026-01');
-  });
-
-  it('getSubmissionInfo calls GET /reports/submission-info', async () => {
-    await getSubmissionInfo();
-    expect(mockGet).toHaveBeenCalledWith('/reports/submission-info');
-  });
-
-  it('reviewReport calls PATCH /reports/:id/review with status', async () => {
+  it('reviewReport approve runs open-review then approve', async () => {
     await reviewReport(12, 'REVIEWED');
-    expect(mockPatch).toHaveBeenCalledWith('/reports/12/review', { status: 'REVIEWED' });
+    expect(mockPost).toHaveBeenCalledWith('/reports/12/open-review');
+    expect(mockPost).toHaveBeenCalledWith('/reports/12/approve', {});
   });
 });
 
@@ -107,27 +107,24 @@ describe('profile API module', () => {
     mockPatch.mockClear();
   });
 
-  it('getProfile calls GET /profile/me', async () => {
-    await getProfile();
-    expect(mockGet).toHaveBeenCalledWith('/profile/me');
+  it('getProfile reads cached user data without an HTTP call (identity lives in the JWT)', async () => {
+    const result = await getProfile();
+    expect(mockGet).not.toHaveBeenCalled();
+    expect(result === null || typeof result === 'object').toBe(true);
   });
 
-  it('updateProfile calls PATCH /profile/me with data', async () => {
-    const data = { full_name: 'Amina Yusuf', phone: '08012345678' };
-    await updateProfile(data);
-    expect(mockPatch).toHaveBeenCalledWith('/profile/me', data);
+  it('updateProfile rejects — profile edits are managed centrally (no endpoint)', async () => {
+    await expect(updateProfile({ full_name: 'Amina Yusuf' })).rejects.toThrow(/managed centrally/i);
+    expect(mockPatch).not.toHaveBeenCalledWith('/profile/me', expect.anything());
   });
 
-  it('updateEmail calls PATCH /profile/email with email object', async () => {
-    await updateEmail('new@test.com');
-    expect(mockPatch).toHaveBeenCalledWith('/profile/email', { email: 'new@test.com' });
+  it('updateEmail rejects — email changes are managed centrally (no endpoint)', async () => {
+    await expect(updateEmail('new@test.com')).rejects.toThrow(/managed centrally/i);
+    expect(mockPatch).not.toHaveBeenCalledWith('/profile/email', expect.anything());
   });
 
-  it('changePassword calls POST /profile/change-password', async () => {
-    await changePassword('oldpass', 'newpass');
-    expect(mockPost).toHaveBeenCalledWith('/profile/change-password', {
-      current_password: 'oldpass',
-      new_password: 'newpass',
-    });
+  it('changePassword rejects — no self-service endpoint for console accounts', async () => {
+    await expect(changePassword('oldpass', 'newpass')).rejects.toThrow(/state office/i);
+    expect(mockPost).not.toHaveBeenCalledWith('/profile/change-password', expect.anything());
   });
 });

@@ -8,7 +8,6 @@ import Alert from '../components/common/Alert';
 import WDCReportWizard from '../components/wdc/WDCReportWizard';
 import DraftStatusBar from '../components/wdc/DraftStatusBar';
 import OCRSubmitModal from '../components/wdc/OCRSubmitModal';
-import GuidedCaptureModal from '../components/wdc/GuidedCaptureModal';
 import VoiceAssistantModal from '../components/wdc/VoiceAssistantModal';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
@@ -288,7 +287,6 @@ const SubmitReportPage = () => {
   const [formData, setFormData] = useState(() => buildInitialFormData(userWard, userLGA));
   const [voiceNotes, setVoiceNotes] = useState({});
   const [ocrOpen, setOcrOpen] = useState(false);
-  const [guidedOpen, setGuidedOpen] = useState(false);
   const [voiceAssistantOpen, setVoiceAssistantOpen] = useState(false);
 
   // Voice note draft persistence
@@ -383,10 +381,10 @@ const SubmitReportPage = () => {
       // Check submission status for the selected month
       if (isOnline) {
         try {
-          const infoResponse = await getSubmissionInfo(selectedMonth);
-          const info = infoResponse?.data || {};
+          // getSubmissionInfo returns { submitted, report, reportMonth } directly.
+          const info = await getSubmissionInfo(selectedMonth);
 
-          if (info.already_submitted) {
+          if (info?.submitted) {
             setMonthError(`A report for ${formatMonthDisplay(selectedMonth)} has already been submitted. You cannot submit again for the same month.`);
             setCheckingMonth(false);
             return;
@@ -1318,22 +1316,8 @@ const SubmitReportPage = () => {
                   </div>
                 )}
 
-                {/* ── Smart-fill entry points (Guided Scan + OCR + Voice) ── */}
-                <div className="mb-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setGuidedOpen(true)}
-                    disabled={!submissionAllowed}
-                    className="flex items-center gap-3 p-4 rounded-xl border border-primary-200 bg-primary-50 text-left transition hover:bg-primary-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-600 text-white">
-                      <Camera className="h-5 w-5" />
-                    </span>
-                    <span>
-                      <span className="block text-sm font-semibold text-primary-900">Guided Scan (best accuracy)</span>
-                      <span className="block text-xs text-primary-700/80">Align each section to a frame; we read values from the table cells.</span>
-                    </span>
-                  </button>
+                {/* ── Smart-fill entry points (OCR + Voice Assistant) ── */}
+                <div className="mb-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <button
                     type="button"
                     onClick={() => setOcrOpen(true)}
@@ -1393,11 +1377,6 @@ const SubmitReportPage = () => {
         isOpen={ocrOpen}
         onClose={() => setOcrOpen(false)}
         onFieldsExtracted={(fields) => handleBulkFieldsApply(fields, 'ocr')}
-      />
-      <GuidedCaptureModal
-        isOpen={guidedOpen}
-        onClose={() => setGuidedOpen(false)}
-        onComplete={(fields) => handleBulkFieldsApply(fields, 'ocr')}
       />
       <VoiceAssistantModal
         isOpen={voiceAssistantOpen}

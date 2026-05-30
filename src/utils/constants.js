@@ -88,6 +88,7 @@ export const API_ENDPOINTS = {
   // Reports (op-log model)
   REPORTS: '/reports',
   REPORT_BY_ID: (id) => `/reports/${id}`,
+  REPORT_DETAIL: (id) => `/reports/${id}/detail`,
   REPORT_OPS: (id) => `/reports/${id}/ops`,
   REPORT_FIELDS: (id) => `/reports/${id}/fields`,
   REPORT_SUBMIT: (id) => `/reports/${id}/submit`,
@@ -135,8 +136,16 @@ export const API_ENDPOINTS = {
   // Sync (offline-first batch)
   SYNC_BATCH: '/sync/batch',
 
+  // Analytics (director/coordinator dashboards)
+  ANALYTICS_OVERVIEW: '/analytics/overview',
+  ANALYTICS_LGA_COMPARISON: '/analytics/lga-comparison',
+  ANALYTICS_TRENDS: '/analytics/trends',
+  ANALYTICS_SERVICE_DELIVERY: '/analytics/service-delivery',
+
   // AI
   AI_ASK: '/ai/ask',
+  AI_QUERY: '/ai/query',
+  AI_CONVERSATIONS: '/ai/conversations',
 
   // Audit (director/system)
   AUDIT_ANCHOR: '/audit/anchor',

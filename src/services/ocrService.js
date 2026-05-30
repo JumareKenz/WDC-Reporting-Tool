@@ -11,41 +11,48 @@
 
 import { isNative } from '../plugins/capacitor';
 import { getOcrPatterns, loadActiveFieldConfig } from './formConfigService';
+import {
+  tokensFromTesseract,
+  tokensFromMLKit,
+  buildLayoutFieldDefs,
+  extractFieldsByLayout,
+} from './layoutOcrService';
 
 let _tesseractWorker = null;
 
 /**
- * Perform OCR on an image and return raw text.
+ * Perform OCR on an image and return raw text only.
  * @param {string} base64Image - Base64-encoded image data (no data URI prefix)
  * @param {string} format - Image format ('jpeg', 'png', etc.)
  * @returns {Promise<string>} Extracted raw text
  */
 export async function performOCR(base64Image, format = 'jpeg') {
+  return (await runOCRDetailed(base64Image, format)).text;
+}
+
+/**
+ * Perform OCR and return both raw text and word-level tokens (with bounding
+ * boxes + confidence) for layout-aware, label-anchored field extraction.
+ * @returns {Promise<{ text: string, tokens: Array }>}
+ */
+export async function runOCRDetailed(base64Image, format = 'jpeg') {
   if (isNative) {
-    return performMLKitOCR(base64Image);
+    try {
+      const { TextRecognition } = await import('../plugins/mlkit');
+      const result = await TextRecognition.recognizeText({ base64: base64Image });
+      return { text: result.text || '', tokens: tokensFromMLKit(result) };
+    } catch (err) {
+      console.warn('[OCR] ML Kit unavailable, falling back to Tesseract:', err.message);
+    }
   }
-  return performTesseractOCR(base64Image, format);
+  return performTesseractDetailed(base64Image, format);
 }
 
 /**
- * ML Kit OCR (Android native) — requires Capacitor plugin
- * Falls back to Tesseract.js if plugin is not available.
+ * Tesseract.js OCR (web / fallback). Requests block output so word bounding
+ * boxes are available for layout-aware extraction.
  */
-async function performMLKitOCR(base64Image) {
-  try {
-    const { TextRecognition } = await import('../plugins/mlkit');
-    const result = await TextRecognition.recognizeText({ base64: base64Image });
-    return result.text || '';
-  } catch (err) {
-    console.warn('[OCR] ML Kit not available, falling back to Tesseract:', err.message);
-    return performTesseractOCR(base64Image, 'jpeg');
-  }
-}
-
-/**
- * Tesseract.js OCR (web / fallback)
- */
-async function performTesseractOCR(base64Image, format) {
+async function performTesseractDetailed(base64Image, format) {
   const { createWorker } = await import('tesseract.js');
 
   if (!_tesseractWorker) {
@@ -57,8 +64,8 @@ async function performTesseractOCR(base64Image, format) {
   }
 
   const imageData = `data:image/${format};base64,${base64Image}`;
-  const { data } = await _tesseractWorker.recognize(imageData);
-  return data.text || '';
+  const { data } = await _tesseractWorker.recognize(imageData, {}, { blocks: true });
+  return { text: data.text || '', tokens: tokensFromTesseract(data) };
 }
 
 // Table sections present in the paper form. Each entry declares:
@@ -149,28 +156,46 @@ function extractTableSections(lines) {
  *   2. Individual lines  — catches when OCR puts label and value on separate lines
  *   3. Consecutive pairs — catches "LABEL\n value" split across two adjacent lines
  *
+ * Strategy:
+ *   1. Layout-aware label-anchored extraction (when word tokens are available)
+ *      — reads each value from beside its printed label, preserving 2D layout.
+ *   2. Regex pattern matching — fills any field the layout step did not resolve.
+ *   3. Table-section extraction for multi-row sections.
+ *
  * @param {string} rawText - Full text extracted from OCR
+ * @param {Array} [tokens] - Word tokens with bounding boxes (from runOCRDetailed)
  * @returns {Promise<{ fields: Object, totalPatternFields: number }>}
  *   fields             — extracted key-value pairs
  *   totalPatternFields — total fields that had OCR patterns (for partial-match UI)
  */
-export async function mapTextToFields(rawText) {
+export async function mapTextToFields(rawText, tokens = []) {
   const config = await loadActiveFieldConfig();
   const patternList = getOcrPatterns(config);
 
   const lines = rawText.split('\n').map((l) => l.trim()).filter(Boolean);
   const fullText = lines.join(' ');
 
-  // Build candidate strings: joined text + each line + each consecutive line pair.
-  // Duplicates are cheap — regex on short strings is fast.
+  const fields = {};
+
+  // 1. Layout-aware extraction (preferred — avoids wrong-column/row errors).
+  if (tokens && tokens.length) {
+    try {
+      const defs = buildLayoutFieldDefs(config);
+      const { fields: layoutFields } = extractFieldsByLayout(tokens, defs);
+      Object.assign(fields, layoutFields);
+    } catch (err) {
+      console.warn('[OCR] Layout extraction failed, using patterns only:', err?.message);
+    }
+  }
+
+  // 2. Regex fallback — only for fields the layout step did not resolve.
   const candidates = [
     fullText,
     ...lines,
     ...lines.slice(0, -1).map((l, i) => `${l} ${lines[i + 1]}`),
   ];
-
-  const fields = {};
   for (const { field, patterns, type } of patternList) {
+    if (fields[field] !== undefined && fields[field] !== '') continue;
     outer:
     for (const regex of patterns) {
       for (const text of candidates) {
@@ -184,7 +209,7 @@ export async function mapTextToFields(rawText) {
     }
   }
 
-  // Table section extraction (Sections 2, 5, 7): pipe-delimited rows only
+  // 3. Table section extraction (Sections 2, 5, 7): pipe-delimited rows only
   Object.assign(fields, extractTableSections(lines));
 
   return { fields, totalPatternFields: patternList.length };
