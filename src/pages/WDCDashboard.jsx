@@ -251,7 +251,7 @@ const WDCDashboard = () => {
             trend={
               <span className="text-primary-600 flex items-center gap-1">
                 <TrendingUp className="w-3 h-3" />
-                {reviewedCount} reviewed
+                {approvedCount} approved
               </span>
             }
             variant="glass"
