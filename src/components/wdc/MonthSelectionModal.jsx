@@ -17,12 +17,9 @@ import Modal from '../common/Modal';
 import Button from '../common/Button';
 import LoadingSpinner from '../common/LoadingSpinner';
 import { formatMonthDisplay } from '../../utils/dateUtils';
-import { checkSubmitted, getMySubmissions } from '../../api/reports';
+import { checkSubmitted, getMySubmissions, reportMonthOf, reportStateOf } from '../../api/reports';
 
-/**
- * Normalize any month-ish value to "YYYY-MM" so comparisons are robust to
- * backend variations ("2026-4", "2026-04-01", ISO dates, camelCase fields).
- */
+// "YYYY-MM" normalizer for the calendar cell values.
 const normMonth = (m) => {
   if (!m) return null;
   const s = String(m).trim();
@@ -139,9 +136,9 @@ const MonthSelectionModal = ({
   const effectiveSubmittedMonths = useMemo(() => {
     const set = new Set((submittedMonths || []).map(normMonth).filter(Boolean));
     for (const r of reports || []) {
-      const st = String(r.status || r.state || '').toLowerCase();
+      const st = reportStateOf(r);
       if (st && st !== 'draft') {
-        const month = normMonth(r.report_month || r.reportMonth || r.month);
+        const month = reportMonthOf(r); // reads canonical.report_month, normalized
         if (month) set.add(month);
       }
     }
@@ -164,7 +161,7 @@ const MonthSelectionModal = ({
 
   // Get report for a specific month
   const getReportForMonth = (monthValue) => {
-    return reports.find((r) => normMonth(r.report_month || r.reportMonth || r.month) === normMonth(monthValue));
+    return reports.find((r) => reportMonthOf(r) === normMonth(monthValue));
   };
 
   // Handle month selection

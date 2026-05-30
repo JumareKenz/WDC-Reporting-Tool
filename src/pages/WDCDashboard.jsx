@@ -122,24 +122,14 @@ const WDCDashboard = () => {
     submissionsError: submissionsError?.message,
     checkSubmissionError: checkSubmissionError?.message,
   });
-  // Temporary: reveal the exact report shape so month-matching can be verified.
-  if (reports.length > 0) {
-    console.log('WDCDashboard report[0] keys:', Object.keys(reports[0]));
-    console.log('WDCDashboard report shapes:', reports.map((r) => ({
-      report_month: r.report_month,
-      reportMonth: r.reportMonth,
-      month: r.month,
-      status: r.status,
-      state: r.state,
-    })));
-  }
   
   const notifications = notificationsData?.data?.notifications || notificationsData?.notifications || [];
 
-  // Calculate statistics
+  // Calculate statistics — use `state` (lowercase, from the op-log model).
   const totalReports = reports.length;
   const totalAttendees = reports.reduce((sum, report) => sum + (report.attendees_count || 0), 0);
-  const reviewedCount = reports.filter(r => r.status === 'REVIEWED').length;
+  const submittedCount = reports.filter(r => (r.state || r.status || '').toLowerCase() === 'submitted').length;
+  const approvedCount = reports.filter(r => ['approved', 'sealed'].includes((r.state || r.status || '').toLowerCase())).length;
 
   // Get ward and LGA names from user object
   const wardName = user?.ward?.name || 'Your Ward';
@@ -288,17 +278,17 @@ const WDCDashboard = () => {
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl">
                 <Activity className="w-8 h-8 text-primary-600 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-primary-700">{reviewedCount}</p>
-                <p className="text-xs text-primary-600">Reports Reviewed</p>
+                <p className="text-2xl font-bold text-primary-700">{approvedCount}</p>
+                <p className="text-xs text-primary-600">Approved</p>
               </div>
               <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl">
                 <BarChart3 className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-blue-700">{reports.filter(r => r.status === 'SUBMITTED').length + reviewedCount}</p>
+                <p className="text-2xl font-bold text-blue-700">{totalReports}</p>
                 <p className="text-xs text-blue-600">Total Submitted</p>
               </div>
               <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl">
                 <Clock className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-purple-700">{reports.filter(r => r.status === 'SUBMITTED').length}</p>
+                <p className="text-2xl font-bold text-purple-700">{submittedCount}</p>
                 <p className="text-xs text-purple-600">Pending Review</p>
               </div>
             </div>

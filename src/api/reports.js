@@ -151,6 +151,31 @@ const isVoiceNote = (att) =>
   /^audio\//.test(att?.mimeType || att?.mime_type || '') ||
   /\.(mp3|m4a|wav|ogg|webm)$/i.test(att?.url || att?.fileName || att?.file_name || '');
 
+// Normalize any month-ish value to "YYYY-MM".
+const normalizeMonth = (m) => {
+  if (!m) return null;
+  const s = String(m).trim();
+  const ym = s.match(/(\d{4})-(\d{1,2})/);
+  if (ym) return `${ym[1]}-${ym[2].padStart(2, '0')}`;
+  const d = new Date(s);
+  if (!Number.isNaN(d.getTime())) return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  return s;
+};
+
+// The month a report covers. In the op-log/canonical model the value lives in
+// the canonical field map (report_month is a regular field), not at top level.
+export const reportMonthOf = (r) => {
+  if (!r) return null;
+  const raw =
+    r.report_month || r.reportMonth || r.month ||
+    r.canonical?.report_month || r.canonical?.reportMonth || r.canonical?.month ||
+    r.fields?.report_month || r.fields?.reportMonth;
+  return normalizeMonth(raw);
+};
+
+// Lowercased lifecycle state (handles both `state` and legacy `status`).
+export const reportStateOf = (r) => String(r?.state || r?.status || '').toLowerCase();
+
 export const getMySubmissions = async () => {
   const reports = await getReports();
   const list = Array.isArray(reports) ? reports : reports?.reports || [];
@@ -160,10 +185,10 @@ export const getMySubmissions = async () => {
     ...new Set(
       list
         .filter((r) => {
-          const st = String(r.state || r.status || '').toLowerCase();
+          const st = reportStateOf(r);
           return st && st !== 'draft';
         })
-        .map((r) => r.reportMonth || r.report_month || r.month)
+        .map(reportMonthOf)
         .filter(Boolean),
     ),
   ];
@@ -175,12 +200,13 @@ export const getSubmissionInfo = async (reportMonth = null) => {
     const params = reportMonth ? { reportMonth } : {};
     const reports = await getReports(params);
     const list = Array.isArray(reports) ? reports : reports?.reports || [];
-    const match = reportMonth ? list.find((r) => (r.reportMonth || r.report_month || r.month) === reportMonth) : list[0];
-    const st = String(match?.state || match?.status || '').toLowerCase();
+    const target = normalizeMonth(reportMonth);
+    const match = target ? list.find((r) => reportMonthOf(r) === target) : list[0];
+    const st = reportStateOf(match);
     return {
       submitted: !!match && st !== 'draft',
       report: match || null,
-      reportMonth: reportMonth || match?.reportMonth || match?.report_month || null,
+      reportMonth: reportMonth || reportMonthOf(match) || null,
     };
   } catch {
     return { submitted: false, report: null, reportMonth };
