@@ -9,10 +9,14 @@ import { API_ENDPOINTS } from '../utils/constants';
  * - All payloads are camelCase. forbidNonWhitelisted: true → no extra fields.
  */
 
-// Backend contract: POST /reports { formVersionId, submissionMethod } → draft.
+// Backend contract: POST /reports { formVersionId?, submissionMethod } → draft.
+// formVersionId is optional but must be a valid UUID if provided.
 export const createReport = async ({ formVersionId, submissionMethod = 'wizard' } = {}) => {
   const body = { submissionMethod };
-  if (formVersionId) body.formVersionId = formVersionId;
+  // Only include formVersionId if it's a non-empty string (valid UUID checked upstream)
+  if (formVersionId && typeof formVersionId === 'string' && formVersionId.length > 0) {
+    body.formVersionId = formVersionId;
+  }
   return apiClient.post(API_ENDPOINTS.REPORTS, body);
 };
 
