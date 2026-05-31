@@ -200,7 +200,7 @@ const clientSideOverview = async (params, wardResults) => {
   const reports = month ? all.filter((r) => normalizeMonth(r.report_month) === month) : all;
   const totalWards = wardResults.reduce((s, { wards }) => s + wards.length, 0) || 255;
 
-  const stats = { total_lgas: 23, total_wards: totalWards, total_submitted: 0, total_reviewed: 0, total_flagged: 0, total_missing: 0, submission_rate: 0 };
+  const stats = { total_lgas: wardResults.length || 0, total_wards: totalWards, total_submitted: 0, total_reviewed: 0, total_flagged: 0, total_missing: 0, submission_rate: 0 };
   for (const r of reports) {
     const st = r.state || r.status;
     if (!st || st === 'draft') continue;
@@ -272,7 +272,7 @@ export const getOverview = async (params = {}) => {
       return clientSideOverview(params, wardResults);
     } catch (err) {
       console.error('[Analytics] getOverview fallback failed:', err.message);
-      return { total_lgas: 23, total_wards: 255, total_submitted: 0, total_reviewed: 0, total_flagged: 0, total_missing: 255, submission_rate: 0 };
+      return { total_lgas: 0, total_wards: 0, total_submitted: 0, total_reviewed: 0, total_flagged: 0, total_missing: 0, submission_rate: 0 };
     }
   }
 };

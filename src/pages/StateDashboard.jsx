@@ -230,9 +230,9 @@ const StateDashboard = () => {
     ? serviceDeliveryData
     : {};
 
-  // Calculate overview stats - prefer overview data, fallback to calculating from LGA comparison
-  const totalLGAs = overview.total_lgas || lgaComparison.length || 23; // 23 LGAs in Kaduna
-  const totalWards = overview.total_wards || lgaComparison.reduce((sum, lga) => sum + (lga.total_wards || lga.wards_count || 0), 0) || 255; // 255 wards in Kaduna
+  // Calculate overview stats from real data only — no hardcoded fallbacks
+  const totalLGAs = overview.total_lgas || lgaComparison.length || 0;
+  const totalWards = overview.total_wards || lgaComparison.reduce((sum, lga) => sum + (lga.total_wards || lga.wards_count || 0), 0) || 0;
   const totalSubmitted = (overview.total_submitted !== undefined) ? overview.total_submitted : lgaComparison.reduce((sum, lga) => sum + (lga.submitted_count || lga.reports_count || 0), 0);
   const totalMissing = (overview.total_missing !== undefined) ? overview.total_missing : Math.max(0, totalWards - totalSubmitted);
   const totalReviewed = (overview.total_reviewed !== undefined) ? overview.total_reviewed : lgaComparison.reduce((sum, lga) => sum + (lga.reviewed_count || 0), 0);

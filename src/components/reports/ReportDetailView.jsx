@@ -41,7 +41,17 @@ const UPLOAD_BASE = (
  * Detailed Report View Component
  * Displays all fields and answers from a WDC submission in a professional, elegant format
  */
-const ReportDetailView = ({ report }) => {
+// Parse a value that may be a JSON-serialised array (backend stores complex
+// field values as strings). Returns a guaranteed array.
+const parseArr = (v) => {
+  if (Array.isArray(v)) return v;
+  if (typeof v === 'string' && v.trim().startsWith('[')) {
+    try { const p = JSON.parse(v); return Array.isArray(p) ? p : []; } catch { return []; }
+  }
+  return [];
+};
+
+const ReportDetailView = ({ report: rawReport }) => {
   const [lightboxIndex, setLightboxIndex] = useState(null);
   const [attendancePhotoModal, setAttendancePhotoModal] = useState(false);
   const [voiceNotes, setVoiceNotes] = useState([]);
@@ -49,15 +59,24 @@ const ReportDetailView = ({ report }) => {
   const [voiceNoteLoading, setVoiceNoteLoading] = useState({});
   const [expandedTranscriptions, setExpandedTranscriptions] = useState({});
   const [transcriptionLoading, setTranscriptionLoading] = useState({});
-  
-  if (!report) return null;
 
-  // Debug logging
-  console.log('ReportDetailView - Full report data:', report);
-  console.log('action_tracker:', report.action_tracker);
-  console.log('community_feedback:', report.community_feedback);
-  console.log('vdc_reports:', report.vdc_reports);
-  console.log('action_plan:', report.action_plan);
+  if (!rawReport) return null;
+
+  // Normalise array fields — the /detail endpoint serialises them as JSON strings
+  const report = {
+    ...rawReport,
+    action_tracker:          parseArr(rawReport.action_tracker),
+    community_feedback:      parseArr(rawReport.community_feedback),
+    vdc_reports:             parseArr(rawReport.vdc_reports),
+    action_plan:             parseArr(rawReport.action_plan),
+    facility_renovations:    parseArr(rawReport.facility_renovations),
+    items_donated_types:     parseArr(rawReport.items_donated_types),
+    items_donated_govt_types: parseArr(rawReport.items_donated_govt_types),
+    items_repaired_yn:       parseArr(rawReport.items_repaired_yn),
+    items_repaired_types:    parseArr(rawReport.items_repaired_types),
+    maternal_death_causes:   parseArr(rawReport.maternal_death_causes),
+    perinatal_death_causes:  parseArr(rawReport.perinatal_death_causes),
+  };
 
   // Parse group photos — handle both group_photo_path and group_photos fields
   const groupPhotos = (() => {

@@ -323,7 +323,10 @@ export default function StateUsersPage() {
   // ── data hooks ──
   const { data: summary }  = useUsersSummary();
   const { data: lgasData } = useLGAs();
-  const lgas = lgasData?.data?.lgas || lgasData?.lgas || [];
+  // /lgas returns a raw array; handle array, { lgas: [] }, or { data: { lgas: [] } }
+  const lgas = Array.isArray(lgasData)
+    ? lgasData
+    : lgasData?.lgas || lgasData?.data?.lgas || [];
 
   // coordinator fetched only when an LGA is selected and no ward is selected
   const { data: coordinatorData, isLoading: loadingCoordinator } = useLGACoordinator(
@@ -595,7 +598,7 @@ export default function StateUsersPage() {
         />
         <StatCard
           label="Coordinators"
-          value={`${summary?.total_coordinators ?? 0}/${summary?.total_lgas ?? 23}`}
+          value={`${summary?.total_coordinators ?? 0}/${summary?.total_lgas ?? '—'}`}
           sub={
             summary?.unassigned_lgas > 0
               ? `${summary.unassigned_lgas} LGA${summary.unassigned_lgas > 1 ? 's' : ''} unassigned`
@@ -605,7 +608,7 @@ export default function StateUsersPage() {
         />
         <StatCard
           label="WDC Secretaries"
-          value={`${summary?.total_secretaries ?? 0}/${summary?.total_wards ?? 255}`}
+          value={`${summary?.total_secretaries ?? 0}/${summary?.total_wards ?? '—'}`}
           sub={
             summary?.unassigned_wards > 0
               ? `${summary.unassigned_wards} Ward${summary.unassigned_wards > 1 ? 's' : ''} unassigned`

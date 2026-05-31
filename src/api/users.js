@@ -1,6 +1,9 @@
 import apiClient, { buildQueryString } from './client';
 import { API_ENDPOINTS } from '../utils/constants';
 
+// Helper: coerce an unknown response to a plain array
+const toArray = (r) => (Array.isArray(r) ? r : r?.users || r?.data || []);
+
 // Users API — backend routes: /users (RLS-scoped GETs; director-only writes)
 
 export const listUsers = async (params = {}) =>
@@ -34,13 +37,43 @@ export const setOwnCredentials = async (data) =>
 // ---------------------------------------------------------------------------
 
 export const getUsersSummary = async () => {
-  const users = await listUsers();
-  const list = Array.isArray(users) ? users : users?.users || [];
-  return { users: list, total: list.length };
+  const [usersRaw, lgasRaw] = await Promise.all([
+    listUsers(),
+    apiClient.get(API_ENDPOINTS.LGAS),
+  ]);
+  const list = toArray(usersRaw);
+  const lgas = Array.isArray(lgasRaw) ? lgasRaw : lgasRaw?.lgas || [];
+
+  const roleMatch = (u, ...roles) =>
+    roles.some((r) => u.role === r || u.role?.toLowerCase() === r.toLowerCase());
+
+  const coordinators = list.filter((u) => roleMatch(u, 'LGA_COORDINATOR', 'coordinator'));
+  const secretaries  = list.filter((u) => roleMatch(u, 'WDC_SECRETARY', 'secretary'));
+  const activeCoors  = coordinators.filter((u) => u.is_active !== false);
+  const activeSecs   = secretaries.filter((u)  => u.is_active !== false);
+
+  // total_wards: sum lga.num_wards / wardCount / ward_count if present on LGA objects
+  const totalWards = lgas.reduce(
+    (s, l) => s + (l.num_wards ?? l.wardCount ?? l.ward_count ?? 0), 0
+  ) || null;
+
+  return {
+    total_lgas:           lgas.length || null,
+    total_wards:          totalWards,
+    total_coordinators:   coordinators.length,
+    total_secretaries:    secretaries.length,
+    active_coordinators:  activeCoors.length,
+    active_secretaries:   activeSecs.length,
+    unassigned_lgas:      Math.max(0, lgas.length - coordinators.length),
+    unassigned_wards:     totalWards != null ? Math.max(0, totalWards - secretaries.length) : null,
+  };
 };
 
-export const getLGAWards = async (lgaId) =>
-  listUsers({ lgaId });
+// Wards for an LGA come from the geography endpoint, not the users list
+export const getLGAWards = async (lgaId) => {
+  const res = await apiClient.get(API_ENDPOINTS.LGA_WARDS(lgaId));
+  return Array.isArray(res) ? res : res?.wards || res?.data?.wards || [];
+};
 
 export const getLGACoordinator = async (lgaId) => {
   const result = await listUsers({ lgaId, role: 'coordinator' });
