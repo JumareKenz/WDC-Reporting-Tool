@@ -772,9 +772,6 @@ const SubmitReportPage = () => {
       // authenticated secretary server-side, so they are not sent as fields.
       await loadActiveFieldConfig();
       const formVersionId = getCurrentFormVersionId();
-      if (!formVersionId) {
-        throw new Error('Form configuration could not be loaded. Please refresh and try again.');
-      }
 
       const { state: _s, lga_id: _l, ward_id: _w, ...rest } = serializableFormData(data);
       const fields = { ...rest, report_month: reportMonth };
