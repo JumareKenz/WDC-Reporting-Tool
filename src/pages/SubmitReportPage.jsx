@@ -781,6 +781,8 @@ const SubmitReportPage = () => {
 
       const { state: _s, lga_id: _l, ward_id: _w, ...rest } = serializableFormData(data);
       const fields = { ...rest, report_month: reportMonth };
+      console.log('[SubmitReportPage] Submitting with fields:', Object.keys(fields).length, 'keys');
+      console.log('[SubmitReportPage] Field keys:', Object.keys(fields).slice(0, 10).join(', '), '...');
 
       const attachments = [
         ...((data._attendance_pictures || []).filter((p) => p?.file).map((p) => ({ file: p.file, kind: 'attendance_photo' }))),

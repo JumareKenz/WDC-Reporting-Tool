@@ -113,13 +113,18 @@ export const sealDue = async () =>
  * Returns the final report.
  */
 export const submitNewReport = async ({ formVersionId, submissionMethod = 'wizard', fields = {}, attachments = [], voiceNotes = [], source = 'typed' } = {}) => {
+  console.log('[submitNewReport] Creating draft with formVersionId:', formVersionId);
   const draft = await createReport({ formVersionId, submissionMethod });
   const reportId = draft?.id ?? draft?.report?.id;
+  console.log('[submitNewReport] Draft created, reportId:', reportId);
   if (!reportId) {
     throw new Error('Failed to create draft report');
   }
-  if (Object.keys(fields).length) {
+  const fieldCount = Object.keys(fields).length;
+  console.log('[submitNewReport] Appending', fieldCount, 'fields...');
+  if (fieldCount > 0) {
     await appendFieldOp(reportId, fields, source);
+    console.log('[submitNewReport] Fields appended');
   }
   for (const att of attachments) {
     await uploadAttachment(reportId, att);
