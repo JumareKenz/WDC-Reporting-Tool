@@ -39,8 +39,15 @@ let _loadPromise = null;
  * @returns {Promise<Object>} Field config keyed by field key/name.
  */
 export async function loadActiveFieldConfig() {
-  if (_activeConfig) return _activeConfig;
-  if (_loadPromise) return _loadPromise;
+  console.log('[loadActiveFieldConfig] called, _activeConfig:', !!_activeConfig, '_loadPromise:', !!_loadPromise, '_activeVersionId:', _activeVersionId);
+  if (_activeConfig) {
+    console.log('[loadActiveFieldConfig] returning cached config');
+    return _activeConfig;
+  }
+  if (_loadPromise) {
+    console.log('[loadActiveFieldConfig] waiting for in-progress load');
+    return _loadPromise;
+  }
 
   _loadPromise = (async () => {
     let fields = null;
@@ -70,24 +77,30 @@ export async function loadActiveFieldConfig() {
     }
 
     if (!fields) {
+      console.log('[formConfigService] Checking cache...');
       try {
         const cached = await storage.get(CACHE_KEY);
         if (cached) {
           const parsed = JSON.parse(cached);
+          console.log('[formConfigService] Cache found, parsed.versionId:', parsed.versionId, 'isUUID:', isUUID(parsed.versionId));
           if (Array.isArray(parsed.fields)) {
             fields = parsed.fields;
             formId = isUUID(parsed.formId) ? String(parsed.formId) : null;
             versionId = isUUID(parsed.versionId) ? String(parsed.versionId) : null;
+            console.log('[formConfigService] Using cached values, versionId after validation:', versionId);
           }
+        } else {
+          console.log('[formConfigService] No cache found');
         }
-      } catch {
-        // ignore
+      } catch (err) {
+        console.error('[formConfigService] Cache read error:', err);
       }
     }
 
     _activeFormId = formId || null;
     _activeVersionId = versionId || null;
     _activeConfig = mergeWithDefaults(fields || []);
+    console.log('[loadActiveFieldConfig] Final state: formId:', _activeFormId, 'versionId:', _activeVersionId, 'fields:', Object.keys(_activeConfig).length);
     return _activeConfig;
   })();
 
