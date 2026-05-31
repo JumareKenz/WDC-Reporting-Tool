@@ -73,23 +73,11 @@ async function main() {
     return;
   }
 
-  console.log(`\n🔍 Fetching version details for form ${deployed.id}...\n`);
-  const versionResp = await request('GET', `/forms/${deployed.id}/versions/${deployed.currentVersionId}`);
-  const version = versionResp?.data || versionResp;
-
-  console.log('Version response:');
-  console.log(`  version.id: ${version.id}`);
-  console.log(`  Type of version.id: ${typeof version.id}`);
-  console.log(`  version.formId: ${version.formId}`);
-  console.log(`  version.versionNumber: ${version.versionNumber}`);
-  console.log(`  version.schema: ${version.schema ? 'present' : 'missing'}`);
-  console.log('');
-
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  const isValidUUID = uuidRegex.test(String(version.id));
+  const isValidUUID = uuidRegex.test(String(deployed.currentVersionId));
 
-  console.log(`✅ version.id is a valid UUID: ${isValidUUID}`);
-  console.log(`\n📝 Use this as formVersionId in POST /reports: ${version.id}`);
+  console.log(`\n✅ form.currentVersionId is a valid UUID: ${isValidUUID}`);
+  console.log(`\n📝 Use this as formVersionId in POST /reports: ${deployed.currentVersionId}`);
 }
 
 main().catch(err => {
