@@ -47,20 +47,25 @@ export async function loadActiveFieldConfig() {
     let formId = null;
     let versionId = null;
 
+    console.log('[formConfigService] loadActiveFieldConfig starting...');
     try {
       const result = await fetchActiveVersion();
       if (result) {
         fields = result.fields;
         formId = result.formId;
         versionId = result.versionId;
+        console.log('[formConfigService] fetchActiveVersion succeeded, versionId:', versionId);
         await storage.set(CACHE_KEY, JSON.stringify({
           fetchedAt: Date.now(),
           fields,
           formId,
           versionId,
         }));
+      } else {
+        console.warn('[formConfigService] fetchActiveVersion returned null');
       }
-    } catch {
+    } catch (err) {
+      console.error('[formConfigService] fetchActiveVersion failed:', err.message || err);
       // Fall through to cache + defaults
     }
 
@@ -95,23 +100,39 @@ export async function loadActiveFieldConfig() {
  */
 async function fetchActiveVersion() {
   // Step 1: list visible forms
+  console.log('[formConfigService] Fetching /forms/visible...');
   const visibleResp = await apiClient.get('/forms/visible');
   const forms = Array.isArray(visibleResp) ? visibleResp : (visibleResp?.data ?? []);
-  if (!forms || forms.length === 0) return null;
+  console.log('[formConfigService] Got', forms?.length || 0, 'forms');
+
+  if (!forms || forms.length === 0) {
+    console.warn('[formConfigService] No forms returned from /forms/visible');
+    return null;
+  }
 
   // Pick the first form that has a deployed version. If multiple forms are
   // scoped to this user, the backend should have already filtered to relevant
   // ones via /forms/visible.
   const form = forms.find((f) => f?.currentVersionId) || forms[0];
-  if (!form?.id || !form?.currentVersionId) return null;
+  console.log('[formConfigService] Selected form:', { id: form?.id, currentVersionId: form?.currentVersionId });
+
+  if (!form?.id || !form?.currentVersionId) {
+    console.warn('[formConfigService] Form missing id or currentVersionId');
+    return null;
+  }
 
   // Step 2: fetch the version's schema. The backend documents the path as
   // /forms/:id/versions/:n — we pass the currentVersionId (may be int or UUID).
+  console.log(`[formConfigService] Fetching /forms/${form.id}/versions/${form.currentVersionId}...`);
   const versionResp = await apiClient.get(`/forms/${form.id}/versions/${form.currentVersionId}`);
   const version = versionResp?.data ?? versionResp;
   const schema = version?.schema;
+  console.log('[formConfigService] Version response:', { hasId: !!version?.id, hasSchema: !!schema, sections: schema?.sections?.length || 0 });
 
-  if (!schema?.sections) return null;
+  if (!schema?.sections) {
+    console.warn('[formConfigService] No schema.sections in version response');
+    return null;
+  }
 
   // The UUID we need for formVersionId is version.id (the form_versions.id),
   // NOT form.currentVersionId (which might be a version number).
