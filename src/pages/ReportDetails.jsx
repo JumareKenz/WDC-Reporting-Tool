@@ -75,9 +75,20 @@ const ReportDetails = () => {
     }
   }, [voiceNoteAudioUrls]);
 
-  // The API client interceptor already unwraps response.data,
-  // so reportData IS the report object directly
-  const report = reportData?.data || reportData;
+  // /detail returns { id, state, reportMonth, fields: { flat values }, submittedAt, ... }
+  // Spread fields onto the root so components can read report.health_anc_total etc. directly.
+  // Also normalise camelCase meta fields to the snake_case names the JSX expects.
+  const baseReport = reportData?.data || reportData;
+  const report = baseReport
+    ? {
+        ...baseReport,
+        ...(baseReport.fields || {}),
+        status: baseReport.state || baseReport.status,
+        submitted_at: baseReport.submittedAt || baseReport.submitted_at,
+        reviewed_at: baseReport.reviewedAt || baseReport.reviewed_at,
+        report_month: (baseReport.fields?.report_month) || baseReport.reportMonth || baseReport.report_month,
+      }
+    : null;
 
   const toggleSection = (section) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));

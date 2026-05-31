@@ -162,12 +162,14 @@ const normalizeMonth = (m) => {
   return s;
 };
 
-// The month a report covers. In the op-log/canonical model the value lives in
-// the canonical field map (report_month is a regular field), not at top level.
+// The month a report covers. The v1 op-log backend stores report_month as a
+// field entry inside canonical.fields.report_month.value (not at the top level).
+// The /detail endpoint flattens it into fields.report_month directly.
 export const reportMonthOf = (r) => {
   if (!r) return null;
   const raw =
     r.report_month || r.reportMonth || r.month ||
+    r.canonical?.fields?.report_month?.value || r.canonical?.fields?.reportMonth?.value ||
     r.canonical?.report_month || r.canonical?.reportMonth || r.canonical?.month ||
     r.fields?.report_month || r.fields?.reportMonth;
   return normalizeMonth(raw);
@@ -176,14 +178,28 @@ export const reportMonthOf = (r) => {
 // Lowercased lifecycle state (handles both `state` and legacy `status`).
 export const reportStateOf = (r) => String(r?.state || r?.status || '').toLowerCase();
 
+// Flatten canonical.fields op-log entries onto the report object so list
+// components can read report_month, meetings_held, attendees_count, etc.
+// directly without knowing the op-log structure.
+const flattenCanonical = (r) => {
+  const cf = r?.canonical?.fields;
+  if (!cf || typeof cf !== 'object') return r;
+  const flat = {};
+  for (const [key, entry] of Object.entries(cf)) {
+    flat[key] = entry?.value ?? entry;
+  }
+  return { ...r, ...flat };
+};
+
 export const getMySubmissions = async () => {
-  const reports = await getReports();
-  const list = Array.isArray(reports) ? reports : reports?.reports || [];
+  const rawData = await getReports();
+  const list = Array.isArray(rawData) ? rawData : rawData?.reports || rawData?.data?.reports || [];
+  // Flatten canonical fields so list-level reads (report_month, meetings_held, etc.) work.
+  const normalized = list.map(flattenCanonical);
   // A month counts as "submitted" only when a non-draft report exists for it.
-  // Drafts must not block re-entering the form for that month.
   const submittedMonths = [
     ...new Set(
-      list
+      normalized
         .filter((r) => {
           const st = reportStateOf(r);
           return st && st !== 'draft';
@@ -192,7 +208,7 @@ export const getMySubmissions = async () => {
         .filter(Boolean),
     ),
   ];
-  return { reports: list, submitted_months: submittedMonths, submittedMonths };
+  return { reports: normalized, submitted_months: submittedMonths, submittedMonths };
 };
 
 export const getSubmissionInfo = async (reportMonth = null) => {

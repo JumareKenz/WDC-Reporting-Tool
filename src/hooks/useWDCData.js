@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getReports,
   getReportById,
+  getReportDetail,
   submitReport,
   updateReport,
   checkSubmitted,
@@ -40,12 +41,13 @@ export const useReports = (params = {}) => {
 };
 
 /**
- * Hook to fetch a single report by ID
+ * Hook to fetch a single report by ID — uses the /detail endpoint which
+ * returns a flat `fields` object with all report data values directly.
  */
 export const useReportById = (reportId) => {
   return useQuery({
     queryKey: WDC_QUERY_KEYS.reportById(reportId),
-    queryFn: () => getReportById(reportId),
+    queryFn: () => getReportDetail(reportId),
     enabled: !!reportId,
     staleTime: 60000,
   });
