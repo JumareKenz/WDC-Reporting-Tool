@@ -770,8 +770,14 @@ const SubmitReportPage = () => {
       // v1 contract: create draft → set each field (incl. report_month) →
       // upload attachments/voice notes → submit. lga/ward are derived from the
       // authenticated secretary server-side, so they are not sent as fields.
+      console.log('[SubmitReportPage] Loading form config...');
       await loadActiveFieldConfig();
       const formVersionId = getCurrentFormVersionId();
+      console.log('[SubmitReportPage] Got formVersionId:', formVersionId);
+
+      if (!formVersionId) {
+        throw new Error('No deployed form found. Please contact your administrator to deploy the monthly report form.');
+      }
 
       const { state: _s, lga_id: _l, ward_id: _w, ...rest } = serializableFormData(data);
       const fields = { ...rest, report_month: reportMonth };

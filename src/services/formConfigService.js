@@ -251,11 +251,18 @@ export function getCurrentFormId() {
 /**
  * Force a refresh — used after an admin saves the form.
  */
-export function invalidateFieldConfig() {
+export async function invalidateFieldConfig() {
+  console.log('[invalidateFieldConfig] Clearing cache and memory state');
   _activeConfig = null;
   _activeFormId = null;
   _activeVersionId = null;
   _loadPromise = null;
+  try {
+    await storage.remove(CACHE_KEY);
+    console.log('[invalidateFieldConfig] Storage cache cleared');
+  } catch (err) {
+    console.error('[invalidateFieldConfig] Failed to clear storage:', err);
+  }
 }
 
 /**
@@ -280,6 +287,29 @@ export function getOcrPatterns(config) {
     }
   }
   return out;
+}
+
+/**
+ * Debug: expose service state to browser console for troubleshooting.
+ * Usage: window.debugFormConfig()
+ */
+if (typeof window !== 'undefined') {
+  window.debugFormConfig = () => {
+    console.log('=== Form Config Debug ===');
+    console.log('_activeConfig:', _activeConfig ? `${Object.keys(_activeConfig).length} fields` : 'null');
+    console.log('_activeFormId:', _activeFormId);
+    console.log('_activeVersionId:', _activeVersionId);
+    console.log('_loadPromise:', _loadPromise ? 'in progress' : 'null');
+    console.log('\nTo reload: await window.reloadFormConfig()');
+  };
+
+  window.reloadFormConfig = async () => {
+    console.log('Invalidating cache and reloading...');
+    await invalidateFieldConfig();
+    const config = await loadActiveFieldConfig();
+    console.log('Reloaded. versionId:', _activeVersionId);
+    return config;
+  };
 }
 
 /**
