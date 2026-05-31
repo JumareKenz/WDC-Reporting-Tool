@@ -116,10 +116,12 @@ async function fetchActiveVersion() {
   // The UUID we need for formVersionId is version.id (the form_versions.id),
   // NOT form.currentVersionId (which might be a version number).
   const versionId = version?.id;
+  console.log('[formConfigService] Extracted versionId:', versionId, 'from version.id');
   if (!isUUID(versionId)) {
     console.warn('[formConfigService] version.id is not a UUID:', versionId);
     return null;
   }
+  console.log('[formConfigService] ✓ versionId is valid UUID');
 
   // Flatten fields across all sections, normalising key → name
   const fields = [];
@@ -200,7 +202,9 @@ export function getActiveFieldConfigSync() {
  * Caller should await loadActiveFieldConfig() first.
  */
 export function getCurrentFormVersionId() {
-  return isUUID(_activeVersionId) ? String(_activeVersionId) : null;
+  const result = isUUID(_activeVersionId) ? String(_activeVersionId) : null;
+  console.log('[getCurrentFormVersionId] returning:', result);
+  return result;
 }
 
 /**

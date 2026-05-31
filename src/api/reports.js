@@ -17,6 +17,7 @@ export const createReport = async ({ formVersionId, submissionMethod = 'wizard' 
   if (formVersionId && typeof formVersionId === 'string' && formVersionId.length > 0) {
     body.formVersionId = formVersionId;
   }
+  console.log('[createReport] POST /reports body:', JSON.stringify(body));
   return apiClient.post(API_ENDPOINTS.REPORTS, body);
 };
 
