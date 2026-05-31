@@ -40,8 +40,16 @@ let _loadPromise = null;
  */
 export async function loadActiveFieldConfig() {
   console.log('[loadActiveFieldConfig] called, _activeConfig:', !!_activeConfig, '_loadPromise:', !!_loadPromise, '_activeVersionId:', _activeVersionId);
+
+  // If we have a cached config but no versionId, force a refresh
+  if (_activeConfig && !_activeVersionId) {
+    console.warn('[loadActiveFieldConfig] Cached config has no versionId - forcing refresh');
+    _activeConfig = null;
+    _loadPromise = null;
+  }
+
   if (_activeConfig) {
-    console.log('[loadActiveFieldConfig] returning cached config');
+    console.log('[loadActiveFieldConfig] returning cached config with versionId:', _activeVersionId);
     return _activeConfig;
   }
   if (_loadPromise) {
