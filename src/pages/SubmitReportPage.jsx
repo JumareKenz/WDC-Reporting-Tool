@@ -17,7 +17,7 @@ import { useImageDraft, clearImageDrafts } from '../hooks/useImageDraft';
 import { API_ENDPOINTS } from '../utils/constants';
 import { getSubmissionInfo as getLocalSubmissionInfo, getTargetReportMonth, formatMonthDisplay, getSubmissionPeriodDescription } from '../utils/dateUtils';
 import { getSubmissionInfo, getExistingDraft, saveDraft, checkSubmitted, submitNewReport, createReport, appendFieldOp, submitReport } from '../api/reports';
-import { getCurrentFormVersionId } from '../services/formConfigService';
+import { getCurrentFormVersionId, loadActiveFieldConfig } from '../services/formConfigService';
 import { STATE_QUERY_KEYS } from '../hooks/useStateData';
 
 // ────────────────────────────────────────────────────────────────
@@ -749,6 +749,7 @@ const SubmitReportPage = () => {
     // Replayed when connectivity returns. Field-only (queued payloads can't
     // carry File objects); follows the v1 flow: create draft → set fields → submit.
     submitFn: async (data, month) => {
+      await loadActiveFieldConfig();
       const { state: _s, lga_id: _l, ward_id: _w, ...rest } = data || {};
       const fields = { ...rest, report_month: month };
       const draft = await createReport({ formVersionId: getCurrentFormVersionId(), submissionMethod: 'wizard' });
@@ -769,6 +770,12 @@ const SubmitReportPage = () => {
       // v1 contract: create draft → set each field (incl. report_month) →
       // upload attachments/voice notes → submit. lga/ward are derived from the
       // authenticated secretary server-side, so they are not sent as fields.
+      await loadActiveFieldConfig();
+      const formVersionId = getCurrentFormVersionId();
+      if (!formVersionId) {
+        throw new Error('Form configuration could not be loaded. Please refresh and try again.');
+      }
+
       const { state: _s, lga_id: _l, ward_id: _w, ...rest } = serializableFormData(data);
       const fields = { ...rest, report_month: reportMonth };
 
@@ -781,7 +788,7 @@ const SubmitReportPage = () => {
         .map(([fieldName, file]) => ({ file, fieldName }));
 
       return submitNewReport({
-        formVersionId: getCurrentFormVersionId(),
+        formVersionId,
         submissionMethod: 'wizard',
         fields,
         attachments,

@@ -6,7 +6,7 @@
  * the existing UI (which expects sessions + history) keeps working.
  */
 
-import apiClient from './client';
+import apiClient, { buildQueryString } from './client';
 import { API_ENDPOINTS } from '../utils/constants';
 
 const sessions = new Map(); // sessionId -> { id, title, messages: [{ role, content, createdAt }] }
@@ -47,8 +47,8 @@ export const sendMessage = async (message, sessionId = null) => {
   const s = ensureSession(sessionId);
   s.messages.push({ role: 'user', content: message, createdAt: new Date().toISOString() });
   const response = await apiClient.post(
-    API_ENDPOINTS.AI_ASK,
-    { question: message, sessionId: s.id },
+    API_ENDPOINTS.AI_ASK + buildQueryString({ limit: 3 }),
+    { question: message },
     { timeout: 60000 }
   );
   const answer = response?.answer || response?.message || response?.content || '';

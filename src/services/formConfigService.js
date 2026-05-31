@@ -24,6 +24,8 @@ import { storage } from '../plugins/capacitor';
 import DEFAULT_FIELD_CONFIG from '../data/defaultFieldConfig';
 
 const CACHE_KEY = 'wdc_form_config_cache';
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isUUID = (v) => !!v && UUID_RE.test(String(v));
 
 let _activeConfig = null;
 let _activeFormId = null;
@@ -69,8 +71,8 @@ export async function loadActiveFieldConfig() {
           const parsed = JSON.parse(cached);
           if (Array.isArray(parsed.fields)) {
             fields = parsed.fields;
-            formId = parsed.formId;
-            versionId = parsed.versionId;
+            formId = isUUID(parsed.formId) ? String(parsed.formId) : null;
+            versionId = isUUID(parsed.versionId) ? String(parsed.versionId) : null;
           }
         }
       } catch {
@@ -134,8 +136,8 @@ async function fetchActiveVersion() {
 
   return {
     fields,
-    formId: form.id,
-    versionId: form.currentVersionId,
+    formId: isUUID(form.id) ? String(form.id) : null,
+    versionId: isUUID(form.currentVersionId) ? String(form.currentVersionId) : null,
   };
 }
 
@@ -187,10 +189,11 @@ export function getActiveFieldConfigSync() {
 
 /**
  * Get the currently loaded form version ID (UUID). Required for report submission.
- * Returns null if no form has been loaded — caller should await loadActiveFieldConfig() first.
+ * Returns null if no form has been loaded or the stored value is not a valid UUID.
+ * Caller should await loadActiveFieldConfig() first.
  */
 export function getCurrentFormVersionId() {
-  return _activeVersionId;
+  return isUUID(_activeVersionId) ? String(_activeVersionId) : null;
 }
 
 /**

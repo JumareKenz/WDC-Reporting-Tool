@@ -42,26 +42,28 @@ import {
   TypingIndicator,
 } from '../chat';
 
+const AI_MIN_CHARS = 42;
+
 // Example questions for quick start
 const EXAMPLE_QUESTIONS = [
   {
     icon: TrendingUp,
-    question: "What's the overall submission trend?",
+    question: "What is the overall submission trend across all LGAs?",
     category: "Trends"
   },
   {
     icon: BarChart3,
-    question: "Compare LGA performance",
+    question: "Compare LGA performance across all local government areas",
     category: "Analysis"
   },
   {
     icon: FileText,
-    question: "How many reports are missing this month?",
+    question: "How many WDC reports are missing or overdue this month?",
     category: "Reports"
   },
   {
     icon: Lightbulb,
-    question: "Which LGAs need attention?",
+    question: "Which local government areas need attention or improvement?",
     category: "Insights"
   },
 ];
@@ -192,6 +194,16 @@ const AIChatInterface = ({ isOpen, onClose }) => {
     if (!input.trim() || isTyping) return;
 
     const userMessage = input.trim();
+    if (userMessage.length < AI_MIN_CHARS) {
+      setMessages(prev => [...prev, {
+        id: `error-${Date.now()}`,
+        role: 'assistant',
+        content: `Please provide more detail in your question (at least ${AI_MIN_CHARS} characters). Try being specific — for example, mention the LGA, month, or metric you're interested in.`,
+        message_type: 'error',
+        timestamp: new Date().toISOString(),
+      }]);
+      return;
+    }
     setInput('');
 
     // Add user message to UI immediately
