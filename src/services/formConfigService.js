@@ -134,28 +134,28 @@ async function fetchActiveVersion() {
     return null;
   }
 
-  // Step 2: fetch the version's schema. The backend documents the path as
-  // /forms/:id/versions/:n — we pass the currentVersionId (may be int or UUID).
-  console.log(`[formConfigService] Fetching /forms/${form.id}/versions/${form.currentVersionId}...`);
+  // The UUID we need for formVersionId is form.currentVersionId (from GET /forms/visible).
+  // This is the form_versions.id UUID that POST /reports expects.
+  const versionId = form.currentVersionId;
+  console.log('[formConfigService] Using form.currentVersionId as versionId:', versionId);
+
+  if (!isUUID(versionId)) {
+    console.warn('[formConfigService] form.currentVersionId is not a UUID:', versionId);
+    return null;
+  }
+  console.log('[formConfigService] ✓ versionId is valid UUID');
+
+  // Step 2: fetch the version's schema for field configuration (voice questions, OCR patterns).
+  console.log(`[formConfigService] Fetching /forms/${form.id}/versions/${form.currentVersionId} for schema...`);
   const versionResp = await apiClient.get(`/forms/${form.id}/versions/${form.currentVersionId}`);
   const version = versionResp?.data ?? versionResp;
   const schema = version?.schema;
-  console.log('[formConfigService] Version response:', { hasId: !!version?.id, hasSchema: !!schema, sections: schema?.sections?.length || 0 });
+  console.log('[formConfigService] Schema response:', { hasSchema: !!schema, sections: schema?.sections?.length || 0 });
 
   if (!schema?.sections) {
     console.warn('[formConfigService] No schema.sections in version response');
     return null;
   }
-
-  // The UUID we need for formVersionId is version.id (the form_versions.id),
-  // NOT form.currentVersionId (which might be a version number).
-  const versionId = version?.id;
-  console.log('[formConfigService] Extracted versionId:', versionId, 'from version.id');
-  if (!isUUID(versionId)) {
-    console.warn('[formConfigService] version.id is not a UUID:', versionId);
-    return null;
-  }
-  console.log('[formConfigService] ✓ versionId is valid UUID');
 
   // Flatten fields across all sections, normalising key → name
   const fields = [];
@@ -180,7 +180,7 @@ async function fetchActiveVersion() {
   return {
     fields,
     formId: isUUID(form.id) ? String(form.id) : null,
-    versionId: String(versionId),
+    versionId: String(versionId), // Already validated as UUID above
   };
 }
 
