@@ -37,6 +37,22 @@ import {
 import { REPORT_STATUS, STATUS_LABELS } from '../utils/constants';
 import apiClient from '../api/client';
 
+// The /detail endpoint serialises complex field values (arrays, objects) as
+// JSON strings. Parse any string that looks like JSON so components can call
+// .filter(), .map(), etc. without crashing.
+const parsedFields = (fields) => {
+  if (!fields || typeof fields !== 'object') return fields;
+  const result = {};
+  for (const [key, value] of Object.entries(fields)) {
+    if (typeof value === 'string' && (value.startsWith('[') || value.startsWith('{'))) {
+      try { result[key] = JSON.parse(value); } catch { result[key] = value; }
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+};
+
 const StateSubmissionsPage = () => {
   const [month, setMonth] = useState(getCurrentMonth());
   const [searchTerm, setSearchTerm] = useState('');
@@ -167,9 +183,10 @@ const StateSubmissionsPage = () => {
       // /detail returns a flat { fields: {...} } format that ReportDetailView expects.
       const response = await apiClient.get(`/reports/${reportId}/detail`);
       const reportData = response?.data || response;
-      // Spread fields onto the top level so ReportDetailView can read them directly.
+      // Spread fields onto the top level. The backend serialises complex values
+      // (arrays, objects) as JSON strings — parse them so .filter() etc. work.
       const flatData = reportData?.fields
-        ? { ...reportData, ...reportData.fields }
+        ? { ...reportData, ...parsedFields(reportData.fields) }
         : reportData;
       setFullReportData(flatData);
     } catch (err) {

@@ -74,6 +74,20 @@ import AIChatInterface from '../components/state/AIChatInterface';
 import ReportDetailView from '../components/reports/ReportDetailView';
 import apiClient from '../api/client';
 
+// Parse JSON-serialised array/object values from the /detail fields map.
+const parsedFields = (fields) => {
+  if (!fields || typeof fields !== 'object') return fields;
+  const result = {};
+  for (const [key, value] of Object.entries(fields)) {
+    if (typeof value === 'string' && (value.startsWith('[') || value.startsWith('{'))) {
+      try { result[key] = JSON.parse(value); } catch { result[key] = value; }
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+};
+
 const COLORS = ['#2f6b4d', '#2f6b4d', '#c68043', '#c18a4f', '#3b82f6', '#dc2626'];
 
 // Animation variants
@@ -411,7 +425,7 @@ const StateDashboard = () => {
       const response = await apiClient.get(`/reports/${report.id}/detail`);
       const reportData = response?.data || response;
       const flatData = reportData?.fields
-        ? { ...reportData, ...reportData.fields }
+        ? { ...reportData, ...parsedFields(reportData.fields) }
         : reportData;
       setDetailReportData(flatData);
     } catch {
