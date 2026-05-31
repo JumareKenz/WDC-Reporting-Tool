@@ -71,6 +71,7 @@ import {
 } from '../utils/formatters';
 import MonthlyReportModal from '../components/state/MonthlyReportModal';
 import AIChatInterface from '../components/state/AIChatInterface';
+import ReportDetailView from '../components/reports/ReportDetailView';
 import apiClient from '../api/client';
 
 const COLORS = ['#2f6b4d', '#2f6b4d', '#c68043', '#c18a4f', '#3b82f6', '#dc2626'];
@@ -168,6 +169,8 @@ const StateDashboard = () => {
   const [alertMessage, setAlertMessage] = useState(null);
   const [expandedLGA, setExpandedLGA] = useState(null);
   const [selectedReport, setSelectedReport] = useState(null);
+  const [detailReportData, setDetailReportData] = useState(null);
+  const [loadingDetailReport, setLoadingDetailReport] = useState(false);
   const [updatingExecutive, setUpdatingExecutive] = useState(false);
   const [updatingLGAsWards, setUpdatingLGAsWards] = useState(false);
   const [showMonthlyReport, setShowMonthlyReport] = useState(false);
@@ -400,6 +403,24 @@ const StateDashboard = () => {
     }
   };
 
+  const handleViewDetailReport = async (report) => {
+    setSelectedReport(report);
+    setDetailReportData(null);
+    setLoadingDetailReport(true);
+    try {
+      const response = await apiClient.get(`/reports/${report.id}/detail`);
+      const reportData = response?.data || response;
+      const flatData = reportData?.fields
+        ? { ...reportData, ...reportData.fields }
+        : reportData;
+      setDetailReportData(flatData);
+    } catch {
+      // fall back to showing basic fields from the list item
+    } finally {
+      setLoadingDetailReport(false);
+    }
+  };
+
   // Render trend chart based on selected chart type
   const renderTrendChart = () => {
     const commonProps = {
@@ -601,6 +622,115 @@ const StateDashboard = () => {
             >
               Back to current month
             </button>
+          </motion.div>
+        )}
+
+        {/* Executive Summary Banner */}
+        {!loadingOverview && !loadingComparison && (overview.total_submitted > 0 || lgaComparison.length > 0) && (
+          <motion.div
+            className="bg-gradient-to-r from-primary-900 via-primary-800 to-primary-700 rounded-2xl p-6 mb-8 text-white shadow-xl"
+            variants={itemVariants}
+          >
+            <div className="flex flex-col lg:flex-row lg:items-start gap-6">
+              {/* Left: State-wide completion */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-2">
+                  <Activity className="w-4 h-4 text-primary-300 flex-shrink-0" />
+                  <span className="text-primary-200 text-xs font-semibold uppercase tracking-wider">
+                    Executive Summary &mdash; {monthOptions.find(m => m.value === selectedMonth)?.label}
+                  </span>
+                </div>
+                <h2 className="text-3xl font-bold text-white leading-tight">
+                  {submissionRate}%&nbsp;
+                  <span className="text-xl font-medium text-primary-200">State Coverage</span>
+                </h2>
+                <p className="text-primary-100 text-sm mt-1">
+                  {formatNumber(totalSubmitted)} of {formatNumber(totalWards)} wards submitted
+                  {totalReviewed > 0 && ` • ${formatNumber(totalReviewed)} reviewed`}
+                  {totalFlagged > 0 && ` • ${formatNumber(totalFlagged)} flagged`}
+                  {avgRate > 0 && lgaComparison.length > 0 && ` • ${avgRate}% avg across ${totalLGAs} LGAs`}
+                </p>
+                {/* State-wide progress bar */}
+                <div className="mt-3 h-2.5 bg-primary-950/60 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-700 ${
+                      submissionRate >= 80 ? 'bg-emerald-400' :
+                      submissionRate >= 60 ? 'bg-amber-400' : 'bg-red-400'
+                    }`}
+                    style={{ width: `${submissionRate}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-xs text-primary-300 mt-1">
+                  <span>0%</span>
+                  <span className={submissionRate >= 80 ? 'text-emerald-300' : submissionRate >= 60 ? 'text-amber-300' : 'text-red-300'}>
+                    {submissionRate >= 80 ? 'On track' : submissionRate >= 60 ? 'Progressing' : 'Needs attention'}
+                  </span>
+                  <span>100%</span>
+                </div>
+              </div>
+
+              {/* Centre: Attention needed */}
+              {(performanceCategories.critical + performanceCategories.needsAttention) > 0 && (
+                <div className="flex-shrink-0 px-5 py-4 bg-white/10 rounded-xl border border-white/15 backdrop-blur-sm min-w-[160px]">
+                  <p className="text-xs text-primary-200 uppercase tracking-wide mb-2 font-medium">Needs Attention</p>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-3xl font-bold text-amber-300">
+                      {performanceCategories.critical + performanceCategories.needsAttention}
+                    </span>
+                    <span className="text-white/70 text-sm">LGAs</span>
+                  </div>
+                  <p className="text-white/60 text-xs mt-0.5">below 70% rate</p>
+                  {performanceCategories.critical > 0 && (
+                    <p className="text-red-300 text-xs mt-1 font-semibold">
+                      {performanceCategories.critical} critical (&lt;50%)
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Right: Top performer */}
+              {top5[0]?.name && (
+                <div className="flex-shrink-0 px-5 py-4 bg-white/10 rounded-xl border border-white/15 backdrop-blur-sm min-w-[160px]">
+                  <p className="text-xs text-primary-200 uppercase tracking-wide mb-2 font-medium">Top Performer</p>
+                  <p className="text-base font-bold text-white truncate">{top5[0].name}</p>
+                  <p className="text-emerald-300 text-lg font-bold">{top5[0].submission_rate}%</p>
+                  <p className="text-white/60 text-xs mt-0.5">{top5[0].submitted_count || 0} of {top5[0].total_wards || 0} wards</p>
+                </div>
+              )}
+            </div>
+
+            {/* Bottom row: critical LGAs callout */}
+            {performanceCategories.critical > 0 && (
+              <div className="mt-4 pt-4 border-t border-primary-700/60">
+                <p className="text-xs text-red-300 font-semibold mb-2 flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  Critical LGAs requiring immediate attention:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {[...lgaComparison]
+                    .filter((l) => l.submission_rate < 50)
+                    .sort((a, b) => a.submission_rate - b.submission_rate)
+                    .map((l) => (
+                      <span
+                        key={l.id}
+                        className="px-2.5 py-1 bg-red-500/20 border border-red-400/30 text-red-200 text-xs rounded-full font-medium"
+                      >
+                        {l.name} ({l.submission_rate}%)
+                      </span>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* Bottom row: zero-submission note when no data yet */}
+            {totalSubmitted === 0 && lgaComparison.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-primary-700/60">
+                <p className="text-sm text-primary-200 flex items-center gap-2">
+                  <Info className="w-4 h-4 flex-shrink-0" />
+                  No submissions recorded for this period across {totalLGAs} LGAs and {totalWards} wards.
+                </p>
+              </div>
+            )}
           </motion.div>
         )}
 
@@ -1267,31 +1397,43 @@ const StateDashboard = () => {
                                   <div className="bg-white rounded border border-neutral-200 p-4">
                                     <h4 className="font-semibold mb-3 text-sm text-neutral-700 flex justify-between items-center">
                                       <span>Submissions ({lga.reports.length})</span>
-                                      <span className="text-xs font-normal text-neutral-500">Click to view details</span>
+                                      <span className="text-xs font-normal text-neutral-500">Click a ward to view full report</span>
                                     </h4>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                       {lga.reports.map(report => (
                                         <motion.div
                                           key={report.id}
                                           className="p-3 border rounded hover:bg-neutral-50 hover:border-primary-300 transition-colors cursor-pointer flex justify-between items-center bg-white"
-                                          onClick={(e) => { e.stopPropagation(); setSelectedReport(report); }}
+                                          onClick={(e) => { e.stopPropagation(); handleViewDetailReport(report); }}
                                           whileHover={{ scale: 1.02 }}
                                           whileTap={{ scale: 0.98 }}
                                         >
-                                          <div className="overflow-hidden">
+                                          <div className="overflow-hidden flex-1 min-w-0">
                                             <p className="font-medium text-sm truncate">{report.ward_name}</p>
-                                            <p className="text-xs text-neutral-500 flex items-center gap-1">
-                                              <Calendar className="w-3 h-3" />
+                                            <p className="text-xs text-neutral-500 flex items-center gap-1 mt-0.5">
+                                              <Calendar className="w-3 h-3 flex-shrink-0" />
                                               {formatDate(report.submitted_at)}
                                             </p>
+                                            <span className={`mt-1 inline-block px-1.5 py-0.5 text-xs rounded-full ${
+                                              report.state === 'approved' || report.state === 'sealed'
+                                                ? 'bg-green-100 text-green-700'
+                                                : report.state === 'returned'
+                                                ? 'bg-amber-100 text-amber-700'
+                                                : 'bg-blue-100 text-blue-700'
+                                            }`}>
+                                              {report.state === 'approved' || report.state === 'sealed' ? 'Approved'
+                                                : report.state === 'returned' ? 'Returned'
+                                                : report.state === 'in_review' ? 'In Review'
+                                                : 'Submitted'}
+                                            </span>
                                           </div>
-                                          <Button size="xs" variant="ghost" className="text-primary-600">View</Button>
+                                          <Button size="xs" variant="ghost" className="text-primary-600 ml-2 flex-shrink-0">View</Button>
                                         </motion.div>
                                       ))}
                                     </div>
                                   </div>
                                 ) : (
-                                  <p className="text-sm text-neutral-500 text-center py-2">No individual reports available for view.</p>
+                                  <p className="text-sm text-neutral-500 text-center py-2">No submissions for this period.</p>
                                 )}
                               </td>
                             </motion.tr>
@@ -1403,226 +1545,64 @@ const StateDashboard = () => {
         </div>
       </motion.div>
 
-      {/* Report Detail Modal */}
+      {/* Report Detail Modal — uses ReportDetailView with /detail endpoint data */}
       {selectedReport && (
         <Modal
           isOpen={!!selectedReport}
-          onClose={() => setSelectedReport(null)}
-          title={`Report Details - ${selectedReport.ward_name} (${formatMonth(selectedReport.report_month)})`}
-          size="lg"
+          onClose={() => { setSelectedReport(null); setDetailReportData(null); }}
+          title={`${selectedReport.ward_name}${selectedReport.report_month ? ` — ${formatMonth(selectedReport.report_month)}` : ''}`}
+          size="xl"
         >
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4 p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+          <div className="space-y-4">
+            {/* Report header */}
+            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-primary-50 to-blue-50 rounded-xl">
               <div>
-                <p className="text-sm text-neutral-500">Submitted By</p>
-                <p className="font-medium">{selectedReport.submitted_by}</p>
-              </div>
-              <div>
-                <p className="text-sm text-neutral-500">Date Submitted</p>
-                <p className="font-medium">{formatDate(selectedReport.submitted_at)}</p>
-              </div>
-              <div>
-                <p className="text-sm text-neutral-500">Meeting Type</p>
-                <p className="font-medium">{selectedReport.meeting_type}</p>
-              </div>
-              <div>
-                <p className="text-sm text-neutral-500">Attendance</p>
-                <p className="font-medium">
-                  {selectedReport.attendance_total || selectedReport.attendees_count || 0}
-                  {(selectedReport.attendance_male > 0 || selectedReport.attendance_female > 0) && (
-                    <span className="text-neutral-500 text-sm ml-1">
-                      ({selectedReport.attendance_male || 0}M, {selectedReport.attendance_female || 0}F)
-                    </span>
-                  )}
+                <h3 className="text-base font-bold text-neutral-900">{selectedReport.ward_name}</h3>
+                <p className="text-sm text-neutral-600 mt-0.5">
+                  {selectedReport.ward_code && `${selectedReport.ward_code} • `}
+                  {selectedReport.report_month && `${formatMonth(selectedReport.report_month)} • `}
+                  Submitted {formatDate(selectedReport.submitted_at)}
                 </p>
               </div>
+              <span className={`px-3 py-1 text-sm font-semibold rounded-full ${
+                selectedReport.state === 'approved' || selectedReport.state === 'sealed'
+                  ? 'bg-green-100 text-green-800'
+                  : selectedReport.state === 'returned'
+                  ? 'bg-amber-100 text-amber-800'
+                  : selectedReport.state === 'in_review'
+                  ? 'bg-purple-100 text-purple-800'
+                  : 'bg-blue-100 text-blue-800'
+              }`}>
+                {selectedReport.state === 'approved' || selectedReport.state === 'sealed' ? 'Approved'
+                  : selectedReport.state === 'returned' ? 'Returned'
+                  : selectedReport.state === 'in_review' ? 'In Review'
+                  : 'Submitted'}
+              </span>
             </div>
 
-            {/* Section 1: Agenda */}
-            <div>
-              <h4 className="font-bold text-neutral-800 border-b pb-2 mb-3">1. Agenda & Governance</h4>
-              <div className="grid grid-cols-1 gap-3 text-sm">
-                <p><span className="font-medium">Opening Prayer:</span> {selectedReport.agenda_opening_prayer}</p>
-                <p><span className="font-medium">Minutes:</span> {selectedReport.agenda_minutes}</p>
+            {/* Loading state */}
+            {loadingDetailReport && (
+              <div className="flex items-center justify-center py-16">
+                <LoadingSpinner size="lg" text="Loading full report..." />
               </div>
-            </div>
+            )}
 
-            {/* Section 3A: Health Data */}
-            <div>
-              <h4 className="font-bold text-neutral-800 border-b pb-2 mb-3">3A. Health Data</h4>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
-                <div>
-                  <p className="font-medium text-primary-700">OPD & Immunization</p>
-                  <p>OPD General Attendance: {selectedReport.health_general_attendance_total}</p>
-                  <p>Routine Immunization: {selectedReport.health_routine_immunization_total}</p>
-                  <p>PENTA1: {selectedReport.health_penta1}</p>
-                  <p>BCG: {selectedReport.health_bcg}</p>
-                  <p>PENTA3: {selectedReport.health_penta3}</p>
-                  <p>MEASLES: {selectedReport.health_measles}</p>
-                  <p>Malaria Under 5: {selectedReport.health_malaria_under5}</p>
-                  <p>Diarrhea Under 5: {selectedReport.health_diarrhea_under5}</p>
-                </div>
-                <div>
-                  <p className="font-medium text-primary-700">ANC (Antenatal Care)</p>
-                  <p>ANC Total: {selectedReport.health_anc_total}</p>
-                  <p>1st Visit: {selectedReport.health_anc_first_visit}</p>
-                  <p>4th Visit: {selectedReport.health_anc_fourth_visit}</p>
+            {/* Full report rendered via ReportDetailView */}
+            {!loadingDetailReport && detailReportData && (
+              <ReportDetailView report={detailReportData} />
+            )}
 
-                </div>
-                <div>
-                  <p className="font-medium text-primary-700">Labour, Deliveries & Post-Natal</p>
-                  <p>Deliveries: {selectedReport.health_deliveries}</p>
-                  <p>Post-Natal: {selectedReport.health_postnatal}</p>
-                </div>
-                <div>
-                  <p className="font-medium text-primary-700">Family Planning</p>
-                  <p>Counselling: {selectedReport.health_fp_counselling}</p>
-                  <p>New Acceptors: {selectedReport.health_fp_new_acceptors}</p>
-                </div>
-                <div>
-                  <p className="font-medium text-primary-700">Hepatitis B</p>
-                  <p>Person Tested: {selectedReport.health_hepb_tested}</p>
-                  <p>Person Tested Positive: {selectedReport.health_hepb_positive}</p>
-                </div>
-                <div>
-                  <p className="font-medium text-primary-700">Tuberculosis (TB)</p>
-                  <p>Total Presumptive: {selectedReport.health_tb_presumptive}</p>
-                  <p>Total on Treatment: {selectedReport.health_tb_on_treatment}</p>
-                </div>
+            {/* Fallback if detail fetch failed */}
+            {!loadingDetailReport && !detailReportData && (
+              <div className="text-center py-10 text-neutral-500">
+                <FileText className="w-10 h-10 mx-auto mb-3 text-neutral-300" />
+                <p className="text-sm">Could not load full report details.</p>
+                <p className="text-xs mt-1">Report ID: {selectedReport.id}</p>
               </div>
-            </div>
+            )}
 
-            {/* Section 3B: Facility Support */}
-            <div>
-              <h4 className="font-bold text-neutral-800 border-b pb-2 mb-3">3B. Health Facility Support</h4>
-              <div className="space-y-4 text-sm">
-                <div>
-                  <p className="font-medium mb-1">Renovations</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    <p>Govt: {selectedReport.facilities_renovated_govt}</p>
-                    <p>Partners: {selectedReport.facilities_renovated_partners}</p>
-                    <p>WDC: {selectedReport.facilities_renovated_wdc}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="font-medium">Items Donated (WDC)</p>
-                    <p>Count: {selectedReport.items_donated_count}</p>
-                    <p className="text-neutral-500">{selectedReport.items_donated_types?.join(', ') || 'None'}</p>
-                  </div>
-                  <div>
-                    <p className="font-medium">Items Donated (Govt)</p>
-                    <p>Count: {selectedReport.items_donated_govt_count}</p>
-                    <p className="text-neutral-500">{selectedReport.items_donated_govt_types?.join(', ') || 'None'}</p>
-                  </div>
-                  <div>
-                    <p className="font-medium">Items Repaired</p>
-                    <p>Count: {selectedReport.items_repaired_count}</p>
-                    <p className="text-neutral-500">{selectedReport.items_repaired_types?.join(', ') || 'None'}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Section 3C: Transportation */}
-            <div>
-              <h4 className="font-bold text-neutral-800 border-b pb-2 mb-3">3C. Transportation & Emergency</h4>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <p>Women to ANC: {selectedReport.women_transported_anc}</p>
-                <p>Women to Delivery: {selectedReport.women_transported_delivery}</p>
-                <p>Children U5 (Danger): {selectedReport.children_transported_danger}</p>
-                <p>Delivery Items Support: {selectedReport.women_supported_delivery_items}</p>
-              </div>
-            </div>
-
-            {/* Section 3D: cMPDSR */}
-            <div>
-              <h4 className="font-bold text-neutral-800 border-b pb-2 mb-3">3D. cMPDSR</h4>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p><span className="font-medium">Maternal Deaths:</span> {selectedReport.maternal_deaths}</p>
-                  {selectedReport.maternal_death_causes?.filter(Boolean).length > 0 && (
-                    <ul className="list-disc list-inside text-neutral-600 mt-1">
-                      {selectedReport.maternal_death_causes.filter(Boolean).map((c, i) => <li key={i}>{c}</li>)}
-                    </ul>
-                  )}
-                </div>
-                <div>
-                  <p><span className="font-medium">Perinatal Deaths:</span> {selectedReport.perinatal_deaths}</p>
-                  {selectedReport.perinatal_death_causes?.filter(Boolean).length > 0 && (
-                    <ul className="list-disc list-inside text-neutral-600 mt-1">
-                      {selectedReport.perinatal_death_causes.filter(Boolean).map((c, i) => <li key={i}>{c}</li>)}
-                    </ul>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* General Qualitative Data */}
-            <div className="space-y-4 text-sm bg-neutral-50 p-4 rounded-lg border border-neutral-200">
-              {selectedReport.issues_identified && (
-                <div>
-                  <p className="font-bold text-neutral-800">Issues Identified</p>
-                  <p className="text-neutral-700 whitespace-pre-wrap">{selectedReport.issues_identified}</p>
-                </div>
-              )}
-              {selectedReport.actions_taken && (
-                <div>
-                  <p className="font-bold text-neutral-800">Actions Taken</p>
-                  <p className="text-neutral-700 whitespace-pre-wrap">{selectedReport.actions_taken}</p>
-                </div>
-              )}
-              {selectedReport.challenges && (
-                <div>
-                  <p className="font-bold text-accent-900">Challenges</p>
-                  <p className="text-neutral-700 whitespace-pre-wrap">{selectedReport.challenges}</p>
-                </div>
-              )}
-            </div>
-
-            {/* Section 4 & 5 & 6 & 7: Qualitative Data */}
-            <div>
-              <h4 className="font-bold text-neutral-800 border-b pb-2 mb-3">Qualitative Reports (VDC & Action Plans)</h4>
-              <div className="space-y-4 text-sm">
-                {selectedReport.town_hall_conducted && (
-                  <div>
-                    <p className="font-medium text-primary-700">Quarterly Town Hall Feedback</p>
-                    <p>Conducted: {selectedReport.town_hall_conducted}</p>
-                  </div>
-                )}
-
-                {selectedReport.vdc_reports?.length > 0 && (
-                  <div>
-                    <p className="font-medium text-primary-700">VDC Reports ({selectedReport.vdc_reports.length})</p>
-                    <div className="max-h-32 overflow-y-auto border rounded p-2 mt-1">
-                      {selectedReport.vdc_reports.map((r, i) => (
-                        <div key={i} className="mb-2 last:mb-0 border-b last:border-0 pb-2">
-                          <p className="font-medium text-xs">{r.vdc_name}</p>
-                          <p className="text-neutral-600">{r.issues}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {selectedReport.action_plan?.length > 0 && (
-                  <div>
-                    <p className="font-medium text-primary-700">Action Plan ({selectedReport.action_plan.length})</p>
-                    <div className="max-h-32 overflow-y-auto border rounded p-2 mt-1">
-                      {selectedReport.action_plan.map((p, i) => (
-                        <div key={i} className="mb-2 last:mb-0 border-b last:border-0 pb-2">
-                          <p className="font-medium text-xs">{p.issue}</p>
-                          <p className="text-neutral-600">{p.action}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-4 border-t">
-              <Button onClick={() => setSelectedReport(null)}>Close</Button>
+            <div className="flex justify-end pt-3 border-t">
+              <Button onClick={() => { setSelectedReport(null); setDetailReportData(null); }}>Close</Button>
             </div>
           </div>
         </Modal>

@@ -164,10 +164,14 @@ const StateSubmissionsPage = () => {
   const fetchFullReportDetails = async (reportId) => {
     setLoadingReport(true);
     try {
-      const response = await apiClient.get(`/reports/${reportId}`);
-      // The interceptor returns response.data; handle both wrapped { data: {...} } and direct formats
+      // /detail returns a flat { fields: {...} } format that ReportDetailView expects.
+      const response = await apiClient.get(`/reports/${reportId}/detail`);
       const reportData = response?.data || response;
-      setFullReportData(reportData);
+      // Spread fields onto the top level so ReportDetailView can read them directly.
+      const flatData = reportData?.fields
+        ? { ...reportData, ...reportData.fields }
+        : reportData;
+      setFullReportData(flatData);
     } catch (err) {
       console.error('Failed to fetch report details:', err);
       toast.error('Could not load the full report. Please try again.');
