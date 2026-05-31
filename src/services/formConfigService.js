@@ -106,13 +106,20 @@ async function fetchActiveVersion() {
   if (!form?.id || !form?.currentVersionId) return null;
 
   // Step 2: fetch the version's schema. The backend documents the path as
-  // /forms/:id/versions/:n — we pass the UUID; if the server requires a numeric
-  // version number we'd need a follow-up call to list versions and look it up.
+  // /forms/:id/versions/:n — we pass the currentVersionId (may be int or UUID).
   const versionResp = await apiClient.get(`/forms/${form.id}/versions/${form.currentVersionId}`);
   const version = versionResp?.data ?? versionResp;
   const schema = version?.schema;
 
   if (!schema?.sections) return null;
+
+  // The UUID we need for formVersionId is version.id (the form_versions.id),
+  // NOT form.currentVersionId (which might be a version number).
+  const versionId = version?.id;
+  if (!isUUID(versionId)) {
+    console.warn('[formConfigService] version.id is not a UUID:', versionId);
+    return null;
+  }
 
   // Flatten fields across all sections, normalising key → name
   const fields = [];
@@ -137,7 +144,7 @@ async function fetchActiveVersion() {
   return {
     fields,
     formId: isUUID(form.id) ? String(form.id) : null,
-    versionId: isUUID(form.currentVersionId) ? String(form.currentVersionId) : null,
+    versionId: String(versionId),
   };
 }
 

@@ -59,17 +59,30 @@ function request(method, path, body = null) {
 async function main() {
   console.log('🧪 Testing report submission flow...\n');
 
-  // Step 1: Try to get deployed form version
+  // Step 1: Try to get deployed form version (the form_versions.id UUID)
   console.log('1️⃣  Fetching deployed form version...');
   let formVersionId = null;
   try {
     const forms = await request('GET', '/forms/visible');
     const formsList = Array.isArray(forms) ? forms : (forms?.data || []);
     const deployed = formsList.find(f => f?.currentVersionId);
-    formVersionId = deployed?.currentVersionId || null;
-    console.log(`   ✓ formVersionId: ${formVersionId || '(none deployed)'}\n`);
+
+    if (deployed) {
+      console.log(`   Found form: ${deployed.name || deployed.id}`);
+      console.log(`   form.currentVersionId: ${deployed.currentVersionId}`);
+
+      // Fetch the actual version record to get version.id (the UUID)
+      const versionResp = await request('GET', `/forms/${deployed.id}/versions/${deployed.currentVersionId}`);
+      const version = versionResp?.data || versionResp;
+      formVersionId = version?.id;
+
+      console.log(`   version.id: ${formVersionId}`);
+      console.log(`   ✓ Using formVersionId: ${formVersionId}\n`);
+    } else {
+      console.log(`   ⚠ No deployed form found\n`);
+    }
   } catch (err) {
-    console.log(`   ⚠ Could not fetch forms: ${err.status} ${JSON.stringify(err.body)}`);
+    console.log(`   ⚠ Could not fetch form version: ${err.status} ${JSON.stringify(err.body)}`);
     console.log('   → Proceeding without formVersionId\n');
   }
 
