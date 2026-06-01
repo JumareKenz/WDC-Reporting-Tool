@@ -1,9 +1,10 @@
 /**
  * AIChatInterface Component
  * Main chat interface for State Officials
- * Connected to backend AI chat endpoints (Groq-powered)
+ * Connected to backend AI chat endpoints (HIVA-powered, POST /ai/query)
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import ReactMarkdown from 'react-markdown';
 import {
   Bot,
   Send,
@@ -26,7 +27,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../hooks/useAuth';
-import { USER_ROLES } from '../../utils/constants';
+import { USER_ROLES, AI_ASSISTANT } from '../../utils/constants';
 import {
   getChatSessions,
   createChatSession,
@@ -42,7 +43,33 @@ import {
   TypingIndicator,
 } from '../chat';
 
-const AI_MIN_CHARS = 42;
+const AI_MIN_CHARS = 10;
+
+// Explicit markdown element styling — the project has no @tailwindcss/typography
+// plugin, and Tailwind's preflight strips default list/heading styles, so we
+// restyle the elements HIVA answers commonly emit (lists, tables, code, bold).
+const MARKDOWN_COMPONENTS = {
+  p: ({ node, ...p }) => <p className="my-1.5 first:mt-0 last:mb-0" {...p} />,
+  ul: ({ node, ...p }) => <ul className="list-disc pl-5 my-1.5 space-y-0.5" {...p} />,
+  ol: ({ node, ...p }) => <ol className="list-decimal pl-5 my-1.5 space-y-0.5" {...p} />,
+  li: ({ node, ...p }) => <li className="leading-relaxed" {...p} />,
+  strong: ({ node, ...p }) => <strong className="font-semibold text-neutral-900" {...p} />,
+  h1: ({ node, ...p }) => <h1 className="text-base font-bold mt-2 mb-1" {...p} />,
+  h2: ({ node, ...p }) => <h2 className="text-sm font-bold mt-2 mb-1" {...p} />,
+  h3: ({ node, ...p }) => <h3 className="text-sm font-semibold mt-2 mb-1" {...p} />,
+  a: ({ node, ...p }) => <a className="text-primary-600 underline" target="_blank" rel="noreferrer" {...p} />,
+  code: ({ node, inline, ...p }) =>
+    inline
+      ? <code className="px-1 py-0.5 bg-neutral-100 rounded text-xs font-mono" {...p} />
+      : <code className="block p-2 bg-neutral-100 rounded text-xs font-mono overflow-x-auto" {...p} />,
+  table: ({ node, ...p }) => (
+    <div className="overflow-x-auto my-2">
+      <table className="min-w-full text-xs border border-neutral-200" {...p} />
+    </div>
+  ),
+  th: ({ node, ...p }) => <th className="border border-neutral-200 px-2 py-1 bg-neutral-50 font-semibold text-left" {...p} />,
+  td: ({ node, ...p }) => <td className="border border-neutral-200 px-2 py-1" {...p} />,
+};
 
 // Example questions for quick start
 const EXAMPLE_QUESTIONS = [
@@ -155,10 +182,10 @@ const AIChatInterface = ({ isOpen, onClose }) => {
 
     try {
       const response = await getChatHistory(sessionId);
-      const history = response?.data?.messages || response?.messages || response?.data || [];
+      const history = response?.messages || [];
       if (Array.isArray(history) && history.length > 0) {
-        const formattedMessages = history.map((msg) => ({
-          id: msg.id,
+        const formattedMessages = history.map((msg, i) => ({
+          id: msg.id || `hist-${i}`,
           role: msg.role,
           content: msg.content,
           message_type: msg.message_type || 'text',
@@ -166,6 +193,20 @@ const AIChatInterface = ({ isOpen, onClose }) => {
           timestamp: msg.created_at || msg.timestamp || new Date().toISOString(),
         }));
         setMessages([INITIAL_MESSAGE, ...formattedMessages]);
+      } else {
+        // No retrievable history (backend keeps it server-side only). Context is
+        // still retained — the next question replays this conversationId.
+        setMessages([
+          INITIAL_MESSAGE,
+          {
+            id: `resume-${Date.now()}`,
+            role: 'assistant',
+            content:
+              "Continuing this conversation. Earlier messages aren't shown here, but I still have their context — go ahead and ask your follow-up.",
+            message_type: 'text',
+            timestamp: new Date().toISOString(),
+          },
+        ]);
       }
     } catch (error) {
       console.error('Failed to load session messages:', error);
@@ -220,25 +261,24 @@ const AIChatInterface = ({ isOpen, onClose }) => {
     try {
       const response = await sendMessage(userMessage, currentSessionId);
 
-      // Extract the AI response and session info
-      const data = response?.data || response;
-      const aiMessage = data?.message || data?.response || data;
-      const sessionId = data?.conversation_id || data?.session_id || currentSessionId;
+      // /ai/query → { conversationId, answer, raw }
+      const answer = response?.answer || response?.message || '';
+      const conversationId = response?.conversationId || currentSessionId;
 
-      // Update session ID if this was a new conversation
-      if (!currentSessionId && sessionId) {
-        setCurrentSessionId(sessionId);
+      // Update conversation ID if this was a new conversation
+      if (!currentSessionId && conversationId) {
+        setCurrentSessionId(conversationId);
         // Reload sessions to show the new one
         loadSessions();
       }
 
       const aiMsgObj = {
-        id: aiMessage?.id || `ai-${Date.now()}`,
+        id: `ai-${Date.now()}`,
         role: 'assistant',
-        content: aiMessage?.content || (typeof aiMessage === 'string' ? aiMessage : 'I received your message but couldn\'t generate a proper response.'),
-        message_type: aiMessage?.message_type || 'text',
-        metadata: aiMessage?.metadata || null,
-        timestamp: aiMessage?.created_at || new Date().toISOString(),
+        content: answer || "I received your message but couldn't generate a response. Please try rephrasing.",
+        message_type: 'text',
+        metadata: null,
+        timestamp: new Date().toISOString(),
       };
 
       setMessages(prev => [...prev, aiMsgObj]);
@@ -291,9 +331,17 @@ const AIChatInterface = ({ isOpen, onClose }) => {
           }`}>
             {/* Render based on message type */}
             {message.message_type === 'text' && (
-              <div className={`text-sm leading-relaxed whitespace-pre-wrap ${isUser ? 'text-white' : 'text-neutral-800'}`}>
-                {message.content}
-              </div>
+              isUser ? (
+                <div className="text-sm leading-relaxed whitespace-pre-wrap text-white">
+                  {message.content}
+                </div>
+              ) : (
+                <div className="text-sm leading-relaxed text-neutral-800">
+                  <ReactMarkdown components={MARKDOWN_COMPONENTS}>
+                    {message.content}
+                  </ReactMarkdown>
+                </div>
+              )
             )}
 
             {message.message_type === 'table' && message.metadata?.table_data && (
@@ -463,10 +511,10 @@ const AIChatInterface = ({ isOpen, onClose }) => {
               </div>
               <div>
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                  AI Assistant
+                  {AI_ASSISTANT.NAME} Assistant
                   <Sparkles className="w-4 h-4 text-yellow-300 animate-pulse" />
                 </h2>
-                <p className="text-xs text-primary-100">Powered by Groq AI</p>
+                <p className="text-xs text-primary-100">{AI_ASSISTANT.TAGLINE}</p>
               </div>
             </div>
 
@@ -551,7 +599,7 @@ const AIChatInterface = ({ isOpen, onClose }) => {
               </button>
             </div>
             <p className="text-xs text-neutral-500 mt-2 text-center max-w-4xl mx-auto">
-              AI-powered by Groq. Ask about trends, performance, or specific LGAs.
+              {AI_ASSISTANT.TAGLINE}. Ask about trends, performance, or specific LGAs.
             </p>
           </div>
         </div>

@@ -1,8 +1,9 @@
 import apiClient, { buildQueryString } from './client';
 import { API_ENDPOINTS } from '../utils/constants';
 
-// Helper: coerce an unknown response to a plain array
-const toArray = (r) => (Array.isArray(r) ? r : r?.users || r?.data || []);
+// Helper: coerce an unknown response to a plain array.
+// GET /users returns { items, nextCursor } — check `items` first.
+const toArray = (r) => (Array.isArray(r) ? r : r?.items || r?.users || r?.data || []);
 
 // Users API — backend routes: /users (RLS-scoped GETs; director-only writes)
 
@@ -47,10 +48,14 @@ export const getUsersSummary = async () => {
   const roleMatch = (u, ...roles) =>
     roles.some((r) => u.role === r || u.role?.toLowerCase() === r.toLowerCase());
 
-  const coordinators = list.filter((u) => roleMatch(u, 'LGA_COORDINATOR', 'coordinator'));
-  const secretaries  = list.filter((u) => roleMatch(u, 'WDC_SECRETARY', 'secretary'));
-  const activeCoors  = coordinators.filter((u) => u.is_active !== false);
-  const activeSecs   = secretaries.filter((u)  => u.is_active !== false);
+  // Exclude soft-deleted users from all counts. status: 'active'|'suspended'|'deleted'.
+  const isDeleted = (u) => u.status === 'deleted';
+  const isActive  = (u) => u.status === 'active' || (u.status == null && u.is_active !== false);
+
+  const coordinators = list.filter((u) => roleMatch(u, 'LGA_COORDINATOR', 'coordinator') && !isDeleted(u));
+  const secretaries  = list.filter((u) => roleMatch(u, 'WDC_SECRETARY', 'secretary') && !isDeleted(u));
+  const activeCoors  = coordinators.filter(isActive);
+  const activeSecs   = secretaries.filter(isActive);
 
   // total_wards: sum lga.num_wards / wardCount / ward_count if present on LGA objects
   const totalWards = lgas.reduce(
@@ -76,15 +81,15 @@ export const getLGAWards = async (lgaId) => {
 };
 
 export const getLGACoordinator = async (lgaId) => {
+  // GET /users?role=coordinator&lgaId=<uuid> → { items, nextCursor }
   const result = await listUsers({ lgaId, role: 'coordinator' });
-  const list = Array.isArray(result) ? result : result?.users || [];
-  return list[0] || null;
+  return toArray(result)[0] || null;
 };
 
 export const getWardSecretary = async (wardId) => {
+  // GET /users?role=secretary&wardId=<uuid> → { items, nextCursor }
   const result = await listUsers({ wardId, role: 'secretary' });
-  const list = Array.isArray(result) ? result : result?.users || [];
-  return list[0] || null;
+  return toArray(result)[0] || null;
 };
 
 export const updateUser = async (userId, data) => {
@@ -99,7 +104,31 @@ export const changeUserPin = async (_userId, data) => setOwnCredentials(data);
 export const toggleUserAccess = async (userId, data) =>
   data?.suspended ? suspendUser(userId, data) : reactivateUser(userId, data);
 
+// Create + assign a new user for an unassigned LGA/ward. Maps the page's
+// snake_case form fields to the backend CreateUserDto (camelCase). No password:
+// secretaries are seeded with PIN "1234" (must change on first login);
+// coordinators/directors receive a one-time `enrolmentToken` in the response.
+// Backend role enum is lowercase. Returns the created user + enrolment details.
+const ROLE_TO_BACKEND = {
+  WDC_SECRETARY: 'secretary',
+  LGA_COORDINATOR: 'coordinator',
+  STATE_OFFICIAL: 'director',
+  secretary: 'secretary',
+  coordinator: 'coordinator',
+  director: 'director',
+};
+
 export const assignUser = async (data) => {
-  if (!data?.userId) throw new Error('userId is required to assign a user');
-  return reassignUser(data.userId, data);
+  const role = ROLE_TO_BACKEND[data.role] || data.role;
+  const lgaId = data.lgaId ?? data.lga_id;
+  const wardId = data.wardId ?? data.ward_id;
+  const payload = {
+    role,
+    fullName: data.fullName ?? data.full_name,
+    phone: data.phone,
+    ...(data.email ? { email: data.email } : {}),
+    ...(lgaId ? { lgaId } : {}),
+    ...(wardId ? { wardId } : {}),
+  };
+  return createUser(payload);
 };

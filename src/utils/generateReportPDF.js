@@ -26,7 +26,9 @@ const CONTENT_WIDTH = PAGE_WIDTH - PAGE_MARGIN * 2;
 /**
  * Generate a comprehensive, professional PDF report from AI report data.
  *
- * @param {Object} reportData - The data returned by POST /api/analytics/ai-report
+ * @param {Object} reportData - Report data assembled in StateDashboard
+ *   (state_overview, service_delivery.metrics, charts, swot, recommendations,
+ *   ai_narrative). The narrative comes from HIVA via POST /ai/query.
  * @param {string} month - The report month (YYYY-MM)
  */
 export default function generateReportPDF(reportData, month) {
@@ -45,7 +47,9 @@ export default function generateReportPDF(reportData, month) {
     executive_summary,
   } = reportData;
 
-  const { health_data = {}, facility_support = {}, transportation = {}, cmpdsr = {} } = service_delivery;
+  // Service delivery is now a flat metrics array: { category, total_reports,
+  // avg_value, min_value, max_value }. `category` = user-defined form field key.
+  const sdMetrics = service_delivery.metrics || charts.service_metrics || [];
   const monthLabel = formatMonthLabel(month);
 
   // Helper: check page break
@@ -149,106 +153,44 @@ export default function generateReportPDF(reportData, month) {
   }
 
   // ================================================================
-  // SERVICE DELIVERY
+  // SERVICE DELIVERY METRICS (data-driven from form field keys)
   // ================================================================
-  ensureSpace(60);
-  y = addSectionHeading(doc, 'Service Delivery Overview', y);
+  ensureSpace(40);
+  y = addSectionHeading(doc, 'Service Delivery Metrics', y);
 
-  // Health data table
-  const healthRows = [
-    ['OPD Total', fmtNum(health_data.opd_total)],
-    ['Routine Immunization', fmtNum(health_data.routine_immunization)],
-    ['ANC Total', fmtNum(health_data.anc_total)],
-    ['ANC First Visit', fmtNum(health_data.anc_first_visit)],
-    ['ANC Fourth Visit', fmtNum(health_data.anc_fourth_visit)],
-    ['Deliveries', fmtNum(health_data.deliveries)],
-    ['Postnatal', fmtNum(health_data.postnatal)],
-    ['FP Counselling', fmtNum(health_data.fp_counselling)],
-    ['HepB Tested', fmtNum(health_data.hepb_tested)],
-    ['TB Presumptive', fmtNum(health_data.tb_presumptive)],
-  ];
+  if (sdMetrics.length > 0) {
+    const round1 = (v) => (v == null ? '-' : String(Math.round(Number(v) * 10) / 10));
+    const sdRows = sdMetrics.map((m) => [
+      humanizeKey(m.category),
+      fmtNum(m.total_reports),
+      round1(m.avg_value),
+      m.min_value == null ? '-' : fmtNum(m.min_value),
+      m.max_value == null ? '-' : fmtNum(m.max_value),
+    ]);
 
-  autoTable(doc, {
-    startY: y,
-    head: [['Health Indicator', 'Count']],
-    body: healthRows,
-    margin: { left: PAGE_MARGIN, right: PAGE_MARGIN },
-    theme: 'grid',
-    headStyles: { fillColor: COLORS.primary, textColor: COLORS.white, fontSize: 8, fontStyle: 'bold' },
-    bodyStyles: { fontSize: 8, textColor: COLORS.dark },
-    alternateRowStyles: { fillColor: [245, 245, 245] },
-    columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } },
-  });
-  y = (doc.lastAutoTable?.finalY ?? y + 40) + 8;
-
-  // Facility Support + Transportation side-by-side tables
-  ensureSpace(50);
-  y = addSubHeading(doc, 'Facility Support & Transportation', y);
-
-  const facilityRows = [
-    ['Facilities Renovated', fmtNum(facility_support.facilities_renovated)],
-    ['Items Donated (WDC)', fmtNum(facility_support.items_donated_wdc)],
-    ['Items Donated (Govt)', fmtNum(facility_support.items_donated_govt)],
-    ['Items Repaired', fmtNum(facility_support.items_repaired)],
-    ['Clean Water Provision', fmtNum(facility_support.clean_water_provision)],
-    ['Solar Power Support', fmtNum(facility_support.solar_power_support)],
-  ];
-
-  const transportRows = [
-    ['Women Transported (ANC)', fmtNum(transportation.women_transported_anc)],
-    ['Women Transported (Delivery)', fmtNum(transportation.women_transported_delivery)],
-    ['Children (Emergency)', fmtNum(transportation.children_transported_danger)],
-    ['Delivery Items Support', fmtNum(transportation.women_supported_delivery_items)],
-  ];
-
-  const facilityStartY = y;
-  autoTable(doc, {
-    startY: y,
-    head: [['Facility Support', 'Count']],
-    body: facilityRows,
-    margin: { left: PAGE_MARGIN, right: PAGE_WIDTH / 2 + 2 },
-    tableWidth: CONTENT_WIDTH / 2 - 2,
-    theme: 'grid',
-    headStyles: { fillColor: COLORS.yellow, textColor: COLORS.white, fontSize: 7, fontStyle: 'bold' },
-    bodyStyles: { fontSize: 7, textColor: COLORS.dark },
-    alternateRowStyles: { fillColor: [255, 251, 235] },
-    columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } },
-  });
-  const facilityEndY = doc.lastAutoTable?.finalY ?? facilityStartY + 30;
-
-  autoTable(doc, {
-    startY: facilityStartY,
-    head: [['Transportation', 'Count']],
-    body: transportRows,
-    margin: { left: PAGE_WIDTH / 2 + 2, right: PAGE_MARGIN },
-    tableWidth: CONTENT_WIDTH / 2 - 2,
-    theme: 'grid',
-    headStyles: { fillColor: COLORS.accent, textColor: COLORS.white, fontSize: 7, fontStyle: 'bold' },
-    bodyStyles: { fontSize: 7, textColor: COLORS.dark },
-    alternateRowStyles: { fillColor: [239, 246, 255] },
-    columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } },
-  });
-  const transportEndY = doc.lastAutoTable?.finalY ?? facilityStartY + 30;
-  y = Math.max(facilityEndY, transportEndY) + 6;
-
-  // cMPDSR
-  ensureSpace(25);
-  const mDeaths = cmpdsr.maternal_deaths ?? 0;
-  const pDeaths = cmpdsr.perinatal_deaths ?? 0;
-  autoTable(doc, {
-    startY: y,
-    head: [['Maternal & Perinatal Deaths (cMPDSR)', 'Count']],
-    body: [
-      ['Maternal Deaths', String(mDeaths)],
-      ['Perinatal Deaths', String(pDeaths)],
-    ],
-    margin: { left: PAGE_MARGIN, right: PAGE_MARGIN },
-    theme: 'grid',
-    headStyles: { fillColor: COLORS.red, textColor: COLORS.white, fontSize: 8, fontStyle: 'bold' },
-    bodyStyles: { fontSize: 8, textColor: COLORS.dark },
-    columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } },
-  });
-  y = (doc.lastAutoTable?.finalY ?? y + 20) + 10;
+    autoTable(doc, {
+      startY: y,
+      head: [['Metric', 'Reports', 'Average', 'Min', 'Max']],
+      body: sdRows,
+      margin: { left: PAGE_MARGIN, right: PAGE_MARGIN },
+      theme: 'grid',
+      headStyles: { fillColor: COLORS.primary, textColor: COLORS.white, fontSize: 8, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 8, textColor: COLORS.dark },
+      alternateRowStyles: { fillColor: [245, 245, 245] },
+      columnStyles: {
+        1: { halign: 'center' },
+        2: { halign: 'right', fontStyle: 'bold' },
+        3: { halign: 'right' },
+        4: { halign: 'right' },
+      },
+    });
+    y = (doc.lastAutoTable?.finalY ?? y + 40) + 10;
+  } else {
+    doc.setFontSize(9);
+    doc.setTextColor(...COLORS.muted);
+    doc.text('No service-delivery metrics for this period.', PAGE_MARGIN, y);
+    y += 8;
+  }
 
   // ================================================================
   // LGA PERFORMANCE TABLE
@@ -511,6 +453,13 @@ function getRatingLabel(rate) {
 function capitalize(str) {
   if (!str) return '';
   return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function humanizeKey(key = '') {
+  return String(key)
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .trim();
 }
 
 function formatMonthLabel(month) {

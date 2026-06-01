@@ -7,10 +7,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  PieChart,
-  Pie,
   Cell,
-  Legend,
 } from 'recharts';
 import {
   Copy,
@@ -28,8 +25,6 @@ import Button from '../common/Button';
 import { formatNumber, formatMonth, formatDate } from '../../utils/formatters';
 import generateReportPDF from '../../utils/generateReportPDF';
 
-const PIE_COLORS = ['#3b82f6', '#16a34a', '#f59e0b', '#8b5cf6'];
-
 const MonthlyReportModal = ({ isOpen, onClose, reportData, month }) => {
   const [copied, setCopied] = useState(false);
 
@@ -46,7 +41,15 @@ const MonthlyReportModal = ({ isOpen, onClose, reportData, month }) => {
     executive_summary,
   } = reportData;
 
-  const { health_data = {}, facility_support = {}, transportation = {}, cmpdsr = {} } = service_delivery;
+  // Service delivery is now a flat metrics array: { category, total_reports,
+  // avg_value, min_value, max_value }. `category` = user-defined form field key.
+  const sdMetrics = service_delivery.metrics || charts.service_metrics || [];
+  const humanize = (k = '') =>
+    String(k).replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()).trim();
+  const sdChartData = sdMetrics
+    .map((m) => ({ name: humanize(m.category), value: Math.round((m.avg_value ?? 0) * 10) / 10 }))
+    .filter((d) => d.value > 0)
+    .slice(0, 12);
 
   const handleCopyToClipboard = () => {
     const text = `
@@ -63,33 +66,11 @@ Submission Rate: ${state_overview.submission_rate}%
 Previous Month Rate: ${state_overview.prev_rate}%
 Rate Change: ${state_overview.rate_change > 0 ? '+' : ''}${state_overview.rate_change}%
 
-SERVICE DELIVERY DATA
+SERVICE DELIVERY METRICS (avg per report)
 ${'-'.repeat(40)}
-Health Services:
-  OPD Total: ${health_data.opd_total || 0}
-  Routine Immunization: ${health_data.routine_immunization || 0}
-  ANC Total: ${health_data.anc_total || 0}
-  Deliveries: ${health_data.deliveries || 0}
-  Postnatal: ${health_data.postnatal || 0}
-  FP Counselling: ${health_data.fp_counselling || 0}
-  HepB Tested: ${health_data.hepb_tested || 0}
-  TB Presumptive: ${health_data.tb_presumptive || 0}
-
-Facility Support:
-  Facilities Renovated: ${facility_support.facilities_renovated || 0}
-  Items Donated (WDC): ${facility_support.items_donated_wdc || 0}
-  Items Donated (Govt): ${facility_support.items_donated_govt || 0}
-  Items Repaired: ${facility_support.items_repaired || 0}
-
-Transportation:
-  Women Transported (ANC): ${transportation.women_transported_anc || 0}
-  Women Transported (Delivery): ${transportation.women_transported_delivery || 0}
-  Children (Emergency): ${transportation.children_transported_danger || 0}
-  Delivery Items Support: ${transportation.women_supported_delivery_items || 0}
-
-Maternal & Perinatal Deaths:
-  Maternal Deaths: ${cmpdsr.maternal_deaths || 0}
-  Perinatal Deaths: ${cmpdsr.perinatal_deaths || 0}
+${sdMetrics.length > 0
+  ? sdMetrics.map((m) => `  ${humanize(m.category)}: avg ${m.avg_value ?? '—'} (min ${m.min_value ?? '—'}, max ${m.max_value ?? '—'}, ${m.total_reports ?? 0} reports)`).join('\n')
+  : '  No service-delivery data'}
 
 KEY ISSUES & CHALLENGES
 ${'-'.repeat(40)}
@@ -144,31 +125,11 @@ Kaduna State WDC Digital Reporting System
       ['Previous Month Rate (%)', state_overview.prev_rate],
       ['Rate Change (%)', state_overview.rate_change],
       [],
-      ['SERVICE DELIVERY - HEALTH DATA'],
-      ['OPD Total', health_data.opd_total || 0],
-      ['Routine Immunization', health_data.routine_immunization || 0],
-      ['ANC Total', health_data.anc_total || 0],
-      ['Deliveries', health_data.deliveries || 0],
-      ['Postnatal', health_data.postnatal || 0],
-      ['FP Counselling', health_data.fp_counselling || 0],
-      ['HepB Tested', health_data.hepb_tested || 0],
-      ['TB Presumptive', health_data.tb_presumptive || 0],
-      [],
-      ['SERVICE DELIVERY - FACILITY SUPPORT'],
-      ['Facilities Renovated', facility_support.facilities_renovated || 0],
-      ['Items Donated (WDC)', facility_support.items_donated_wdc || 0],
-      ['Items Donated (Govt)', facility_support.items_donated_govt || 0],
-      ['Items Repaired', facility_support.items_repaired || 0],
-      [],
-      ['SERVICE DELIVERY - TRANSPORTATION'],
-      ['Women Transported (ANC)', transportation.women_transported_anc || 0],
-      ['Women Transported (Delivery)', transportation.women_transported_delivery || 0],
-      ['Children (Emergency)', transportation.children_transported_danger || 0],
-      ['Delivery Items Support', transportation.women_supported_delivery_items || 0],
-      [],
-      ['MATERNAL & PERINATAL DEATHS (cMPDSR)'],
-      ['Maternal Deaths', cmpdsr.maternal_deaths || 0],
-      ['Perinatal Deaths', cmpdsr.perinatal_deaths || 0],
+      ['SERVICE DELIVERY METRICS'],
+      ['Metric', 'Reports', 'Average', 'Min', 'Max'],
+      ...(sdMetrics.length > 0
+        ? sdMetrics.map((m) => [humanize(m.category), m.total_reports ?? 0, m.avg_value ?? '', m.min_value ?? '', m.max_value ?? ''])
+        : [['No service-delivery data', '', '', '', '']]),
       [],
       ['KEY ISSUES & CHALLENGES'],
       ...(key_issues.length > 0 ? key_issues.map((issue, i) => [`${i + 1}. ${issue.word}`, issue.count]) : [['No issues reported', '']]),
@@ -288,83 +249,27 @@ Kaduna State WDC Digital Reporting System
           </div>
         </section>
 
-        {/* 2. Service Delivery Charts */}
+        {/* 2. Service Delivery Metrics */}
         <section>
-          <h3 className="text-lg font-bold text-neutral-900 mb-4 border-b pb-2">Service Delivery Charts</h3>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Immunization Breakdown */}
+          <h3 className="text-lg font-bold text-neutral-900 mb-4 border-b pb-2">Service Delivery Metrics</h3>
+          {sdChartData.length > 0 ? (
             <div className="p-4 bg-white border rounded-xl">
-              <h4 className="font-semibold text-sm text-neutral-700 mb-3">Immunization Breakdown</h4>
-              <div className="h-56">
+              <h4 className="font-semibold text-sm text-neutral-700 mb-3">Average value per report (top {sdChartData.length})</h4>
+              <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={charts.immunization || []}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip />
-                    <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Count" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* ANC Cascade */}
-            <div className="p-4 bg-white border rounded-xl">
-              <h4 className="font-semibold text-sm text-neutral-700 mb-3">ANC Cascade</h4>
-              <div className="h-56">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={charts.anc_cascade || []}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip />
-                    <Bar dataKey="value" fill="#16a34a" radius={[4, 4, 0, 0]} name="Count" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Transportation Breakdown */}
-            <div className="p-4 bg-white border rounded-xl">
-              <h4 className="font-semibold text-sm text-neutral-700 mb-3">Transportation Breakdown</h4>
-              <div className="h-56">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={(charts.transportation || []).filter(d => d.value > 0)}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={80}
-                      dataKey="value"
-                      label={({ name, value }) => `${name}: ${value}`}
-                    >
-                      {(charts.transportation || []).filter(d => d.value > 0).map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Facility Support */}
-            <div className="p-4 bg-white border rounded-xl">
-              <h4 className="font-semibold text-sm text-neutral-700 mb-3">Facility Support</h4>
-              <div className="h-56">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={charts.facility_support || []} layout="vertical">
+                  <BarChart data={sdChartData} layout="vertical">
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
                     <XAxis type="number" tick={{ fontSize: 11 }} />
-                    <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11 }} />
+                    <YAxis dataKey="name" type="category" width={140} tick={{ fontSize: 11 }} />
                     <Tooltip />
-                    <Bar dataKey="value" fill="#f59e0b" radius={[0, 4, 4, 0]} name="Count" />
+                    <Bar dataKey="value" fill="#2f6b4d" radius={[0, 4, 4, 0]} name="Average" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
-          </div>
+          ) : (
+            <p className="text-neutral-500 text-sm">No service-delivery metrics for this period.</p>
+          )}
         </section>
 
         {/* 3. Key Issues & Challenges */}

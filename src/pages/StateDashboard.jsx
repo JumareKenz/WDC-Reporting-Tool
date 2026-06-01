@@ -16,6 +16,7 @@ import {
   Cell,
   AreaChart,
   Area,
+  Legend,
 } from 'recharts';
 import {
   BarChart3,
@@ -39,10 +40,6 @@ import {
   Calendar,
   FormInput,
   Shield,
-  Heart,
-  Truck,
-  Hammer,
-  Stethoscope,
   Award,
   Target,
   Info,
@@ -61,7 +58,6 @@ import {
   useServiceDelivery,
   useGenerateAIReport,
 } from '../hooks/useStateData';
-import { generateMonthlyReport } from '../api/analytics';
 import {
   formatDate,
   formatNumber,
@@ -71,6 +67,9 @@ import {
 } from '../utils/formatters';
 import MonthlyReportModal from '../components/state/MonthlyReportModal';
 import AIChatInterface from '../components/state/AIChatInterface';
+import ServiceDeliveryMetrics from '../components/state/ServiceDeliveryMetrics';
+import KpiTrendStrip from '../components/state/KpiTrendStrip';
+import InsightCallouts from '../components/state/InsightCallouts';
 import ReportDetailView from '../components/reports/ReportDetailView';
 import apiClient from '../api/client';
 
@@ -226,9 +225,11 @@ const StateDashboard = () => {
   const trends = Array.isArray(trendsData)
     ? trendsData
     : (trendsData?.trends || []);
-  const serviceDelivery = (serviceDeliveryData && !Array.isArray(serviceDeliveryData))
-    ? serviceDeliveryData
-    : {};
+  // /analytics/service-delivery now returns { metrics: [{ category, total_reports,
+  // avg_value, min_value, max_value }] } — rendered by <ServiceDeliveryMetrics />.
+  const serviceMetrics = Array.isArray(serviceDeliveryData?.metrics)
+    ? serviceDeliveryData.metrics
+    : [];
 
   // Calculate overview stats from real data only — no hardcoded fallbacks
   const totalLGAs = overview.total_lgas || lgaComparison.length || 0;
@@ -308,26 +309,78 @@ const StateDashboard = () => {
     setShowMonthSelector(true);
   };
 
+  // Assemble the comprehensive report from the dashboard's already-loaded data
+  // (real, instant — no guessing). HIVA supplies only the narrative.
+  const buildMonthlyReportData = (narrative) => {
+    const lastT = trends[trends.length - 1];
+    const prevT = trends[trends.length - 2];
+    const rateChange = prevT && prevT.submitted
+      ? Math.round(((lastT.submitted - prevT.submitted) / prevT.submitted) * 100)
+      : 0;
+
+    const lga_rates = [...lgaComparison]
+      .sort((a, b) => (b.submission_rate || 0) - (a.submission_rate || 0))
+      .map((l) => ({
+        name: l.name,
+        rate: l.submission_rate || 0,
+        submitted: l.submitted_count || 0,
+        total: l.total_wards || 0,
+      }));
+
+    const recommendations = [];
+    bottom5.filter((l) => (l.submission_rate || 0) < 70).forEach((l) =>
+      recommendations.push(`Follow up with ${l.name} (currently ${l.submission_rate}% ward coverage) to close reporting gaps.`)
+    );
+    if (lastT && prevT && rateChange < 0) {
+      recommendations.push(`Submissions fell ${Math.abs(rateChange)}% versus the previous period — investigate blockers in low-activity LGAs.`);
+    }
+    if (totalFlagged > 0) {
+      recommendations.push(`${totalFlagged} report(s) were returned — reinforce data-quality guidance with affected secretaries.`);
+    }
+
+    const swot = {
+      strengths: top5.filter((l) => (l.submission_rate || 0) >= 70).map((l) => `${l.name} performing well at ${l.submission_rate}%`),
+      weaknesses: bottom5.filter((l) => (l.submission_rate || 0) < 50).map((l) => `${l.name} critically low at ${l.submission_rate}%`),
+      opportunities: [],
+      threats: performanceCategories.critical > 0
+        ? [`${performanceCategories.critical} LGA(s) below 50% coverage risk missing the reporting cycle`]
+        : [],
+    };
+
+    return {
+      state_overview: {
+        total_lgas: totalLGAs,
+        total_wards: totalWards,
+        reports_submitted: totalSubmitted,
+        reports_missing: totalMissing,
+        submission_rate: submissionRate,
+        prev_rate: Math.max(0, submissionRate - rateChange),
+        rate_change: rateChange,
+      },
+      service_delivery: { metrics: serviceMetrics },
+      key_issues: [],
+      recommendations,
+      swot,
+      charts: {
+        lga_rates,
+        service_metrics: serviceMetrics.map((m) => ({ name: m.category, value: m.avg_value || 0 })),
+      },
+      ai_narrative: narrative,
+      executive_summary: narrative,
+    };
+  };
+
   const handleConfirmGenerateReport = async () => {
     try {
-      // Fetch both: the comprehensive monthly report (has all stats, charts, SWOT)
-      // and the AI narrative report (has executive summary text)
-      const [monthlyRes, aiRes] = await Promise.all([
-        generateMonthlyReport({ month: selectedReportMonth }),
-        generateMonthlyMutation.mutateAsync({ month: selectedReportMonth }),
-      ]);
+      // HIVA (/ai/query) writes the executive narrative; stats are assembled locally.
+      const aiRes = await generateMonthlyMutation.mutateAsync({ month: selectedReportMonth });
+      const narrative = aiRes?.ai_narrative || aiRes?.executive_summary || '';
 
-      const monthlyData = monthlyRes?.report || monthlyRes || {};
-      const aiData = aiRes?.report || aiRes || {};
+      if (aiRes?.status === 'error') {
+        setAlertMessage({ type: 'warning', text: 'AI narrative unavailable right now — showing the data report without it.' });
+      }
 
-      // Merge: use monthly report for stats/charts/SWOT, AI report for narrative
-      const fullReport = {
-        ...monthlyData,
-        ai_narrative: aiData.executive_summary || aiData.ai_narrative || monthlyData.ai_narrative || '',
-        executive_summary: aiData.executive_summary || monthlyData.executive_summary || '',
-      };
-
-      setMonthlyReportData(fullReport);
+      setMonthlyReportData(buildMonthlyReportData(narrative));
       setShowMonthSelector(false);
       setShowMonthlyReport(true);
     } catch (error) {
@@ -435,20 +488,28 @@ const StateDashboard = () => {
     }
   };
 
-  // Render trend chart based on selected chart type
+  // Render trend chart based on selected chart type. The backend trends series is
+  // count-based ({ submitted, approved, returned } per period), so we plot those
+  // three series rather than a single percentage rate.
   const renderTrendChart = () => {
-    const commonProps = {
-      data: trends,
-    };
+    const commonProps = { data: trends };
+    const axes = (
+      <>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+        <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+        <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+        <Tooltip />
+        <Legend wrapperStyle={{ fontSize: 12 }} />
+      </>
+    );
 
     if (chartType === 'bar') {
       return (
         <BarChart {...commonProps}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
-          <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-          <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} tickFormatter={(v) => `${v}%`} />
-          <Tooltip formatter={(value) => [`${value}%`, 'Submission Rate']} />
-          <Bar dataKey="submission_rate" fill="#2f6b4d" radius={[4, 4, 0, 0]} name="Submission Rate" />
+          {axes}
+          <Bar dataKey="submitted" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Submitted" />
+          <Bar dataKey="approved" fill="#2f6b4d" radius={[4, 4, 0, 0]} name="Approved" />
+          <Bar dataKey="returned" fill="#dc2626" radius={[4, 4, 0, 0]} name="Returned" />
         </BarChart>
       );
     }
@@ -456,11 +517,10 @@ const StateDashboard = () => {
     if (chartType === 'line') {
       return (
         <LineChart {...commonProps}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
-          <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-          <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} tickFormatter={(v) => `${v}%`} />
-          <Tooltip formatter={(value) => [`${value}%`, 'Submission Rate']} />
-          <Line type="monotone" dataKey="submission_rate" stroke="#2f6b4d" strokeWidth={3} dot={{ fill: '#16a34a', r: 4 }} />
+          {axes}
+          <Line type="monotone" dataKey="submitted" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 3 }} name="Submitted" />
+          <Line type="monotone" dataKey="approved" stroke="#2f6b4d" strokeWidth={2.5} dot={{ r: 3 }} name="Approved" />
+          <Line type="monotone" dataKey="returned" stroke="#dc2626" strokeWidth={2.5} dot={{ r: 3 }} name="Returned" />
         </LineChart>
       );
     }
@@ -469,16 +529,19 @@ const StateDashboard = () => {
     return (
       <AreaChart {...commonProps}>
         <defs>
-          <linearGradient id="colorRate" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#16a34a" stopOpacity={0.3} />
-            <stop offset="95%" stopColor="#16a34a" stopOpacity={0} />
+          <linearGradient id="colorSubmitted" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+          </linearGradient>
+          <linearGradient id="colorApproved" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#2f6b4d" stopOpacity={0.3} />
+            <stop offset="95%" stopColor="#2f6b4d" stopOpacity={0} />
           </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
-        <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-        <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} tickFormatter={(v) => `${v}%`} />
-        <Tooltip formatter={(value) => [`${value}%`, 'Submission Rate']} />
-        <Area type="monotone" dataKey="submission_rate" stroke="#2f6b4d" strokeWidth={3} fill="url(#colorRate)" />
+        {axes}
+        <Area type="monotone" dataKey="submitted" stroke="#3b82f6" strokeWidth={2.5} fill="url(#colorSubmitted)" name="Submitted" />
+        <Area type="monotone" dataKey="approved" stroke="#2f6b4d" strokeWidth={2.5} fill="url(#colorApproved)" name="Approved" />
+        <Area type="monotone" dataKey="returned" stroke="#dc2626" strokeWidth={2} fillOpacity={0} name="Returned" />
       </AreaChart>
     );
   };
@@ -748,6 +811,12 @@ const StateDashboard = () => {
           </motion.div>
         )}
 
+        {/* Insight callouts — render only when a real threshold is crossed */}
+        <InsightCallouts lgas={lgaComparison} trends={trends} />
+
+        {/* KPI trend strip — period-over-period submitted/approved/returned */}
+        <KpiTrendStrip trends={trends} loading={loadingTrends} />
+
         {/* ROW 1: Overview Stats - Professional Stat Cards */}
         <motion.div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8" variants={itemVariants}>
           {/* Total LGAs */}
@@ -1000,139 +1069,9 @@ const StateDashboard = () => {
           </div>
         </div>
 
-        {/* ROW 4: Service Delivery Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          {/* Health Services */}
-          <div className="p-5 bg-white rounded-xl border border-neutral-200 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Stethoscope className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-neutral-900">Health Services</h3>
-                <p className="text-xs text-neutral-500">Section 3A - Aggregated Data</p>
-              </div>
-            </div>
-            {loadingServiceDelivery ? (
-              <div className="animate-pulse space-y-2">
-                {[1,2,3,4].map(i => <div key={i} className="h-4 bg-neutral-200 rounded w-3/4" />)}
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-neutral-600">OPD General Attendance</span><span className="font-semibold">{formatNumber(serviceDelivery.health_data?.general_attendance || 0)}</span></div>
-                <div className="flex justify-between"><span className="text-neutral-600">Immunization</span><span className="font-semibold">{formatNumber(serviceDelivery.health_data?.routine_immunization || 0)}</span></div>
-                <div className="flex justify-between"><span className="text-neutral-600">ANC Total</span><span className="font-semibold">{formatNumber(serviceDelivery.health_data?.anc_total || 0)}</span></div>
-                <div className="flex justify-between"><span className="text-neutral-600">Deliveries</span><span className="font-semibold">{formatNumber(serviceDelivery.health_data?.deliveries || 0)}</span></div>
-                <div className="flex justify-between"><span className="text-neutral-600">Family Planning</span><span className="font-semibold">{formatNumber(serviceDelivery.health_data?.fp_counselling || 0)}</span></div>
-                <div className="flex justify-between"><span className="text-neutral-600">HepB Tested</span><span className="font-semibold">{formatNumber(serviceDelivery.health_data?.hepb_tested || 0)}</span></div>
-                <div className="flex justify-between"><span className="text-neutral-600">TB Presumptive</span><span className="font-semibold">{formatNumber(serviceDelivery.health_data?.tb_presumptive || 0)}</span></div>
-                <div className="flex justify-between"><span className="text-neutral-600">Postnatal</span><span className="font-semibold">{formatNumber(serviceDelivery.health_data?.postnatal || 0)}</span></div>
-              </div>
-            )}
-          </div>
-
-          {/* Facility Support */}
-          <div className="p-5 bg-white rounded-xl border border-neutral-200 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="p-2 bg-primary-100 rounded-lg">
-                <Hammer className="w-5 h-5 text-primary-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-neutral-900">Facility Support</h3>
-                <p className="text-xs text-neutral-500">Section 3B - Renovations & Donations</p>
-              </div>
-            </div>
-            {loadingServiceDelivery ? (
-              <div className="animate-pulse space-y-2">
-                {[1,2,3,4].map(i => <div key={i} className="h-4 bg-neutral-200 rounded w-3/4" />)}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-neutral-600">Facilities Renovated</span>
-                  <span className="font-semibold text-lg">{formatNumber(serviceDelivery.facility_support?.facilities_renovated || 0)}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-neutral-600">Items Donated (WDC)</span>
-                  <span className="font-semibold text-lg">{formatNumber(serviceDelivery.facility_support?.items_donated_wdc || 0)}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-neutral-600">Items Donated (Govt)</span>
-                  <span className="font-semibold text-lg">{formatNumber(serviceDelivery.facility_support?.items_donated_govt || 0)}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-neutral-600">Items Repaired</span>
-                  <span className="font-semibold text-lg">{formatNumber(serviceDelivery.facility_support?.items_repaired || 0)}</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Transportation */}
-          <div className="p-5 bg-white rounded-xl border border-neutral-200 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Truck className="w-5 h-5 text-purple-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-neutral-900">Transportation</h3>
-                <p className="text-xs text-neutral-500">Section 3C - Women & Children Transported</p>
-              </div>
-            </div>
-            {loadingServiceDelivery ? (
-              <div className="animate-pulse space-y-2">
-                {[1,2,3,4].map(i => <div key={i} className="h-4 bg-neutral-200 rounded w-3/4" />)}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-neutral-600">Women for ANC</span>
-                  <span className="font-semibold text-lg">{formatNumber(serviceDelivery.transportation?.women_transported_anc || 0)}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-neutral-600">Women for Delivery</span>
-                  <span className="font-semibold text-lg">{formatNumber(serviceDelivery.transportation?.women_transported_delivery || 0)}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-neutral-600">Children (Emergency)</span>
-                  <span className="font-semibold text-lg">{formatNumber(serviceDelivery.transportation?.children_transported_danger || 0)}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-neutral-600">Delivery Items Support</span>
-                  <span className="font-semibold text-lg">{formatNumber(serviceDelivery.transportation?.women_supported_delivery_items || 0)}</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Maternal & Perinatal Deaths */}
-          <div className="p-5 bg-white rounded-xl border border-red-200 shadow-sm bg-gradient-to-br from-white to-red-50">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="p-2 bg-red-100 rounded-lg">
-                <Heart className="w-5 h-5 text-red-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-neutral-900">Maternal & Perinatal Deaths</h3>
-                <p className="text-xs text-neutral-500">Section 3D - CMPDSR</p>
-              </div>
-            </div>
-            {loadingServiceDelivery ? (
-              <div className="animate-pulse space-y-2">
-                {[1,2].map(i => <div key={i} className="h-4 bg-neutral-200 rounded w-3/4" />)}
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center p-4 bg-red-50 rounded-lg border border-red-200">
-                  <p className="text-3xl font-bold text-red-600">{serviceDelivery.cmpdsr?.maternal_deaths || 0}</p>
-                  <p className="text-sm text-red-700 mt-1">Maternal Deaths</p>
-                </div>
-                <div className="text-center p-4 bg-orange-50 rounded-lg border border-orange-200">
-                  <p className="text-3xl font-bold text-orange-600">{serviceDelivery.cmpdsr?.perinatal_deaths || 0}</p>
-                  <p className="text-sm text-orange-700 mt-1">Perinatal Deaths</p>
-                </div>
-              </div>
-            )}
-          </div>
+        {/* ROW 4: Service Delivery Metrics (data-driven from form field keys) */}
+        <div className="mb-8">
+          <ServiceDeliveryMetrics metrics={serviceMetrics} loading={loadingServiceDelivery} />
         </div>
 
         {/* ROW 5: Charts */}

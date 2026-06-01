@@ -100,92 +100,116 @@ const buildWardLgaIndex = async () => {
 // Response normalizers — backend returns camelCase; dashboard reads snake_case
 // ---------------------------------------------------------------------------
 
+// Backend /analytics/overview (all-time, RLS-scoped, camelCase, { data } wrapped):
+//   { totalReports, submittedReports, approvedReports, sealedReports,
+//     returnedReports, avgSubmissionTime, approvalRate, totalLgas, activeLgas,
+//     totalWards, activeWards }
+// The dashboard is ward-coverage oriented ("X of Y wards submitted"), so
+// submitted/missing/rate are ward-based (activeWards) — bounded 0–100% and
+// coherent (submitted + missing = wards). reviewed = approvedReports (verified:
+// approvedReports/submittedReports === approvalRate), flagged = returnedReports.
+// snake_case fallbacks kept for resilience / client-side fallback shape.
 const normalizeOverview = (raw) => {
   const d = raw?.data || raw || {};
+  const totalWards = d.totalWards ?? d.total_wards ?? 0;
+  const submittedWards = d.activeWards ?? d.active_wards ?? d.total_submitted ?? 0;
+  const approved = d.approvedReports ?? d.total_reviewed ?? 0;
+  const returned = d.returnedReports ?? d.total_flagged ?? 0;
   return {
-    total_lgas: d.total_lgas ?? d.totalLgas ?? 0,
-    total_wards: d.total_wards ?? d.totalWards ?? 0,
-    total_submitted: d.total_submitted ?? d.totalSubmitted ?? 0,
-    total_reviewed: d.total_reviewed ?? d.totalReviewed ?? 0,
-    total_flagged: d.total_flagged ?? d.totalFlagged ?? 0,
-    total_missing: d.total_missing ?? d.totalMissing ?? 0,
-    submission_rate: d.submission_rate ?? d.submissionRate ?? 0,
+    total_lgas: d.totalLgas ?? d.total_lgas ?? 0,
+    total_wards: totalWards,
+    total_submitted: submittedWards,
+    total_reviewed: approved,
+    total_flagged: returned,
+    total_missing: Math.max(0, totalWards - submittedWards),
+    submission_rate: totalWards > 0 ? Math.round((submittedWards / totalWards) * 100) : 0,
+    // extras surfaced for richer widgets (Phase 2)
+    total_reports: d.totalReports ?? 0,
+    submitted_reports: d.submittedReports ?? 0,
+    approval_rate: d.approvalRate ?? 0,
+    active_lgas: d.activeLgas ?? 0,
+    avg_submission_time: d.avgSubmissionTime ?? null,
   };
 };
 
-const normalizeLga = (item) => ({
-  id: item.lga_id || item.lgaId || item.id,
-  lgaId: item.lga_id || item.lgaId || item.id,
-  name: item.lga_name || item.lgaName || item.name || '',
-  total_wards: item.total_wards ?? item.totalWards ?? item.ward_count ?? item.wardCount ?? 0,
-  official_ward_count: item.total_wards ?? item.totalWards ?? item.ward_count ?? item.wardCount ?? 0,
-  submitted_count: item.submitted_count ?? item.submittedCount ?? 0,
-  reviewed_count: item.reviewed_count ?? item.reviewedCount ?? 0,
-  flagged_count: item.flagged_count ?? item.flaggedCount ?? 0,
-  missing_count: item.missing_count ?? item.missingCount ?? 0,
-  submission_rate: item.submission_rate ?? item.submissionRate ?? 0,
-  reports: [],
-});
-
-const normalizeTrend = (item) => ({
-  month: item.month || item.label || '',
-  submission_rate: item.submission_rate ?? item.submissionRate ?? 0,
-  submitted: item.submitted ?? item.submittedCount ?? 0,
-  total_wards: item.total_wards ?? item.totalWards ?? 0,
-});
-
-// Service delivery: the backend may use camelCase sub-keys. Try both.
-const normalizeServiceDelivery = (raw) => {
-  const d = raw?.data || raw || {};
-  if (!d || typeof d !== 'object') return {};
-
-  // Helper: pick first defined value from a list of keys (camelCase + snake_case)
-  const pick = (obj, ...keys) => {
-    for (const k of keys) {
-      const v = obj?.[k];
-      if (v !== undefined && v !== null) return Number(v) || 0;
-    }
-    return 0;
-  };
-
-  const hd = d.health_data || d.healthData || d.health || {};
-  const fs = d.facility_support || d.facilitySupport || d.facility || {};
-  const tr = d.transportation || d.transport || {};
-  const cm = d.cmpdsr || d.cMPDSR || d.deaths || {};
-
-  // Detect empty result — backend returned nothing meaningful
-  const hasData = Object.keys(hd).length > 0 || Object.keys(fs).length > 0 ||
-    Object.keys(tr).length > 0 || Object.keys(cm).length > 0;
-  if (!hasData) return null;
-
+// Backend /analytics/lga-comparison item (camelCase, { data } wrapped):
+//   { lgaId, lgaName, totalReports, submittedReports, approvedReports,
+//     sealedReports, returnedReports, avgSubmissionTime, approvalRate,
+//     activeWards, totalWards, lastReportAt }
+// submitted/missing/rate are ward-based (activeWards) so the table stays
+// coherent (Submitted + Missing = Wards). reviewed = approvedReports.
+const normalizeLga = (item) => {
+  const totalWards = item.totalWards ?? item.total_wards ?? item.wardCount ?? item.ward_count ?? 0;
+  const submittedWards = item.activeWards ?? item.active_wards ?? item.submitted_count ?? 0;
+  const approved = item.approvedReports ?? item.reviewed_count ?? 0;
+  const returned = item.returnedReports ?? item.flagged_count ?? 0;
   return {
-    health_data: {
-      general_attendance: pick(hd, 'general_attendance', 'generalAttendance', 'opd', 'opdTotal'),
-      routine_immunization: pick(hd, 'routine_immunization', 'routineImmunization', 'immunization'),
-      anc_total: pick(hd, 'anc_total', 'ancTotal', 'anc'),
-      deliveries: pick(hd, 'deliveries'),
-      fp_counselling: pick(hd, 'fp_counselling', 'fpCounselling', 'familyPlanning'),
-      hepb_tested: pick(hd, 'hepb_tested', 'hepbTested', 'hepatitisB'),
-      tb_presumptive: pick(hd, 'tb_presumptive', 'tbPresumptive', 'tb'),
-      postnatal: pick(hd, 'postnatal', 'postNatal'),
-    },
-    facility_support: {
-      facilities_renovated: pick(fs, 'facilities_renovated', 'facilitiesRenovated', 'renovated'),
-      items_donated_wdc: pick(fs, 'items_donated_wdc', 'itemsDonatedWdc', 'donatedWdc'),
-      items_donated_govt: pick(fs, 'items_donated_govt', 'itemsDonatedGovt', 'donatedGovt'),
-      items_repaired: pick(fs, 'items_repaired', 'itemsRepaired', 'repaired'),
-    },
-    transportation: {
-      women_transported_anc: pick(tr, 'women_transported_anc', 'womenTransportedAnc'),
-      women_transported_delivery: pick(tr, 'women_transported_delivery', 'womenTransportedDelivery'),
-      children_transported_danger: pick(tr, 'children_transported_danger', 'childrenTransportedDanger'),
-      women_supported_delivery_items: pick(tr, 'women_supported_delivery_items', 'womenSupportedDeliveryItems'),
-    },
-    cmpdsr: {
-      maternal_deaths: pick(cm, 'maternal_deaths', 'maternalDeaths'),
-      perinatal_deaths: pick(cm, 'perinatal_deaths', 'perinatalDeaths'),
-    },
+    id: item.lgaId ?? item.lga_id ?? item.id,
+    lgaId: item.lgaId ?? item.lga_id ?? item.id,
+    name: item.lgaName ?? item.lga_name ?? item.name ?? '',
+    total_wards: totalWards,
+    official_ward_count: totalWards,
+    submitted_count: submittedWards,
+    reviewed_count: approved,
+    flagged_count: returned,
+    missing_count: Math.max(0, totalWards - submittedWards),
+    submission_rate: totalWards > 0 ? Math.round((submittedWards / totalWards) * 100) : 0,
+    // extras surfaced for richer widgets (Phase 2)
+    total_reports: item.totalReports ?? 0,
+    submitted_reports: item.submittedReports ?? 0,
+    approval_rate: item.approvalRate ?? 0,
+    last_report_at: item.lastReportAt ?? null,
+    reports: [],
   };
+};
+
+// /analytics/trends → TrendDataPointDto[]: { date, submitted, approved, returned }
+// (camelCase, numeric; `date` is ISO truncated to granularity). We expose the
+// three count series + a readable period label. `submission_rate` is derived
+// only if a ward total is present (it isn't on this endpoint).
+const normalizeTrend = (item) => {
+  const submitted = item.submitted ?? item.submittedReports ?? item.submittedCount ?? item.count ?? 0;
+  const approved = item.approved ?? item.approvedReports ?? 0;
+  const returned = item.returned ?? item.returnedReports ?? 0;
+  const totalWards = item.total_wards ?? item.totalWards ?? 0;
+
+  // Period label from `date` (ISO, truncated to granularity).
+  let label = item.month || item.label || item.period || item.bucket || '';
+  const rawDate = item.date || item.periodStart || '';
+  if (!label && rawDate) {
+    const d = new Date(rawDate);
+    label = Number.isNaN(d.getTime())
+      ? String(rawDate)
+      : d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+  }
+
+  let rate = item.submission_rate ?? item.submissionRate ?? item.rate ?? null;
+  if (rate == null && totalWards > 0) rate = Math.round((submitted / totalWards) * 100);
+
+  return { month: label, submitted, approved, returned, submission_rate: rate, total_wards: totalWards };
+};
+
+// /analytics/service-delivery → ServiceDeliveryMetricDto[]:
+//   { category, totalReports, avgValue, minValue, maxValue }
+// `category` is the user-defined form field_key (snake_case, e.g. anc_visits).
+// Returns { metrics: [...] } or null when nothing usable.
+const normalizeServiceDelivery = (raw) => {
+  const d = raw?.data ?? raw;
+  const arr = Array.isArray(d) ? d : (Array.isArray(raw) ? raw : null);
+  if (!arr) return null;
+
+  const num = (v) => (v === undefined || v === null ? null : Number(v));
+  const metrics = arr
+    .map((m) => ({
+      category: m.category ?? m.field_key ?? m.fieldKey ?? '',
+      total_reports: m.totalReports ?? m.total_reports ?? 0,
+      avg_value: num(m.avgValue ?? m.avg_value),
+      min_value: num(m.minValue ?? m.min_value),
+      max_value: num(m.maxValue ?? m.max_value),
+    }))
+    .filter((m) => m.category);
+
+  return metrics.length ? { metrics } : null;
 };
 
 // ---------------------------------------------------------------------------
@@ -213,51 +237,13 @@ const clientSideOverview = async (params, wardResults) => {
   return stats;
 };
 
-const clientSideServiceDelivery = async (params) => {
-  const rawReports = await getReports();
-  const all = (Array.isArray(rawReports) ? rawReports : rawReports?.reports || []).map(flattenReport);
-  const month = params.month;
-  const reports = (month ? all.filter((r) => normalizeMonth(r.report_month) === month) : all)
-    .filter((r) => r.state && r.state !== 'draft');
-  if (reports.length === 0) return {};
-  const sum = (f) => sumField(reports, f);
-  return {
-    health_data: {
-      general_attendance: sum('health_general_attendance_total'),
-      routine_immunization: sum('health_routine_immunization_total'),
-      anc_total: sum('health_anc_total'),
-      deliveries: sum('health_deliveries'),
-      fp_counselling: sum('health_fp_counselling'),
-      hepb_tested: sum('health_hepb_tested'),
-      tb_presumptive: sum('health_tb_presumptive'),
-      postnatal: sum('health_postnatal'),
-    },
-    facility_support: {
-      facilities_renovated: sum('facility_renovated_count'),
-      items_donated_wdc: sum('items_donated_count'),
-      items_donated_govt: sum('items_donated_govt_count'),
-      items_repaired: sum('items_repaired_count'),
-    },
-    transportation: {
-      women_transported_anc: sum('women_transported_anc'),
-      women_transported_delivery: sum('women_transported_delivery'),
-      children_transported_danger: sum('children_transported_danger'),
-      women_supported_delivery_items: sum('women_supported_delivery_items'),
-    },
-    cmpdsr: {
-      maternal_deaths: sum('maternal_deaths'),
-      perinatal_deaths: sum('perinatal_deaths'),
-    },
-  };
-};
-
 // ---------------------------------------------------------------------------
 // getOverview — hit backend analytics, fall back to client-side
 // ---------------------------------------------------------------------------
 export const getOverview = async (params = {}) => {
   try {
-    const qs = buildQueryString(params.month ? { month: params.month } : {});
-    const raw = await apiClient.get(`${API_ENDPOINTS.ANALYTICS_OVERVIEW}${qs}`);
+    // Backend overview is all-time and ignores ?month= — send no params.
+    const raw = await apiClient.get(API_ENDPOINTS.ANALYTICS_OVERVIEW);
     const result = normalizeOverview(raw);
     // If analytics returned real data, use it
     if (result.total_lgas > 0 || result.total_wards > 0 || result.total_submitted > 0) {
@@ -282,7 +268,8 @@ export const getOverview = async (params = {}) => {
 // ---------------------------------------------------------------------------
 export const getLGAComparison = async (params = {}) => {
   try {
-    const qs = buildQueryString(params.month ? { month: params.month } : {});
+    // lga-comparison ignores ?month=; valid params are sortBy/order/limit.
+    const qs = buildQueryString({ limit: 100 });
 
     // Fetch analytics stats and individual reports in parallel
     const [analyticsRaw, rawReports, { index, wardResults }] = await Promise.all([
@@ -378,14 +365,21 @@ export const getLGAComparison = async (params = {}) => {
 // ---------------------------------------------------------------------------
 export const getTrends = async (params = {}) => {
   try {
+    // Backend /trends wants startDate, endDate, granularity (NOT ?months=).
     const months = params.months || 6;
-    const qs = buildQueryString({ months });
+    const end = new Date();
+    const start = new Date(end.getFullYear(), end.getMonth() - (months - 1), 1);
+    const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const qs = buildQueryString({ startDate: fmt(start), endDate: fmt(end), granularity: 'month' });
     const raw = await apiClient.get(`${API_ENDPOINTS.ANALYTICS_TRENDS}${qs}`);
     const arr = Array.isArray(raw) ? raw : raw?.trends || raw?.data?.trends || raw?.data || [];
-    if (arr.length > 0) {
-      return arr.map(normalizeTrend);
+    const mapped = arr.map(normalizeTrend);
+    // Use backend data only if it has recognizable period labels; otherwise the
+    // DTO shape didn't match — fall back to client-side aggregation (real data).
+    if (mapped.length > 0 && mapped.every((t) => t.month)) {
+      return mapped;
     }
-    throw new Error('analytics/trends returned no data');
+    throw new Error('analytics/trends returned no usable data');
   } catch {
     // Client-side fallback
     try {
@@ -427,27 +421,53 @@ export const getTrends = async (params = {}) => {
 };
 
 // ---------------------------------------------------------------------------
-// getServiceDelivery — analytics endpoint, fall back to client-side aggregation
+// getServiceDelivery — returns { metrics: [{ category, total_reports, avg_value,
+// min_value, max_value }] }. Backend aggregates approved/sealed reports; no month
+// param. On failure returns empty metrics (component renders an empty state).
 // ---------------------------------------------------------------------------
-export const getServiceDelivery = async (params = {}) => {
+export const getServiceDelivery = async () => {
   try {
-    const qs = buildQueryString(params.month ? { month: params.month } : {});
-    const raw = await apiClient.get(`${API_ENDPOINTS.ANALYTICS_SERVICE_DELIVERY}${qs}`);
-    const normalized = normalizeServiceDelivery(raw);
-    if (normalized) return normalized;
-    throw new Error('analytics/service-delivery returned no data');
-  } catch {
-    try {
-      return clientSideServiceDelivery(params);
-    } catch (err) {
-      console.error('[Analytics] getServiceDelivery fallback failed:', err.message);
-      return {};
-    }
+    const raw = await apiClient.get(API_ENDPOINTS.ANALYTICS_SERVICE_DELIVERY);
+    return normalizeServiceDelivery(raw) || { metrics: [] };
+  } catch (err) {
+    console.error('[Analytics] getServiceDelivery failed:', err.message);
+    return { metrics: [] };
   }
 };
 
-export const generateAIReport = async () => ({ report: '', status: 'unsupported' });
-export const generateMonthlyReport = async () => ({ report: '', status: 'unsupported' });
+// ---------------------------------------------------------------------------
+// generateAIReport — narrative monthly report via HIVA (/ai/query). HIVA has
+// direct DB access (NL→SQL), so it composes the executive summary itself; the
+// dashboard supplies the quantitative stats/charts client-side. Returns
+// { executive_summary, ai_narrative, conversationId, status }.
+// ---------------------------------------------------------------------------
+export const generateAIReport = async ({ month, prompt } = {}) => {
+  const period = month ? `for ${month}` : 'for the current reporting period';
+  const question = prompt ||
+    `Generate a concise executive monthly report ${period} for the Kaduna State WDC ` +
+    `digital reporting system. Cover: overall ward submission coverage, approvals and ` +
+    `returns, the best and worst performing LGAs, any notable changes versus the prior ` +
+    `period, and 2–3 specific, actionable recommendations. Write in clear prose with ` +
+    `short paragraphs and no markdown tables.`;
+  try {
+    const res = await apiClient.post(API_ENDPOINTS.AI_QUERY, { question }, { timeout: 60000 });
+    const answer = res?.answer || res?.message || '';
+    return {
+      executive_summary: answer,
+      ai_narrative: answer,
+      conversationId: res?.conversationId || null,
+      status: answer ? 'ok' : 'empty',
+    };
+  } catch (err) {
+    // Surface a clear message; the dashboard still renders the quantitative report.
+    return { executive_summary: '', ai_narrative: '', status: 'error', error: err.message };
+  }
+};
+
+// Legacy export kept for callers that still import it; the comprehensive report
+// stats are now assembled client-side in StateDashboard, so this just defers to
+// the AI narrative generator.
+export const generateMonthlyReport = async (params = {}) => generateAIReport(params);
 
 export const getLGAs = async () => apiClient.get(API_ENDPOINTS.LGAS);
 

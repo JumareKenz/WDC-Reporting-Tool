@@ -226,6 +226,13 @@ export const APP_CONFIG = {
   SUPPORT_PHONE: '+234 800 000 0000',
 };
 
+// AI Assistant branding — single source of truth. Render these, never literals.
+export const AI_ASSISTANT = {
+  NAME: 'HIVA',
+  SHORT: 'HIVA AI',
+  TAGLINE: 'Powered by HIVA',
+};
+
 // Route Paths
 export const ROUTES = {
   HOME: '/',

@@ -119,26 +119,15 @@ function NoUserState({ type, onAssign }) {
 // ---------------------------------------------------------------------------
 // Sub-component: detailed user profile card (right panel)
 // ---------------------------------------------------------------------------
-function UserDetailCard({ user, onEdit, onPassword, onAccess, onCopyEmail, copiedEmail }) {
-  const isCoordinator = user.role === 'LGA_COORDINATOR';
-  const initials = (user.full_name || '')
+function UserDetailCard({ user, lgaName, wardName, onEdit, onPassword, onAccess, onCopyEmail, copiedEmail }) {
+  const isCoordinator = user.role === 'coordinator' || user.role === 'LGA_COORDINATOR';
+  const isActive = user.status === 'active';
+  const initials = (user.fullName || '')
     .split(' ')
     .map((n) => n[0])
     .join('')
     .slice(0, 2)
     .toUpperCase();
-
-  const formatDate = (val) => {
-    if (!val) return 'Never logged in';
-    const d = new Date(val);
-    return d.toLocaleDateString('en-GB', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
 
   return (
     <div className="glass-card rounded-xl border border-white/40 shadow-sm overflow-hidden">
@@ -148,7 +137,7 @@ function UserDetailCard({ user, onEdit, onPassword, onAccess, onCopyEmail, copie
           <span className="text-white text-3xl font-bold">{initials}</span>
         </div>
         <div>
-          <h2 className="text-xl font-bold text-white leading-tight">{user.full_name}</h2>
+          <h2 className="text-xl font-bold text-white leading-tight">{user.fullName}</h2>
           <span
             className={`inline-flex items-center gap-1.5 mt-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
               isCoordinator ? 'bg-blue-100 text-blue-700' : 'bg-primary-100 text-primary-700'
@@ -165,7 +154,7 @@ function UserDetailCard({ user, onEdit, onPassword, onAccess, onCopyEmail, copie
         {/* email */}
         <InfoRow icon={<Mail className="w-4 h-4 text-neutral-500" />} label="Login Username">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-neutral-800">{user.email}</span>
+            <span className="text-sm font-medium text-neutral-800">{user.email || '—'}</span>
             <button
               onClick={onCopyEmail}
               className="p-1 rounded text-neutral-400 hover:text-primary-600 hover:bg-primary-50 transition-colors"
@@ -189,9 +178,9 @@ function UserDetailCard({ user, onEdit, onPassword, onAccess, onCopyEmail, copie
         {/* assignment */}
         <InfoRow icon={<MapPin className="w-4 h-4 text-neutral-500" />} label="Assignment">
           <span className="text-sm font-medium text-neutral-800">
-            {isCoordinator ? user.lga_name : `${user.ward_name} Ward`}
-            {!isCoordinator && user.lga_name && (
-              <span className="text-neutral-400 font-normal"> · {user.lga_name} LGA</span>
+            {isCoordinator ? (lgaName || '—') : (wardName ? `${wardName} Ward` : '—')}
+            {!isCoordinator && lgaName && (
+              <span className="text-neutral-400 font-normal"> · {lgaName} LGA</span>
             )}
           </span>
         </InfoRow>
@@ -199,30 +188,28 @@ function UserDetailCard({ user, onEdit, onPassword, onAccess, onCopyEmail, copie
         {/* status */}
         <InfoRow
           icon={
-            user.is_active ? (
+            isActive ? (
               <ShieldCheck className="w-4 h-4 text-primary-600" />
             ) : (
               <ShieldOff className="w-4 h-4 text-red-500" />
             )
           }
           label="Access Status"
-          iconBg={user.is_active ? 'bg-primary-50' : 'bg-red-50'}
+          iconBg={isActive ? 'bg-primary-50' : 'bg-red-50'}
         >
           <span
             className={`inline-flex items-center gap-1.5 text-sm font-semibold ${
-              user.is_active ? 'text-primary-700' : 'text-red-600'
+              isActive ? 'text-primary-700' : 'text-red-600'
             }`}
           >
             <span
-              className={`w-2 h-2 rounded-full ${user.is_active ? 'bg-primary-500' : 'bg-red-400'}`}
+              className={`w-2 h-2 rounded-full ${isActive ? 'bg-primary-500' : 'bg-red-400'}`}
             />
-            {user.is_active ? 'Active' : 'Access Revoked'}
+            {user.status === 'active' ? 'Active'
+              : user.status === 'suspended' ? 'Access Revoked'
+              : user.status === 'deleted' ? 'Deleted'
+              : 'Unknown'}
           </span>
-        </InfoRow>
-
-        {/* last login */}
-        <InfoRow icon={<Clock className="w-4 h-4 text-neutral-500" />} label="Last Login">
-          <span className="text-sm font-medium text-neutral-800">{formatDate(user.last_login)}</span>
         </InfoRow>
       </div>
 
@@ -240,18 +227,18 @@ function UserDetailCard({ user, onEdit, onPassword, onAccess, onCopyEmail, copie
             onClick={onPassword}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white border border-neutral-200 text-neutral-700 hover:bg-accent-50 hover:border-amber-300 hover:text-accent-800 text-sm font-medium transition-all shadow-sm"
           >
-            <Key className="w-4 h-4" /> {user.role === 'WDC_SECRETARY' ? 'Set PIN' : 'Reset Password'}
+            <Key className="w-4 h-4" /> {isCoordinator ? 'Reset Password' : 'Set PIN'}
           </button>
           <button
             onClick={onAccess}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-all shadow-sm ${
-              user.is_active
+              isActive
                 ? 'bg-white border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300'
                 : 'bg-white border-primary-200 text-primary-600 hover:bg-primary-50 hover:border-primary-300'
             }`}
           >
-            {user.is_active ? <ShieldOff className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
-            {user.is_active ? 'Revoke Access' : 'Restore Access'}
+            {isActive ? <ShieldOff className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
+            {isActive ? 'Revoke Access' : 'Restore Access'}
           </button>
         </div>
       </div>
@@ -303,15 +290,13 @@ export default function StateUsersPage() {
   const [showPw, setShowPw]     = useState(false);
   const [showCfPw, setShowCfPw] = useState(false);
   const [copiedEmail, setCopiedEmail] = useState(false);
-  const [copiedPassword, setCopiedPassword] = useState(false);
+  const [copiedToken, setCopiedToken] = useState(false);
   const [copiedUsername, setCopiedUsername] = useState(false);
 
   const [assignForm, setAssignForm] = useState({
-    full_name: '', email: '', phone: '', password: '', confirm_password: '',
+    full_name: '', email: '', phone: '',
   });
   const [assignErrors, setAssignErrors] = useState({});
-  const [showAssignPw, setShowAssignPw]     = useState(false);
-  const [showAssignCfPw, setShowAssignCfPw] = useState(false);
 
   // ── toast ──
   const [toast, setToast] = useState(null);
@@ -342,15 +327,27 @@ export default function StateUsersPage() {
   const toggleAccessMutation     = useToggleUserAccess();
   const assignUserMutation       = useAssignUser();
 
-  // derive the user shown in the right panel
+  // derive the user shown in the right panel.
+  // getWardSecretary/getLGACoordinator already return the UserView object (or
+  // null) — there is NO { user } wrapper.
   const selectedUser = selectedWardId
-    ? secretaryData?.user || null
-    : coordinatorData?.user || null;
+    ? secretaryData || null
+    : coordinatorData || null;
   const isLoadingUser = selectedWardId ? loadingSecretary : loadingCoordinator;
 
   // context objects for the currently selected LGA / ward
   const selectedLGA  = lgas.find((l) => l.id === selectedLGAId) || null;
   const selectedWard = lgaWardsCache[selectedLGAId]?.find((w) => w.id === selectedWardId) || null;
+
+  // Resolve LGA / ward names for the selected user. The backend UserView carries
+  // only lgaId / wardId — names come from the geography lists we already have.
+  const selectedUserLgaName = selectedUser
+    ? (lgas.find((l) => l.id === selectedUser.lgaId)?.name || selectedLGA?.name || '')
+    : '';
+  const selectedUserWardName = selectedUser
+    ? (lgaWardsCache[selectedUser.lgaId]?.find((w) => w.id === selectedUser.wardId)?.name
+       || selectedWard?.name || '')
+    : '';
 
   // ── ward fetching (imperative, cached) ──
   const fetchWardsForLGA = useCallback(async (lgaId) => {
@@ -386,11 +383,11 @@ export default function StateUsersPage() {
   // ── modal openers ──
   const openEditModal = () => {
     if (!selectedUser) return;
-    setEditForm({ full_name: selectedUser.full_name || '', phone: selectedUser.phone || '' });
+    setEditForm({ full_name: selectedUser.fullName || '', phone: selectedUser.phone || '' });
     setShowEditModal(true);
   };
 
-  const isSecretary = selectedUser?.role === 'WDC_SECRETARY';
+  const isSecretary = selectedUser?.role === 'secretary' || selectedUser?.role === 'WDC_SECRETARY';
 
   const openPasswordModal = () => {
     setPasswordForm(isSecretary ? { new_pin: '' } : { new_password: '', confirm_password: '' });
@@ -410,10 +407,8 @@ export default function StateUsersPage() {
     } else if (selectedLGAId) {
       suggestedEmail = `coord.${lgaCode}@kaduna.gov.ng`;
     }
-    setAssignForm({ full_name: '', email: suggestedEmail, phone: '', password: '', confirm_password: '' });
+    setAssignForm({ full_name: '', email: suggestedEmail, phone: '' });
     setAssignErrors({});
-    setShowAssignPw(false);
-    setShowAssignCfPw(false);
     setShowAssignModal(true);
   };
 
@@ -477,16 +472,18 @@ export default function StateUsersPage() {
   };
 
   const handleAccessToggle = async () => {
+    const currentlyActive = selectedUser.status === 'active';
     try {
       await toggleAccessMutation.mutateAsync({
         userId: selectedUser.id,
-        data: { is_active: !selectedUser.is_active },
+        // suspended:true → suspend; suspended:false → reactivate (api/users.js)
+        data: { suspended: currentlyActive },
       });
       setShowRevokeConfirm(false);
       showToast(
-        selectedUser.is_active
-          ? `Access revoked for ${selectedUser.full_name}.`
-          : `Access restored for ${selectedUser.full_name}.`
+        currentlyActive
+          ? `Access revoked for ${selectedUser.fullName}.`
+          : `Access restored for ${selectedUser.fullName}.`
       );
     } catch (err) {
       showToast(err.message || 'Failed to toggle access.', 'error');
@@ -494,48 +491,43 @@ export default function StateUsersPage() {
   };
 
   const handleAssignSave = async () => {
+    const isSecretaryAssign = !!selectedWardId;
     const errs = {};
     if (!assignForm.full_name.trim())
       errs.full_name = 'Full name is required';
-    if (!assignForm.email.trim())
-      errs.email = 'Email is required';
     if (!assignForm.phone.trim())
-      errs.phone = 'Phone number is required for SMS notifications';
-    // Password is optional - will be auto-generated if not provided
-    if (assignForm.password && assignForm.password.length < 6)
-      errs.password = 'At least 6 characters';
-    if (assignForm.password && assignForm.password !== assignForm.confirm_password)
-      errs.confirm_password = 'Passwords do not match';
+      errs.phone = 'Phone number is required';
+    // Coordinators sign in via the console, so they need an email. Secretaries
+    // sign in with PIN + LGA/ward, so email is optional for them.
+    if (!isSecretaryAssign && !assignForm.email.trim())
+      errs.email = 'Email is required for coordinator console sign-in';
 
     if (Object.keys(errs).length) { setAssignErrors(errs); return; }
 
     try {
+      // POST /users — backend seeds PIN "1234" for secretaries or returns a
+      // one-time enrolmentToken for coordinators. lgaId is required for both;
+      // wardId additionally for secretaries.
       const result = await assignUserMutation.mutateAsync({
         full_name: assignForm.full_name,
-        email: assignForm.email,
+        email: assignForm.email || undefined,
         phone: assignForm.phone,
-        password: assignForm.password || undefined,  // Auto-generate if empty
-        role: selectedWardId ? 'WDC_SECRETARY' : 'LGA_COORDINATOR',
-        lga_id: selectedWardId ? undefined : selectedLGAId,
+        role: isSecretaryAssign ? 'secretary' : 'coordinator',
+        lga_id: selectedLGAId,
         ward_id: selectedWardId || undefined,
       });
       setShowAssignModal(false);
 
-      // Show credentials modal if password was auto-generated
-      if (result.credentials && result.credentials.password) {
-        setUserCredentials({
-          fullName: assignForm.full_name,
-          email: result.credentials.email,
-          password: result.credentials.password,
-          role: selectedWardId ? 'WDC Secretary' : 'LGA Coordinator',
-          smsSent: result.sms_sent
-        });
-        setShowCredentialsModal(true);
-      } else {
-        // Show success toast if SMS was sent
-        const roleLabel = selectedWardId ? 'WDC Secretary' : 'LGA Coordinator';
-        showToast(`${roleLabel} assigned successfully. Login credentials sent via SMS.`);
-      }
+      setUserCredentials({
+        fullName: result.fullName || assignForm.full_name,
+        role: isSecretaryAssign ? 'WDC Secretary' : 'LGA Coordinator',
+        isSecretary: isSecretaryAssign,
+        email: result.email || assignForm.email || null,
+        phone: result.phone || assignForm.phone,
+        enrolmentToken: result.enrolmentToken || null,
+        enrolmentExpiresAt: result.enrolmentExpiresAt || null,
+      });
+      setShowCredentialsModal(true);
     } catch (err) {
       showToast(err.message || 'Failed to assign user.', 'error');
     }
@@ -740,6 +732,8 @@ export default function StateUsersPage() {
           {!isLoadingUser && selectedUser && (
             <UserDetailCard
               user={selectedUser}
+              lgaName={selectedUserLgaName}
+              wardName={selectedUserWardName}
               onEdit={openEditModal}
               onPassword={openPasswordModal}
               onAccess={() => setShowRevokeConfirm(true)}
@@ -800,7 +794,7 @@ export default function StateUsersPage() {
             <>
               <p className="text-sm text-neutral-600">
                 Set a 4-digit PIN for{' '}
-                <span className="font-semibold text-neutral-800">{selectedUser?.full_name}</span>.
+                <span className="font-semibold text-neutral-800">{selectedUser?.fullName}</span>.
                 They will use this PIN to log in from their ward.
               </p>
               <div>
@@ -828,7 +822,7 @@ export default function StateUsersPage() {
             <>
               <p className="text-sm text-neutral-600">
                 Set a new password for{' '}
-                <span className="font-semibold text-neutral-800">{selectedUser?.full_name}</span>.
+                <span className="font-semibold text-neutral-800">{selectedUser?.fullName}</span>.
                 They will need this new password to log in.
               </p>
               <div>
@@ -898,39 +892,39 @@ export default function StateUsersPage() {
         <Modal
           isOpen={showRevokeConfirm}
           onClose={() => setShowRevokeConfirm(false)}
-          title={selectedUser.is_active ? 'Revoke Access' : 'Restore Access'}
+          title={selectedUser.status === 'active' ? 'Revoke Access' : 'Restore Access'}
           size="sm"
         >
           <div className="space-y-4">
             <div
               className={`rounded-lg p-3.5 flex items-start gap-3 ${
-                selectedUser.is_active
+                selectedUser.status === 'active'
                   ? 'bg-red-50 border border-red-200'
                   : 'bg-primary-50 border border-primary-200'
               }`}
             >
               <AlertTriangle
                 className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
-                  selectedUser.is_active ? 'text-red-500' : 'text-primary-600'
+                  selectedUser.status === 'active' ? 'text-red-500' : 'text-primary-600'
                 }`}
               />
               <div>
                 <p
                   className={`text-sm font-semibold ${
-                    selectedUser.is_active ? 'text-red-700' : 'text-primary-700'
+                    selectedUser.status === 'active' ? 'text-red-700' : 'text-primary-700'
                   }`}
                 >
-                  {selectedUser.is_active ? 'Revoke Platform Access' : 'Restore Platform Access'}
+                  {selectedUser.status === 'active' ? 'Revoke Platform Access' : 'Restore Platform Access'}
                 </p>
                 <p
                   className={`text-xs mt-0.5 leading-relaxed ${
-                    selectedUser.is_active ? 'text-red-600' : 'text-primary-600'
+                    selectedUser.status === 'active' ? 'text-red-600' : 'text-primary-600'
                   }`}
                 >
-                  {selectedUser.is_active
-                    ? `Revoking access will prevent ${selectedUser.full_name} from logging in. They will
+                  {selectedUser.status === 'active'
+                    ? `Revoking access will prevent ${selectedUser.fullName} from logging in. They will
                        not be able to submit reports or access any features until access is restored.`
-                    : `Restoring access will allow ${selectedUser.full_name} to log back in and resume
+                    : `Restoring access will allow ${selectedUser.fullName} to log back in and resume
                        their duties immediately.`}
                 </p>
               </div>
@@ -938,12 +932,12 @@ export default function StateUsersPage() {
             <div className="flex justify-end gap-2">
               <Button variant="outline" size="sm" onClick={() => setShowRevokeConfirm(false)}>Cancel</Button>
               <Button
-                variant={selectedUser.is_active ? 'danger' : 'success'}
+                variant={selectedUser.status === 'active' ? 'danger' : 'success'}
                 size="sm"
                 onClick={handleAccessToggle}
                 loading={toggleAccessMutation.isPending}
               >
-                {selectedUser.is_active ? 'Revoke Access' : 'Restore Access'}
+                {selectedUser.status === 'active' ? 'Revoke Access' : 'Restore Access'}
               </Button>
             </div>
           </div>
@@ -997,7 +991,10 @@ export default function StateUsersPage() {
           {/* Email / Login Username */}
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1">
-              Login Username (Email) <span className="text-red-500">*</span>
+              Login Username (Email){' '}
+              {selectedWardId
+                ? <span className="text-neutral-400">(optional)</span>
+                : <span className="text-red-500">*</span>}
             </label>
             <input
               type="email"
@@ -1013,7 +1010,9 @@ export default function StateUsersPage() {
               <p className="text-xs text-red-500 mt-1">{assignErrors.email}</p>
             )}
             <p className="text-xs text-neutral-400 mt-1">
-              This will be their permanent login username and cannot be changed later.
+              {selectedWardId
+                ? 'Secretaries sign in with their PIN; email is optional.'
+                : 'Permanent login username for console sign-in — cannot be changed later.'}
             </p>
           </div>
 
@@ -1035,73 +1034,25 @@ export default function StateUsersPage() {
             {assignErrors.phone && (
               <p className="text-xs text-red-500 mt-1">{assignErrors.phone}</p>
             )}
-            <p className="text-xs text-neutral-400 mt-1">
-              Login credentials will be sent via SMS to this number.
-            </p>
           </div>
 
-          {/* Password + Confirm side by side */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2">
-            <p className="text-xs text-blue-700">
-              <strong>Optional:</strong> Leave password blank to auto-generate a secure password.
-              It will be sent via SMS to the phone number above.
+          {/* Credential method note — no password is set here */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
+            <Key className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-blue-700 leading-relaxed">
+              {selectedWardId ? (
+                <>
+                  <strong>WDC Secretaries</strong> are created with a default PIN{' '}
+                  <span className="font-mono font-bold">1234</span> and must change it on first
+                  login. No password is set here.
+                </>
+              ) : (
+                <>
+                  <strong>Coordinators</strong> receive a one-time enrolment token after creation —
+                  share it with them to set their own password. No password is set here.
+                </>
+              )}
             </p>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Password <span className="text-neutral-400">(optional)</span>
-              </label>
-              <div className="relative">
-                <input
-                  type={showAssignPw ? 'text' : 'password'}
-                  value={assignForm.password}
-                  onChange={(e) => {
-                    setAssignForm((p) => ({ ...p, password: e.target.value }));
-                    setAssignErrors((p) => ({ ...p, password: null }));
-                  }}
-                  className={`input-base w-full pr-10 ${assignErrors.password ? 'border-red-400 focus:ring-red-400' : ''}`}
-                  placeholder="Auto-generated if blank"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowAssignPw(!showAssignPw)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
-                >
-                  {showAssignPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-              {assignErrors.password && (
-                <p className="text-xs text-red-500 mt-1">{assignErrors.password}</p>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Confirm Password <span className="text-neutral-400">(if provided)</span>
-              </label>
-              <div className="relative">
-                <input
-                  type={showAssignCfPw ? 'text' : 'password'}
-                  value={assignForm.confirm_password}
-                  onChange={(e) => {
-                    setAssignForm((p) => ({ ...p, confirm_password: e.target.value }));
-                    setAssignErrors((p) => ({ ...p, confirm_password: null }));
-                  }}
-                  className={`input-base w-full pr-10 ${assignErrors.confirm_password ? 'border-red-400 focus:ring-red-400' : ''}`}
-                  placeholder="Re-enter password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowAssignCfPw(!showAssignCfPw)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
-                >
-                  {showAssignCfPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-              {assignErrors.confirm_password && (
-                <p className="text-xs text-red-500 mt-1">{assignErrors.confirm_password}</p>
-              )}
-            </div>
           </div>
 
           {/* action buttons */}
@@ -1136,80 +1087,103 @@ export default function StateUsersPage() {
             </div>
           </div>
 
-          {/* SMS Status */}
-          {!userCredentials?.smsSent && (
-            <div className="bg-accent-50 border border-amber-200 rounded-xl p-4">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="font-semibold text-amber-900 mb-1">SMS Not Sent</h4>
-                  <p className="text-sm text-accent-800">
-                    Please share the credentials below with the user manually.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Credentials Display */}
           <div className="space-y-3">
-            <h4 className="font-semibold text-neutral-800">Login Credentials</h4>
+            <h4 className="font-semibold text-neutral-800">Login Details</h4>
 
-            {/* Username/Email */}
-            <div>
-              <label className="block text-xs font-medium text-neutral-500 mb-1">
-                Username (Email)
-              </label>
-              <div className="flex items-center gap-2">
-                <div className="flex-1 px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg font-mono text-sm">
-                  {userCredentials?.email}
+            {/* Username/Email (when present) */}
+            {userCredentials?.email && (
+              <div>
+                <label className="block text-xs font-medium text-neutral-500 mb-1">
+                  Username (Email)
+                </label>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg font-mono text-sm break-all">
+                    {userCredentials.email}
+                  </div>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(userCredentials?.email || '');
+                      setCopiedUsername(true);
+                      setTimeout(() => setCopiedUsername(false), 2000);
+                    }}
+                    className="px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2 flex-shrink-0"
+                  >
+                    {copiedUsername ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    {copiedUsername ? 'Copied!' : 'Copy'}
+                  </button>
                 </div>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(userCredentials?.email || '');
-                    setCopiedUsername(true);
-                    setTimeout(() => setCopiedUsername(false), 2000);
-                  }}
-                  className="px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2"
-                >
-                  {copiedUsername ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  {copiedUsername ? 'Copied!' : 'Copy'}
-                </button>
               </div>
-            </div>
+            )}
 
-            {/* Password */}
-            <div>
-              <label className="block text-xs font-medium text-neutral-500 mb-1">
-                Password
-              </label>
-              <div className="flex items-center gap-2">
-                <div className="flex-1 px-3 py-2 bg-accent-50 border border-amber-300 rounded-lg font-mono text-lg font-bold text-amber-900">
-                  {userCredentials?.password}
+            {/* Secretary → default PIN */}
+            {userCredentials?.isSecretary ? (
+              <div>
+                <label className="block text-xs font-medium text-neutral-500 mb-1">
+                  Default PIN
+                </label>
+                <div className="px-3 py-2 bg-accent-50 border border-amber-300 rounded-lg font-mono text-lg font-bold text-amber-900 tracking-[0.4em] text-center">
+                  1234
                 </div>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(userCredentials?.password || '');
-                    setCopiedPassword(true);
-                    setTimeout(() => setCopiedPassword(false), 2000);
-                  }}
-                  className="px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2"
-                >
-                  {copiedPassword ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  {copiedPassword ? 'Copied!' : 'Copy'}
-                </button>
+                <p className="text-xs text-neutral-500 mt-1">
+                  The secretary signs in with their ward + this PIN, and must change it on first login.
+                </p>
               </div>
-            </div>
+            ) : (
+              /* Coordinator → one-time enrolment token */
+              userCredentials?.enrolmentToken ? (
+                <div>
+                  <label className="block text-xs font-medium text-neutral-500 mb-1">
+                    Enrolment Token (one-time)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 px-3 py-2 bg-accent-50 border border-amber-300 rounded-lg font-mono text-xs font-semibold text-amber-900 break-all">
+                      {userCredentials.enrolmentToken}
+                    </div>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(userCredentials?.enrolmentToken || '');
+                        setCopiedToken(true);
+                        setTimeout(() => setCopiedToken(false), 2000);
+                      }}
+                      className="px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2 flex-shrink-0"
+                    >
+                      {copiedToken ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      {copiedToken ? 'Copied!' : 'Copy'}
+                    </button>
+                  </div>
+                  {userCredentials?.enrolmentExpiresAt && (
+                    <p className="text-xs text-amber-600 mt-1">
+                      Expires {new Date(userCredentials.enrolmentExpiresAt).toLocaleString('en-GB', {
+                        day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+                      })} — share it before then.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-neutral-500">
+                  User created. No enrolment token was returned — please contact support to set up
+                  their credentials.
+                </p>
+              )
+            )}
           </div>
 
           {/* Instructions */}
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
             <h4 className="font-semibold text-blue-900 mb-2 text-sm">Share with User:</h4>
-            <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
-              <li>Login URL: <span className="font-mono">https://kadwdc.vercel.app</span></li>
-              <li>Use the username and password above</li>
-              <li>User should change password after first login</li>
-            </ul>
+            {userCredentials?.isSecretary ? (
+              <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
+                <li>They sign in by selecting their LGA &amp; ward and entering PIN <span className="font-mono font-bold">1234</span>.</li>
+                <li>They will be prompted to set a new PIN on first login.</li>
+              </ul>
+            ) : (
+              <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
+                <li>Send them the enrolment token above.</li>
+                <li>They redeem it on the sign-in screen to set their own password.</li>
+                <li>The token is one-time and expires within 24 hours.</li>
+              </ul>
+            )}
           </div>
 
           {/* Action Buttons */}
