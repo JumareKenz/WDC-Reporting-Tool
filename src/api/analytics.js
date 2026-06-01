@@ -13,6 +13,20 @@ const normalizeMonth = (m) => {
   return s;
 };
 
+// Convert a "YYYY-MM" month into the backend's { startDate, endDate } range
+// (first and last calendar day). Returns null for a missing/invalid month, in
+// which case callers omit the params and the backend returns all-time stats.
+const monthToRange = (month) => {
+  if (!month) return null;
+  const m = String(month).match(/(\d{4})-(\d{1,2})/);
+  if (!m) return null;
+  const year = Number(m[1]);
+  const mon = Number(m[2]);
+  const mm = String(mon).padStart(2, '0');
+  const lastDay = new Date(year, mon, 0).getDate(); // day 0 of next month = last day of this month
+  return { startDate: `${m[1]}-${mm}-01`, endDate: `${m[1]}-${mm}-${String(lastDay).padStart(2, '0')}` };
+};
+
 // Flatten canonical.fields op-log entries onto the report object so callers
 // can read report_month, health_bcg, meetings_held, etc. directly.
 const flattenReport = (r) => {
@@ -242,8 +256,10 @@ const clientSideOverview = async (params, wardResults) => {
 // ---------------------------------------------------------------------------
 export const getOverview = async (params = {}) => {
   try {
-    // Backend overview is all-time and ignores ?month= — send no params.
-    const raw = await apiClient.get(API_ENDPOINTS.ANALYTICS_OVERVIEW);
+    // Backend accepts startDate/endDate (omit for all-time). Map the selected month.
+    const range = monthToRange(params.month);
+    const qs = range ? buildQueryString(range) : '';
+    const raw = await apiClient.get(`${API_ENDPOINTS.ANALYTICS_OVERVIEW}${qs}`);
     const result = normalizeOverview(raw);
     // If analytics returned real data, use it
     if (result.total_lgas > 0 || result.total_wards > 0 || result.total_submitted > 0) {
@@ -268,8 +284,9 @@ export const getOverview = async (params = {}) => {
 // ---------------------------------------------------------------------------
 export const getLGAComparison = async (params = {}) => {
   try {
-    // lga-comparison ignores ?month=; valid params are sortBy/order/limit.
-    const qs = buildQueryString({ limit: 100 });
+    // lga-comparison accepts startDate/endDate + sortBy/order/limit.
+    const range = monthToRange(params.month);
+    const qs = buildQueryString({ ...(range || {}), limit: 100 });
 
     // Fetch analytics stats and individual reports in parallel
     const [analyticsRaw, rawReports, { index, wardResults }] = await Promise.all([

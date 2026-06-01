@@ -798,6 +798,7 @@ const SubmitReportPage = () => {
         fields,
         attachments,
         voiceNotes: vnotes,
+        reportMonth,
       });
     },
     onSuccess: async () => {

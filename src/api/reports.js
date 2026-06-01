@@ -112,7 +112,31 @@ export const sealDue = async () =>
  * uploading any voice notes/attachments, and submitting it in one go.
  * Returns the final report.
  */
-export const submitNewReport = async ({ formVersionId, submissionMethod = 'wizard', fields = {}, attachments = [], voiceNotes = [], source = 'typed' } = {}) => {
+export const submitNewReport = async ({ formVersionId, submissionMethod = 'wizard', fields = {}, attachments = [], voiceNotes = [], source = 'typed', reportMonth } = {}) => {
+  // ⚠️ REQUIRED BACKEND FIX: the op-log backend creates a brand-new report on
+  // every POST /reports, so the ONLY airtight prevention of two non-draft reports
+  // for the same ward+month is a backend UNIQUE constraint on (wardId, reportMonth)
+  // for non-draft states (reject with 409). Until that lands, this is the best the
+  // frontend can do — a defense-in-depth re-check at submit time. A failed check
+  // (e.g. offline) proceeds and relies on the backend as the final guard.
+  const month = normalizeMonth(reportMonth || fields?.report_month || fields?.reportMonth);
+  if (month) {
+    try {
+      const info = await getSubmissionInfo(month);
+      if (info.submitted) {
+        const err = new Error(
+          `A report for ${month} has already been submitted. Each month can only be reported once.`
+        );
+        err.code = 'DUPLICATE_MONTH';
+        err.status = 400; // NOT 409 — the submit page treats 409 as success
+        throw err;
+      }
+    } catch (e) {
+      if (e?.code === 'DUPLICATE_MONTH') throw e;
+      // check failed (offline / transient) — proceed; backend remains final guard
+    }
+  }
+
   console.log('[submitNewReport] Creating draft with formVersionId:', formVersionId);
   const draft = await createReport({ formVersionId, submissionMethod });
   const reportId = draft?.id ?? draft?.report?.id;

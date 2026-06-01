@@ -105,6 +105,13 @@ const WDCDashboard = () => {
   
   const reports = responseData.reports || [];
   const submittedMonths = responseData.submitted_months || [];
+
+  // Drafts are NOT submissions — exclude them from stats + history. (The full
+  // `reports` list, including drafts, is still passed to MonthSelectionModal so
+  // it can detect in-progress drafts.)
+  const nonDraftReports = reports.filter(
+    (r) => (r.state || r.status || '').toLowerCase() !== 'draft'
+  );
   
   // Check auth token
   const authToken = localStorage.getItem('token');
@@ -126,10 +133,11 @@ const WDCDashboard = () => {
   const notifications = notificationsData?.data?.notifications || notificationsData?.notifications || [];
 
   // Calculate statistics — use `state` (lowercase, from the op-log model).
-  const totalReports = reports.length;
-  const totalAttendees = reports.reduce((sum, report) => sum + (report.attendees_count || 0), 0);
-  const submittedCount = reports.filter(r => (r.state || r.status || '').toLowerCase() === 'submitted').length;
-  const approvedCount = reports.filter(r => ['approved', 'sealed'].includes((r.state || r.status || '').toLowerCase())).length;
+  // Counts are over submitted (non-draft) reports only.
+  const totalReports = nonDraftReports.length;
+  const totalAttendees = nonDraftReports.reduce((sum, report) => sum + (report.attendees_count || 0), 0);
+  const submittedCount = nonDraftReports.filter(r => (r.state || r.status || '').toLowerCase() === 'submitted').length;
+  const approvedCount = nonDraftReports.filter(r => ['approved', 'sealed'].includes((r.state || r.status || '').toLowerCase())).length;
 
   // Get ward and LGA names from user object
   const wardName = user?.ward?.name || 'Your Ward';
@@ -140,8 +148,8 @@ const WDCDashboard = () => {
     setShowMonthModal(true);
   };
 
-  // Get recent reports for history preview
-  const recentReports = reports.slice(0, showAllHistory ? reports.length : 5);
+  // Get recent reports for history preview (submitted only — no drafts)
+  const recentReports = nonDraftReports.slice(0, showAllHistory ? nonDraftReports.length : 5);
 
   if (checkingSubmission || loadingReports) {
     return (
@@ -338,7 +346,7 @@ const WDCDashboard = () => {
               }
               subtitle={`${totalReports} reports submitted • Showing ${showAllHistory ? 'all' : 'recent 5'}`}
               action={
-                reports.length > 5 && (
+                nonDraftReports.length > 5 && (
                   <button
                     onClick={() => setShowAllHistory(!showAllHistory)}
                     className="text-sm text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1"
