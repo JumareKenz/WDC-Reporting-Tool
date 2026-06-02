@@ -43,6 +43,20 @@ const flattenReport = (r) => {
 const sumField = (reports, field) =>
   reports.reduce((acc, r) => acc + (Number(r[field]) || 0), 0);
 
+// Collapse duplicate reports to one per (wardId, reportMonth), keeping the most
+// recently submitted. Guards the UI/counts against duplicate submissions until
+// the backend enforces a uniqueness constraint (see api/reports.js).
+const dedupeByWardMonth = (reports) => {
+  const latest = new Map();
+  for (const r of reports) {
+    const key = `${r.wardId}::${normalizeMonth(r.report_month)}`;
+    const ts = new Date(r.submittedAt || r.submitted_at || r.createdAt || 0).getTime() || 0;
+    const prev = latest.get(key);
+    if (!prev || ts >= prev.ts) latest.set(key, { r, ts });
+  }
+  return [...latest.values()].map((x) => x.r);
+};
+
 // ---------------------------------------------------------------------------
 // Ward–LGA index: { wardId → { lgaId, lgaName, wardName, wardCode } }
 //
@@ -213,6 +227,14 @@ const normalizeServiceDelivery = (raw) => {
   if (!arr) return null;
 
   const num = (v) => (v === undefined || v === null ? null : Number(v));
+
+  // The backend aggregates every numeric canonical field, which includes
+  // identifiers and bookkeeping fields that are not service-delivery metrics
+  // (e.g. lga_id, ward_id, report_month). Exclude those so the table shows only
+  // meaningful indicators.
+  const EXCLUDED = new Set(['lga_id', 'ward_id', 'id', 'report_month', 'form_version_id']);
+  const isMetric = (cat) => cat && !EXCLUDED.has(cat) && !/(^|_)id$/i.test(cat);
+
   const metrics = arr
     .map((m) => ({
       category: m.category ?? m.field_key ?? m.fieldKey ?? '',
@@ -221,7 +243,7 @@ const normalizeServiceDelivery = (raw) => {
       min_value: num(m.minValue ?? m.min_value),
       max_value: num(m.maxValue ?? m.max_value),
     }))
-    .filter((m) => m.category);
+    .filter((m) => isMetric(m.category));
 
   return metrics.length ? { metrics } : null;
 };
@@ -297,7 +319,10 @@ export const getLGAComparison = async (params = {}) => {
 
     const all = (Array.isArray(rawReports) ? rawReports : rawReports?.reports || []).map(flattenReport);
     const month = params.month;
-    const filtered = month ? all.filter((r) => normalizeMonth(r.report_month) === month) : all;
+    const monthFiltered = month ? all.filter((r) => normalizeMonth(r.report_month) === month) : all;
+    // Drop duplicate submissions (one per ward+month) so drill-down lists and the
+    // client-side fallback counts aren't inflated. Drafts are filtered downstream.
+    const filtered = dedupeByWardMonth(monthFiltered.filter((r) => (r.state || r.status) && (r.state || r.status) !== 'draft'));
 
     // Build per-LGA report lists from the report data (needed for drill-down)
     const reportsByLga = new Map();
@@ -506,7 +531,7 @@ export const getStateSubmissions = async (params = {}) => {
 
     const { month, lga_id, report_status, search } = params;
 
-    const filtered = all.filter((r) => {
+    const matched = all.filter((r) => {
       if (month && normalizeMonth(r.report_month) !== month) return false;
       if (report_status && r.state !== report_status) return false;
       if (lga_id) {
@@ -519,6 +544,13 @@ export const getStateSubmissions = async (params = {}) => {
       }
       return true;
     });
+
+    // Collapse duplicate submissions. The backend currently allows multiple
+    // non-draft reports for the same ward+month (see "REQUIRED BACKEND FIX" in
+    // api/reports.js), which otherwise shows the same ward several times and
+    // inflates total_reports / submission_rate. Keep only the most recent report
+    // per (wardId, reportMonth).
+    const filtered = dedupeByWardMonth(matched);
 
     // Build per-LGA groups, seeded with all known (or the filtered) LGAs.
     const lgaMap = new Map();

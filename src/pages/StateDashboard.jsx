@@ -190,7 +190,9 @@ const StateDashboard = () => {
   const [monthlyReportData, setMonthlyReportData] = useState(null);
   const [showMonthSelector, setShowMonthSelector] = useState(false);
   const [selectedReportMonth, setSelectedReportMonth] = useState(currentMonth);
-  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  // '' = All time (no date filter). Default to all-time so the dashboard shows the
+  // full picture rather than the in-progress current month (often near-empty).
+  const [selectedMonth, setSelectedMonth] = useState('');
 
   // AI Chat state
   const [showAIChat, setShowAIChat] = useState(false);
@@ -291,9 +293,9 @@ const StateDashboard = () => {
     { name: 'Critical (<50%)', value: performanceCategories.critical, color: '#ef4444' },
   ].filter(item => item.value > 0), [performanceCategories]);
 
-  // Generate month options for selector (last 12 months)
+  // Generate month options for selector ("All time" + last 12 months)
   const monthOptions = useMemo(() => {
-    const options = [];
+    const options = [{ value: '', label: 'All time' }];
     const now = new Date();
     for (let i = 0; i < 12; i++) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -305,7 +307,7 @@ const StateDashboard = () => {
   }, []);
 
   const handleGenerateMonthlyReport = async () => {
-    setSelectedReportMonth(selectedMonth);
+    setSelectedReportMonth(selectedMonth || currentMonth);
     setShowMonthSelector(true);
   };
 
@@ -684,8 +686,8 @@ const StateDashboard = () => {
           </motion.div>
         )}
 
-        {/* Month indicator */}
-        {selectedMonth !== currentMonth && (
+        {/* Month indicator — only when a specific month is selected */}
+        {selectedMonth && (
           <motion.div
             className="flex items-center gap-2 mb-4 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700"
             initial={{ opacity: 0, y: -10 }}
@@ -694,10 +696,10 @@ const StateDashboard = () => {
             <Calendar className="w-4 h-4" />
             <span>Showing data for <strong>{monthOptions.find(m => m.value === selectedMonth)?.label}</strong></span>
             <button
-              onClick={() => setSelectedMonth(currentMonth)}
+              onClick={() => setSelectedMonth('')}
               className="ml-auto text-xs font-medium text-blue-600 hover:text-blue-800 underline"
             >
-              Back to current month
+              View all time
             </button>
           </motion.div>
         )}
