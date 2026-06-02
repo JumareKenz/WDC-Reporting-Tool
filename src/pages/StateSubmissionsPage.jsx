@@ -22,6 +22,7 @@ import Button from '../components/common/Button';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Modal from '../components/common/Modal';
 import ReportDetailView from '../components/reports/ReportDetailView';
+import GenerateReportButton from '../components/state/GenerateReportButton';
 import { useStateSubmissions, useLGAs, useReviewReport } from '../hooks/useStateData';
 import { useToast } from '../hooks/useToast';
 import {
@@ -281,6 +282,7 @@ const StateSubmissionsPage = () => {
           <Button size="sm" variant="outline" icon={Activity} onClick={refetch}>
             Refresh
           </Button>
+          <GenerateReportButton scope="state" month={month} disabled={totalReports === 0} />
         </div>
       </div>
 
@@ -360,26 +362,28 @@ const StateSubmissionsPage = () => {
               key={lga.lga_id}
               className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm"
             >
-              {/* LGA Group Header */}
-              <button
-                onClick={() => toggleLGA(lga.lga_id)}
-                className="w-full flex items-center justify-between p-4 hover:bg-neutral-50 transition-colors"
-              >
-                <div className="flex items-center gap-3">
+              {/* LGA Group Header — toggle on the left region; action button is a
+                  sibling (not nested) to keep the markup valid and clicks separate. */}
+              <div className="w-full flex items-center justify-between p-4 hover:bg-neutral-50 transition-colors">
+                <button
+                  onClick={() => toggleLGA(lga.lga_id)}
+                  className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                  aria-expanded={!!expandedLGAs[lga.lga_id]}
+                >
                   {expandedLGAs[lga.lga_id] ? (
-                    <ChevronDown className="w-5 h-5 text-neutral-500" />
+                    <ChevronDown className="w-5 h-5 text-neutral-500 shrink-0" />
                   ) : (
-                    <ChevronRight className="w-5 h-5 text-neutral-500" />
+                    <ChevronRight className="w-5 h-5 text-neutral-500 shrink-0" />
                   )}
-                  <div className="text-left">
-                    <h3 className="font-semibold text-neutral-900">{lga.lga_name} LGA</h3>
+                  <div className="text-left min-w-0">
+                    <h3 className="font-semibold text-neutral-900 truncate">{lga.lga_name} LGA</h3>
                     <p className="text-xs text-neutral-500">
                       {lga.total_reports} submission{lga.total_reports !== 1 ? 's' : ''} &bull;{' '}
                       {lga.total_wards} wards
                     </p>
                   </div>
-                </div>
-                <div className="flex items-center gap-3">
+                </button>
+                <div className="flex items-center gap-3 pl-3 shrink-0">
                   <span
                     className={`text-sm font-semibold ${getSubmissionRateColor(
                       lga.submission_rate
@@ -405,8 +409,16 @@ const StateSubmissionsPage = () => {
                           ? 'Fair'
                           : 'Critical'}
                   </span>
+                  <GenerateReportButton
+                    scope="lga"
+                    month={month}
+                    lgaId={lga.lga_id}
+                    size="sm"
+                    disabled={(lga.total_reports || 0) === 0}
+                    filenameBase={`Kaduna_${String(lga.lga_name).replace(/\s+/g, '_')}_LGA_Report_${month}`}
+                  />
                 </div>
-              </button>
+              </div>
 
               {/* Submissions Table */}
               {expandedLGAs[lga.lga_id] && (

@@ -147,6 +147,11 @@ export const API_ENDPOINTS = {
   AI_QUERY: '/ai/query',
   AI_CONVERSATIONS: '/ai/conversations',
 
+  // Intelligence Reports (director-only; job-based async generation)
+  INTEL_REPORT_GENERATE: '/intelligence-reports/generate',
+  INTEL_REPORT_STATUS: '/intelligence-reports/status',
+  INTEL_REPORT_EXPORT: '/intelligence-reports/export',
+
   // Audit (director/system)
   AUDIT_ANCHOR: '/audit/anchor',
   AUDIT_ANCHORS: '/audit/anchors',
