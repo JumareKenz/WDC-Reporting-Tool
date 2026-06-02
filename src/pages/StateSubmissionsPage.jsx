@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   FileText,
   ChevronDown,
@@ -55,11 +56,14 @@ const parsedFields = (fields) => {
 };
 
 const StateSubmissionsPage = () => {
-  const [month, setMonth] = useState(getCurrentMonth());
+  // Optional deep-link filters from the Dashboard (e.g. an LGA name link).
+  // Additive only: when absent, behaviour is unchanged.
+  const [searchParams] = useSearchParams();
+  const [month, setMonth] = useState(() => searchParams.get('month') || getCurrentMonth());
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [lgaFilter, setLgaFilter] = useState('');
+  const [lgaFilter, setLgaFilter] = useState(() => searchParams.get('lga') || '');
   const [sortField, setSortField] = useState('submitted_at');
   const [sortDir, setSortDir] = useState('desc');
   const [expandedLGAs, setExpandedLGAs] = useState({});
