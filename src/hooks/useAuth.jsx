@@ -29,6 +29,22 @@ const normalizeRole = (role) => {
   return ROLE_ALIASES[key] || ROLE_ALIASES[key.replace(/_/g, '')] || role;
 };
 
+// The exact backend JWT role claim (lowercased), preserved alongside the
+// normalized display role. Authorization-sensitive UI — e.g. the director-only
+// "Generate Intelligence Report" action — MUST gate on this, not on the
+// STATE_OFFICIAL umbrella (which collapses distinct backend roles).
+const rawRoleOf = (role) => (role ? String(role).toLowerCase().trim() : '');
+
+// Best-effort decode of a JWT's `role` claim, for backfilling older sessions
+// whose stored user object predates rawRole.
+const rawRoleFromToken = (token) => {
+  try {
+    return rawRoleOf(JSON.parse(atob(token.split('.')[1])).role);
+  } catch {
+    return '';
+  }
+};
+
 // Create Auth Context
 const AuthContext = createContext(null);
 
@@ -50,14 +66,27 @@ export const AuthProvider = ({ children }) => {
         try {
           // Parse stored user data
           const parsedUser = JSON.parse(userData);
+          let dirty = false;
           if (parsedUser?.role) {
             const normalized = normalizeRole(parsedUser.role);
             // Persist the normalized form so subsequent reads (and other tabs)
             // start from a clean value instead of a stale backend string.
             if (normalized !== parsedUser.role) {
               parsedUser.role = normalized;
-              localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(parsedUser));
+              dirty = true;
             }
+          }
+          // Backfill the raw JWT role for sessions saved before rawRole existed,
+          // so director-only gating survives a reload without re-login.
+          if (!parsedUser?.rawRole) {
+            const fromToken = rawRoleFromToken(token);
+            if (fromToken) {
+              parsedUser.rawRole = fromToken;
+              dirty = true;
+            }
+          }
+          if (dirty) {
+            localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(parsedUser));
           }
           setUser(parsedUser);
         } catch (err) {
@@ -150,6 +179,7 @@ export const AuthProvider = ({ children }) => {
         const userData = {
           id: payload.sub,
           role: normalizeRole(payload.role),
+          rawRole: rawRoleOf(payload.role),
           ward: { id: payload.wardId, lga_id: payload.lgaId },
           lga: { id: payload.lgaId },
           mustChangePin: payload.mustChangePin,
@@ -205,6 +235,7 @@ export const AuthProvider = ({ children }) => {
       const userData = {
         id: payload.sub,
         role: normalizeRole(payload.role),
+        rawRole: rawRoleOf(payload.role),
         ward: { id: payload.wardId, lga_id: payload.lgaId },
         lga: { id: payload.lgaId },
         mustChangePin: payload.mustChangePin,
@@ -290,6 +321,7 @@ export const AuthProvider = ({ children }) => {
         const userData = {
           id: payload.sub,
           role: normalizeRole(payload.role),
+          rawRole: rawRoleOf(payload.role),
           ward: { id: payload.wardId, name: wardName, lga_id: payload.lgaId, lga_name: lgaName },
           lga: { id: payload.lgaId, name: lgaName },
           mustChangePin: payload.mustChangePin,
@@ -330,6 +362,10 @@ export const AuthProvider = ({ children }) => {
     updateUser,
     hasRole,
     isAuthenticated: !!user,
+    // True only when the backend JWT role claim is exactly "director". Gate
+    // director-only actions (e.g. intelligence-report generation) on this, never
+    // on the STATE_OFFICIAL umbrella role.
+    isDirector: user?.rawRole === 'director',
     getDefaultRoute,
   };
 

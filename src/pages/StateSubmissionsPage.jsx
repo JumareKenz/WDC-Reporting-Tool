@@ -16,7 +16,6 @@ import {
   ArrowUpDown,
   CheckCircle,
   XCircle,
-  Image as ImageIcon,
 } from 'lucide-react';
 import Card, { IconCard, EmptyCard } from '../components/common/Card';
 import Button from '../components/common/Button';
@@ -442,9 +441,6 @@ const StateSubmissionsPage = () => {
                             </button>
                           </th>
                           <th className="text-center py-2.5 px-4 text-xs font-semibold text-neutral-600 uppercase tracking-wider">
-                            Meetings
-                          </th>
-                          <th className="text-center py-2.5 px-4 text-xs font-semibold text-neutral-600 uppercase tracking-wider">
                             Attendees
                           </th>
                           <th className="text-left py-2.5 px-4 text-xs font-semibold text-neutral-600 uppercase tracking-wider">
@@ -501,12 +497,7 @@ const StateSubmissionsPage = () => {
                             </td>
                             <td className="py-3 px-4 text-center">
                               <span className="text-sm font-semibold text-neutral-700">
-                                {report.meetings_held}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              <span className="text-sm font-semibold text-neutral-700">
-                                {report.attendees_count || report.attendance_total || 0}
+                                {report.attendees_count || 0}
                               </span>
                             </td>
                             <td className="py-3 px-4">
@@ -648,66 +639,8 @@ const StateSubmissionsPage = () => {
               </div>
             )}
 
-            {/* Uploaded Images Section */}
-            {fullReportData && (
-              <>
-                {/* Group Photos */}
-                {(fullReportData.group_photos?.length > 0 || fullReportData.group_photo_path) && (
-                  <div className="bg-white rounded-lg border border-neutral-200 p-5">
-                    <h4 className="font-semibold text-neutral-900 mb-3 flex items-center gap-2">
-                      <ImageIcon className="w-4 h-4 text-blue-600" />
-                      Meeting Photos
-                    </h4>
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                      {(fullReportData.group_photos || JSON.parse(fullReportData.group_photo_path || '[]')).map((photo, idx) => (
-                        <a
-                          key={idx}
-                          href={`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || ''}${photo}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="relative aspect-square rounded-lg overflow-hidden border border-neutral-200 hover:border-blue-400 transition-all group"
-                        >
-                          <img
-                            src={`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || ''}${photo}`}
-                            alt={`Meeting photo ${idx + 1}`}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                            loading="lazy"
-                          />
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Attendance Photos */}
-                {(fullReportData.attendance_photos?.length > 0 || fullReportData.attendance_photo_url) && (
-                  <div className="bg-white rounded-lg border border-neutral-200 p-5">
-                    <h4 className="font-semibold text-neutral-900 mb-3 flex items-center gap-2">
-                      <ImageIcon className="w-4 h-4 text-primary-600" />
-                      Attendance Photos
-                    </h4>
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                      {(fullReportData.attendance_photos || [fullReportData.attendance_photo_url]).filter(Boolean).map((photo, idx) => (
-                        <a
-                          key={idx}
-                          href={`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || ''}${photo}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="relative aspect-square rounded-lg overflow-hidden border border-neutral-200 hover:border-green-400 transition-all group"
-                        >
-                          <img
-                            src={`${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || ''}${photo}`}
-                            alt={`Attendance photo ${idx + 1}`}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                            loading="lazy"
-                          />
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
+            {/* Meeting & attendance photos are rendered inside ReportDetailView
+                (sourced from the report's attachments[]). */}
 
             {/* Review Notes Input (shown when a review action is pending) */}
             {showReviewNotes && (

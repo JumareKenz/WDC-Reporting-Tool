@@ -31,11 +31,7 @@ import {
 import { formatDate, formatMonth, toTitleCase } from '../../utils/formatters';
 import { fetchVoiceNoteAudio, triggerTranscription } from '../../api/reports';
 import apiClient from '../../api/client';
-
-const UPLOAD_BASE = (
-  import.meta.env.VITE_API_BASE_URL ||
-  (import.meta.env.DEV ? 'http://localhost:8000/api' : 'https://kadwdc.equily.ng/api')
-).replace(/\/api$/, '');
+import { resolveUploadUrl, groupPhotoUrls, attendancePhotoUrls } from '../../utils/attachments';
 
 /**
  * Detailed Report View Component
@@ -78,35 +74,41 @@ const ReportDetailView = ({ report: rawReport }) => {
     perinatal_death_causes:  parseArr(rawReport.perinatal_death_causes),
   };
 
-  // Parse group photos — handle both group_photo_path and group_photos fields
+  // Resolve meeting (group) photos to loadable URLs. Prefer explicit field-based
+  // paths if present, otherwise derive from the report's attachments[] array
+  // (the v1 op-log backend delivers uploaded photos there, not as fields).
+  const parseField = (v) => {
+    if (Array.isArray(v)) return v;
+    if (typeof v === 'string' && v.trim().startsWith('[')) {
+      try { const p = JSON.parse(v); return Array.isArray(p) ? p : []; } catch { return []; }
+    }
+    return v ? [v] : [];
+  };
+
   const groupPhotos = (() => {
-    // Try group_photos first (newer API format)
-    if (report.group_photos) {
-      if (Array.isArray(report.group_photos)) return report.group_photos;
-      try { return JSON.parse(report.group_photos); } catch { return []; }
-    }
-    // Fallback to group_photo_path (older format)
-    if (report.group_photo_path) {
-      if (Array.isArray(report.group_photo_path)) return report.group_photo_path;
-      try { return JSON.parse(report.group_photo_path); } catch { return []; }
-    }
-    return [];
-  })();
-  
-  // Parse attendance photos - handle both attendance_photo_url and attendance_photos
-  const attendancePhotos = (() => {
-    if (report.attendance_photos) {
-      if (Array.isArray(report.attendance_photos)) return report.attendance_photos;
-      try { return JSON.parse(report.attendance_photos); } catch { return []; }
-    }
-    // Fallback to single attendance_photo_url wrapped in array
-    if (report.attendance_photo_url) {
-      return [report.attendance_photo_url];
-    }
-    return [];
+    const fromFields = parseField(report.group_photos || report.group_photo_path);
+    if (fromFields.length) return fromFields.map(resolveUploadUrl);
+    return groupPhotoUrls(report.attachments);
   })();
 
-  const photoUrl = (path) => `${UPLOAD_BASE}/${path}`;
+  const attendancePhotos = (() => {
+    const fromFields = parseField(report.attendance_photos || report.attendance_photo_url);
+    if (fromFields.length) return fromFields.map(resolveUploadUrl);
+    return attendancePhotoUrls(report.attachments);
+  })();
+
+  // Attendance totals: the stored `attendance_total` is sometimes absent/zero, so
+  // derive Total = Male + Female when needed (the form computes the same sum).
+  const attMale = Number(report.attendance_male) || 0;
+  const attFemale = Number(report.attendance_female) || 0;
+  const attTotal = Number(report.attendance_total) || attMale + attFemale;
+  const hasAttendance =
+    attTotal > 0 ||
+    (report.attendance_male !== null && report.attendance_male !== undefined && report.attendance_male !== '') ||
+    (report.attendance_female !== null && report.attendance_female !== undefined && report.attendance_female !== '');
+
+  // groupPhotos / attendancePhotos now hold fully-resolved URLs.
+  const photoUrl = (url) => url;
   
   // Fetch voice notes on mount
   useEffect(() => {
@@ -1073,29 +1075,23 @@ const ReportDetailView = ({ report: rawReport }) => {
       <div className="bg-white rounded-lg border border-neutral-200 p-5">
         {renderSectionHeader('Attendance & Next Steps', <ClipboardList className="w-5 h-5 text-primary-600" />)}
 
-        {/* Attendance */}
-        {(report.attendance_total || report.attendance_male || report.attendance_female) && (
+        {/* Attendance — Total is derived as Male + Female when not stored. */}
+        {hasAttendance && (
           <div className="mb-5">
             <h4 className="font-semibold text-neutral-900 text-sm mb-3">Meeting Attendance</h4>
             <div className="grid grid-cols-3 gap-3">
-              {report.attendance_total !== null && (
-                <div className="bg-primary-50 rounded-lg p-3 text-center">
-                  <p className="text-2xl font-bold text-primary-700">{report.attendance_total}</p>
-                  <p className="text-xs text-primary-600 mt-1">Total</p>
-                </div>
-              )}
-              {report.attendance_male !== null && (
-                <div className="bg-blue-50 rounded-lg p-3 text-center">
-                  <p className="text-2xl font-bold text-blue-700">{report.attendance_male}</p>
-                  <p className="text-xs text-blue-600 mt-1">Male</p>
-                </div>
-              )}
-              {report.attendance_female !== null && (
-                <div className="bg-pink-50 rounded-lg p-3 text-center">
-                  <p className="text-2xl font-bold text-pink-700">{report.attendance_female}</p>
-                  <p className="text-xs text-pink-600 mt-1">Female</p>
-                </div>
-              )}
+              <div className="bg-primary-50 rounded-lg p-3 text-center">
+                <p className="text-2xl font-bold text-primary-700">{attTotal}</p>
+                <p className="text-xs text-primary-600 mt-1">Total</p>
+              </div>
+              <div className="bg-blue-50 rounded-lg p-3 text-center">
+                <p className="text-2xl font-bold text-blue-700">{attMale}</p>
+                <p className="text-xs text-blue-600 mt-1">Male</p>
+              </div>
+              <div className="bg-pink-50 rounded-lg p-3 text-center">
+                <p className="text-2xl font-bold text-pink-700">{attFemale}</p>
+                <p className="text-xs text-pink-600 mt-1">Female</p>
+              </div>
             </div>
           </div>
         )}

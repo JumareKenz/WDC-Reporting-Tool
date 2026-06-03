@@ -5,6 +5,7 @@ import {
   getIntelligenceReportStatus,
   downloadIntelligenceReport,
 } from '../../api/intelligenceReports';
+import { useAuth } from '../../hooks/useAuth';
 
 const POLL_INTERVAL_MS = 4000;
 
@@ -50,6 +51,7 @@ const GenerateReportButton = ({
   const pollTimers = useRef({}); // cacheKey -> timeout id
   const mounted = useRef(true);
   const menuRef = useRef(null);
+  const { isDirector } = useAuth();
 
   const current = jobs[cacheKey] || { status: 'idle' };
 
@@ -165,6 +167,11 @@ const GenerateReportButton = ({
   }, [current.jobId, cacheKey, fileBase, setKeyJob]);
 
   // --- Render states -------------------------------------------------------
+
+  // Director-only. The backend intelligence-report routes are @Roles('director'),
+  // but the frontend's STATE_OFFICIAL umbrella also covers other backend roles —
+  // gate on the exact JWT role so non-directors never see an action that 403s.
+  if (!isDirector) return null;
 
   // Disabled (nothing to analyse) — show a tooltip via title attribute.
   if (disabled && current.status === 'idle') {

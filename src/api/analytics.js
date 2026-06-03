@@ -43,6 +43,14 @@ const flattenReport = (r) => {
 const sumField = (reports, field) =>
   reports.reduce((acc, r) => acc + (Number(r[field]) || 0), 0);
 
+// Total meeting attendance for a report. The stored `attendance_total` is often
+// absent/zero, so derive Total = Male + Female when it is not a positive number.
+const attendanceTotalOf = (r) => {
+  const stored = Number(r.attendance_total) || 0;
+  if (stored > 0) return stored;
+  return (Number(r.attendance_male) || 0) + (Number(r.attendance_female) || 0);
+};
+
 // Collapse duplicate reports to one per (wardId, reportMonth), keeping the most
 // recently submitted. Guards the UI/counts against duplicate submissions until
 // the backend enforces a uniqueness constraint (see api/reports.js).
@@ -261,9 +269,10 @@ const clientSideOverview = async (params, wardResults) => {
   const totalWards = wardResults.reduce((s, { wards }) => s + wards.length, 0) || 255;
 
   const stats = { total_lgas: wardResults.length || 0, total_wards: totalWards, total_submitted: 0, total_reviewed: 0, total_flagged: 0, total_missing: 0, submission_rate: 0 };
-  for (const r of reports) {
+  // Collapse duplicate ward+month submissions so coverage counts aren't inflated.
+  const nonDraft = reports.filter((r) => { const st = r.state || r.status; return st && st !== 'draft'; });
+  for (const r of dedupeByWardMonth(nonDraft)) {
     const st = r.state || r.status;
-    if (!st || st === 'draft') continue;
     stats.total_submitted++;
     if (st === 'approved' || st === 'sealed') stats.total_reviewed++;
     if (st === 'returned') stats.total_flagged++;
@@ -277,11 +286,27 @@ const clientSideOverview = async (params, wardResults) => {
 // getOverview — hit backend analytics, fall back to client-side
 // ---------------------------------------------------------------------------
 export const getOverview = async (params = {}) => {
+  // When a specific month is selected, stats must reflect the reporting PERIOD
+  // (report_month), not when reports were submitted. The backend /analytics/overview
+  // filters by a submission-date range (startDate/endDate), so it would lump every
+  // report submitted that month under that month regardless of the period it covers
+  // (e.g. 8 reports submitted in June that actually cover Jan/Feb/May). Compute
+  // client-side from report_month for correctness and consistency with
+  // getLGAComparison / getStateSubmissions, which already filter by report_month.
+  // See ESCALATION: backend should add a reportMonth filter to /analytics/overview.
+  if (params.month) {
+    try {
+      const { wardResults } = await buildWardLgaIndex();
+      return await clientSideOverview(params, wardResults);
+    } catch (err) {
+      console.error('[Analytics] getOverview (report_month) failed:', err.message);
+      return { total_lgas: 0, total_wards: 0, total_submitted: 0, total_reviewed: 0, total_flagged: 0, total_missing: 0, submission_rate: 0 };
+    }
+  }
+
+  // All-time (no month): use the live backend analytics endpoint, fall back to client-side.
   try {
-    // Backend accepts startDate/endDate (omit for all-time). Map the selected month.
-    const range = monthToRange(params.month);
-    const qs = range ? buildQueryString(range) : '';
-    const raw = await apiClient.get(`${API_ENDPOINTS.ANALYTICS_OVERVIEW}${qs}`);
+    const raw = await apiClient.get(API_ENDPOINTS.ANALYTICS_OVERVIEW);
     const result = normalizeOverview(raw);
     // If analytics returned real data, use it
     if (result.total_lgas > 0 || result.total_wards > 0 || result.total_submitted > 0) {
@@ -343,7 +368,7 @@ export const getLGAComparison = async (params = {}) => {
         submitted_at: r.submittedAt || r.submitted_at || null,
         submitted_by: r.submittedBy || r.submitted_by || '',
         meetings_held: r.meetings_held,
-        attendees_count: r.attendees_count || r.attendance_total,
+        attendees_count: attendanceTotalOf(r),
       });
     }
 
@@ -584,7 +609,7 @@ export const getStateSubmissions = async (params = {}) => {
         submitted_at: r.submittedAt || r.submitted_at || null,
         submitted_by: r.submittedBy || r.submitted_by || '',
         meetings_held: r.meetings_held,
-        attendees_count: r.attendees_count || r.attendance_total,
+        attendees_count: attendanceTotalOf(r),
       });
     }
 
