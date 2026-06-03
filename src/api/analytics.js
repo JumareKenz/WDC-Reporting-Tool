@@ -13,20 +13,6 @@ const normalizeMonth = (m) => {
   return s;
 };
 
-// Convert a "YYYY-MM" month into the backend's { startDate, endDate } range
-// (first and last calendar day). Returns null for a missing/invalid month, in
-// which case callers omit the params and the backend returns all-time stats.
-const monthToRange = (month) => {
-  if (!month) return null;
-  const m = String(month).match(/(\d{4})-(\d{1,2})/);
-  if (!m) return null;
-  const year = Number(m[1]);
-  const mon = Number(m[2]);
-  const mm = String(mon).padStart(2, '0');
-  const lastDay = new Date(year, mon, 0).getDate(); // day 0 of next month = last day of this month
-  return { startDate: `${m[1]}-${mm}-01`, endDate: `${m[1]}-${mm}-${String(lastDay).padStart(2, '0')}` };
-};
-
 // Flatten canonical.fields op-log entries onto the report object so callers
 // can read report_month, health_bcg, meetings_held, etc. directly.
 const flattenReport = (r) => {
@@ -286,27 +272,14 @@ const clientSideOverview = async (params, wardResults) => {
 // getOverview — hit backend analytics, fall back to client-side
 // ---------------------------------------------------------------------------
 export const getOverview = async (params = {}) => {
-  // When a specific month is selected, stats must reflect the reporting PERIOD
-  // (report_month), not when reports were submitted. The backend /analytics/overview
-  // filters by a submission-date range (startDate/endDate), so it would lump every
-  // report submitted that month under that month regardless of the period it covers
-  // (e.g. 8 reports submitted in June that actually cover Jan/Feb/May). Compute
-  // client-side from report_month for correctness and consistency with
-  // getLGAComparison / getStateSubmissions, which already filter by report_month.
-  // See ESCALATION: backend should add a reportMonth filter to /analytics/overview.
-  if (params.month) {
-    try {
-      const { wardResults } = await buildWardLgaIndex();
-      return await clientSideOverview(params, wardResults);
-    } catch (err) {
-      console.error('[Analytics] getOverview (report_month) failed:', err.message);
-      return { total_lgas: 0, total_wards: 0, total_submitted: 0, total_reviewed: 0, total_flagged: 0, total_missing: 0, submission_rate: 0 };
-    }
-  }
-
-  // All-time (no month): use the live backend analytics endpoint, fall back to client-side.
+  // When a month is selected, the backend filters by the reporting PERIOD via
+  // ?reportMonth=YYYY-MM (canonical report_month) — so stats reflect the period a
+  // report covers, not when it was submitted. Omitted → all-time. The client-side
+  // fallback below also filters by report_month, keeping results correct if the
+  // endpoint is unavailable.
+  const qs = params.month ? buildQueryString({ reportMonth: params.month }) : '';
   try {
-    const raw = await apiClient.get(API_ENDPOINTS.ANALYTICS_OVERVIEW);
+    const raw = await apiClient.get(`${API_ENDPOINTS.ANALYTICS_OVERVIEW}${qs}`);
     const result = normalizeOverview(raw);
     // If analytics returned real data, use it
     if (result.total_lgas > 0 || result.total_wards > 0 || result.total_submitted > 0) {
@@ -315,7 +288,7 @@ export const getOverview = async (params = {}) => {
     // Empty response — fall through to client-side
     throw new Error('analytics/overview returned no data');
   } catch {
-    // Client-side fallback
+    // Client-side fallback (filters by report_month for the selected month).
     try {
       const { wardResults } = await buildWardLgaIndex();
       return clientSideOverview(params, wardResults);
@@ -331,9 +304,8 @@ export const getOverview = async (params = {}) => {
 // ---------------------------------------------------------------------------
 export const getLGAComparison = async (params = {}) => {
   try {
-    // lga-comparison accepts startDate/endDate + sortBy/order/limit.
-    const range = monthToRange(params.month);
-    const qs = buildQueryString({ ...(range || {}), limit: 100 });
+    // Filter by reporting period via ?reportMonth=YYYY-MM (omitted → all-time).
+    const qs = buildQueryString({ ...(params.month ? { reportMonth: params.month } : {}), limit: 100 });
 
     // Fetch analytics stats and individual reports in parallel
     const [analyticsRaw, rawReports, { index, wardResults }] = await Promise.all([
