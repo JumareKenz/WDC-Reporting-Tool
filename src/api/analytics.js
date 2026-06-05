@@ -248,7 +248,9 @@ const normalizeServiceDelivery = (raw) => {
 // ---------------------------------------------------------------------------
 
 const clientSideOverview = async (params, wardResults) => {
-  const rawReports = await getReports();
+  const fetchParams = { state: 'submitted' };
+  if (params.month) fetchParams.reportMonth = params.month;
+  const rawReports = await getReports(fetchParams);
   const all = (Array.isArray(rawReports) ? rawReports : rawReports?.reports || []).map(flattenReport);
   const month = params.month;
   const reports = month ? all.filter((r) => normalizeMonth(r.report_month) === month) : all;
@@ -307,10 +309,14 @@ export const getLGAComparison = async (params = {}) => {
     // Filter by reporting period via ?reportMonth=YYYY-MM (omitted → all-time).
     const qs = buildQueryString({ ...(params.month ? { reportMonth: params.month } : {}), limit: 100 });
 
-    // Fetch analytics stats and individual reports in parallel
+    // Fetch analytics stats and individual reports in parallel.
+    // Pass state=submitted + reportMonth so the backend pre-filters before the
+    // LIMIT 500 is applied — avoids drafts crowding out real submissions.
+    const reportParams = { state: 'submitted' };
+    if (params.month) reportParams.reportMonth = params.month;
     const [analyticsRaw, rawReports, { index, wardResults }] = await Promise.all([
       apiClient.get(`${API_ENDPOINTS.ANALYTICS_LGA_COMPARISON}${qs}`).catch(() => null),
-      getReports(),
+      getReports(reportParams),
       buildWardLgaIndex(),
     ]);
 
@@ -423,7 +429,7 @@ export const getTrends = async (params = {}) => {
     // Client-side fallback
     try {
       const [rawReports, { wardResults }] = await Promise.all([
-        getReports(),
+        getReports({ state: 'submitted' }),
         buildWardLgaIndex(),
       ]);
       const all = (Array.isArray(rawReports) ? rawReports : rawReports?.reports || []).map(flattenReport);
@@ -517,8 +523,13 @@ export const getLGAs = async () => apiClient.get(API_ENDPOINTS.LGAS);
 // ---------------------------------------------------------------------------
 export const getStateSubmissions = async (params = {}) => {
   try {
+    // Always exclude drafts server-side so the LIMIT 500 cap only counts real
+    // submissions — prevents drafts from crowding them out. When a specific month
+    // is also selected, add reportMonth so the backend returns only that period.
+    const reportParams = { state: 'submitted' };
+    if (params.month) reportParams.reportMonth = params.month;
     const [rawReports, { index, wardResults }] = await Promise.all([
-      getReports(),
+      getReports(reportParams),
       buildWardLgaIndex(),
     ]);
 
