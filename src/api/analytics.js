@@ -526,6 +526,13 @@ export const getStateSubmissions = async (params = {}) => {
       .map(flattenReport)
       .filter((r) => r.state && r.state !== 'draft');
 
+    // All months that actually have a submitted report, newest first. Computed
+    // before the month filter so the page can default to the latest month with
+    // data instead of the (often empty) calendar current month.
+    const availableMonths = [...new Set(
+      all.map((r) => normalizeMonth(r.report_month)).filter(Boolean)
+    )].sort().reverse();
+
     const { month, lga_id, report_status, search } = params;
 
     const matched = all.filter((r) => {
@@ -603,9 +610,10 @@ export const getStateSubmissions = async (params = {}) => {
       total_reports: filtered.length,
       total_wards_reported: new Set(filtered.map((r) => r.wardId)).size,
       total_wards: totalWards || 255,
+      available_months: availableMonths,
     };
   } catch (error) {
     console.error('[Analytics] getStateSubmissions failed:', error.message);
-    return { lgas: [], total_reports: 0, total_wards_reported: 0, total_wards: 0 };
+    return { lgas: [], total_reports: 0, total_wards_reported: 0, total_wards: 0, available_months: [] };
   }
 };

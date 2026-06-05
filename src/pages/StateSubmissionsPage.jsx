@@ -28,7 +28,6 @@ import { useToast } from '../hooks/useToast';
 import {
   formatDate,
   formatMonth,
-  getCurrentMonth,
   getStatusColor,
   formatDuration,
   formatFileSize,
@@ -58,7 +57,11 @@ const StateSubmissionsPage = () => {
   // Optional deep-link filters from the Dashboard (e.g. an LGA name link).
   // Additive only: when absent, behaviour is unchanged.
   const [searchParams] = useSearchParams();
-  const [month, setMonth] = useState(() => searchParams.get('month') || getCurrentMonth());
+  // Start empty so the first fetch returns every month; an effect then selects
+  // the latest month that actually has submitted reports (a deep-link ?month=
+  // still wins). Avoids defaulting to the calendar month, which is usually empty.
+  const [month, setMonth] = useState(() => searchParams.get('month') || '');
+  const monthInitialized = useRef(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -100,6 +103,18 @@ const StateSubmissionsPage = () => {
   const totalWardsReported = data?.total_wards_reported || 0;
   const totalWards = data?.total_wards || 0;
   const submissionRate = totalWards > 0 ? ((totalWardsReported / totalWards) * 100).toFixed(1) : 0;
+  const availableMonths = data?.available_months || [];
+
+  // On first load (no deep-link month), default to the latest month that
+  // actually has submitted reports rather than the empty calendar month.
+  useEffect(() => {
+    if (monthInitialized.current) return;
+    if (month) { monthInitialized.current = true; return; }
+    if (availableMonths.length > 0) {
+      setMonth(availableMonths[0]);
+      monthInitialized.current = true;
+    }
+  }, [month, availableMonths]);
 
   // Expand all LGAs when data changes
   useEffect(() => {
@@ -254,7 +269,10 @@ const StateSubmissionsPage = () => {
     setPlayingAudio(null);
   };
 
-  if (isLoading) {
+  // Also hold the spinner while we're about to auto-select the default month
+  // (month still empty but data has months), to avoid a one-frame "all months" flash.
+  const resolvingDefaultMonth = !month && availableMonths.length > 0;
+  if (isLoading || resolvingDefaultMonth) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <LoadingSpinner size="lg" text="Loading submissions..." />
