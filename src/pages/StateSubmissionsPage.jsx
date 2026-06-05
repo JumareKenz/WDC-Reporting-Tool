@@ -471,6 +471,9 @@ const StateSubmissionsPage = () => {
                               <ArrowUpDown className="w-3 h-3" />
                             </button>
                           </th>
+                          <th className="text-left py-2.5 px-4 text-xs font-semibold text-neutral-600 uppercase tracking-wider hidden md:table-cell">
+                            Review
+                          </th>
                           <th className="text-left py-2.5 px-4 text-xs font-semibold text-neutral-600 uppercase tracking-wider hidden sm:table-cell">
                             <button
                               className="flex items-center gap-1 hover:text-neutral-900 transition-colors"
@@ -526,6 +529,21 @@ const StateSubmissionsPage = () => {
                               >
                                 {STATUS_LABELS[report.status]}
                               </span>
+                            </td>
+                            <td className="py-3 px-4 hidden md:table-cell">
+                              {report.status === REPORT_STATUS.REVIEWED ? (
+                                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+                                  <CheckCircle className="w-3.5 h-3.5" />
+                                  Approved
+                                </span>
+                              ) : report.status === REPORT_STATUS.DECLINED ? (
+                                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-red-600">
+                                  <XCircle className="w-3.5 h-3.5" />
+                                  Declined
+                                </span>
+                              ) : (
+                                <span className="text-xs text-neutral-400">—</span>
+                              )}
                             </td>
                             <td className="py-3 px-4 text-sm text-neutral-600 hidden sm:table-cell">
                               {formatDate(report.submitted_at)}
